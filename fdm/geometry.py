@@ -38,7 +38,8 @@ W_FUEL = 15300.0        # lb
 W_ENGINE = 1644.0       # lb, Rolls-Royce
 FUEL_DENSITY = 50.1     # lb/ft3, JP-8 at 6.7 lb/gal
 TC = 0.152              # LRN 1015
-ZERO_FUEL_CG = 0.25     # of the mean aerodynamic chord: a choice, see mass_model()
+ZERO_FUEL_CG = 0.20     # of the mean aerodynamic chord: a choice, see mass_model()
+FUSELAGE_FUEL_CG = 0.17 # of the mean aerodynamic chord: where the fuselage tanks' fuel is put, a choice
 
 # ---- NASA's side view, digitised by hand in pixels (x to the right = forward, y down). The drawing is
 # 1024 x 344; the nose tip is at x = 1010, the tail end at x = 4, the ground under the nose wheel at y = 336.
@@ -323,7 +324,8 @@ def mass_model(g):
     payload = W_GROSS - W_EMPTY - W_FUEL
     x_payload = 0.35 * LENGTH                               # the bays are in the nose, under the belly and in the tail
     # Where the systems sit isn't known. They are put where the aircraft without fuel balances at ZERO_FUEL_CG of
-    # the mean chord: a choice, as the designers will have balanced it, to be looked at again with the neutral point.
+    # the mean chord: a choice. It was 25 % at first; the aerodynamic models put the neutral point at 30 to 33 %,
+    # so it was moved forward to keep 5 % of the mean chord between the two with full tanks, the aft-most case.
     target = w['mac_le_x'] + ZERO_FUEL_CG * w['mac']
     moment = sum(i['weight'] * i['x'] for i in items) + payload * x_payload
     x_rest = (target * (W_EMPTY + payload) - moment) / rest
@@ -334,7 +336,7 @@ def mass_model(g):
     y0, y1 = f['max_width'] / 2, 0.9 * half
     ixf = span_inertia(wing_fuel, y0, y1)
     add('wing fuel', wing_fuel, xw, 0, zc, ixf, 0, ixf, kind='fuel')
-    add('fuselage fuel', fus_fuel, w['mac_le_x'] + 0.25 * w['mac'], 0, 5.0, 0, slug(fus_fuel) * 12.0 ** 2 / 12,
+    add('fuselage fuel', fus_fuel, w['mac_le_x'] + FUSELAGE_FUEL_CG * w['mac'], 0, 5.0, 0, slug(fus_fuel) * 12.0 ** 2 / 12,
         slug(fus_fuel) * 12.0 ** 2 / 12, kind='fuel')
 
     def totals(fuel_fraction):

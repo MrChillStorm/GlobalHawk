@@ -99,7 +99,7 @@
   {
    "name": "systems, avionics, antennas (the rest of the empty weight)",
    "weight": 2041.5,
-   "x": 20.756,
+   "x": 19.357,
    "y": 0,
    "z": 5.5,
    "ixx": 0,
@@ -132,7 +132,7 @@
   {
    "name": "fuselage fuel",
    "weight": 8712.4,
-   "x": 22.876,
+   "x": 22.477,
    "y": 0,
    "z": 5.0,
    "ixx": 0,
@@ -145,46 +145,46 @@
   {
    "fuel_fraction": 1.0,
    "weight": 26750.0,
-   "cg_x": 23.085,
+   "cg_x": 22.848,
    "cg_z": 5.201,
-   "cg_percent_mac": 29.2,
+   "cg_percent_mac": 24.4,
    "ixx": 174421.0,
-   "iyy": 35722.0,
-   "izz": 207326.0,
-   "nose_gear_load_percent": 15.0
+   "iyy": 36302.0,
+   "izz": 207906.0,
+   "nose_gear_load_percent": 16.6
   },
   {
    "fuel_fraction": 0.5,
    "weight": 19100.0,
-   "cg_x": 23.022,
+   "cg_x": 22.782,
    "cg_z": 5.357,
-   "cg_percent_mac": 27.9,
+   "cg_percent_mac": 23.1,
    "ixx": 110189.0,
-   "iyy": 33987.0,
-   "izz": 141481.0,
-   "nose_gear_load_percent": 15.4
+   "iyy": 34516.0,
+   "izz": 142011.0,
+   "nose_gear_load_percent": 17.0
   },
   {
    "fuel_fraction": 0.1,
    "weight": 12980.0,
-   "cg_x": 22.919,
+   "cg_x": 22.672,
    "cg_z": 5.612,
-   "cg_percent_mac": 25.9,
+   "cg_percent_mac": 20.9,
    "ixx": 58762.0,
-   "iyy": 32549.0,
-   "izz": 88798.0,
-   "nose_gear_load_percent": 16.1
+   "iyy": 33038.0,
+   "izz": 89287.0,
+   "nose_gear_load_percent": 17.8
   },
   {
    "fuel_fraction": 0.0,
    "weight": 11450.0,
-   "cg_x": 22.876,
+   "cg_x": 22.627,
    "cg_z": 5.719,
-   "cg_percent_mac": 25.0,
+   "cg_percent_mac": 20.0,
    "ixx": 45891.0,
-   "iyy": 32173.0,
-   "izz": 75625.0,
-   "nose_gear_load_percent": 16.4
+   "iyy": 32652.0,
+   "izz": 76103.0,
+   "nose_gear_load_percent": 18.1
   }
  ],
  "note": "Every weight but the four published ones, every position and every inertia is an estimate. Fuel is burned from both tank groups in proportion in these states."

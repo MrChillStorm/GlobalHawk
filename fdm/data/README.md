@@ -103,84 +103,117 @@ Four weights are published (gross, empty, fuel, engine). Everything else in `mas
 | Engine | 1,644 | 32.10 | published weight |
 | Nacelle and engine installation | 455 | 31.23 | 5 % (estimate) |
 | Main and nose gear | 400 and 100 | 25.29, 10.55 | 5.5 % (estimate) |
-| Systems, avionics, antennas | 2,042 | 20.76 | the rest of the empty weight; **position chosen** so the aircraft without fuel balances at 25 % of the mean chord |
+| Systems, avionics, antennas | 2,042 | 19.36 | the rest of the empty weight; **position chosen** so the aircraft without fuel balances at 20 % of the mean chord |
 | Payload and its fittings | 2,350 | 15.54 | gross less empty less fuel |
 | Wing fuel | 6,588 | 23.72 | what the wing box holds: 138 ft³ between 15 and 60 % chord out to 90 % of the semi-span |
-| Fuselage fuel | 8,712 | 22.88 | the rest: the wing can't hold 15,300 lb |
+| Fuselage fuel | 8,712 | 22.48 | the rest: the wing can't hold 15,300 lb. Put at 17 % of the mean chord, **a choice** |
 
 | Fuel | Weight, lb | Centre of gravity, % mean chord | Ixx | Iyy | Izz, slug ft² | Nose gear load |
 |---|---|---|---|---|---|---|
-| 100 % | 26,750 | 29.2 | 174,400 | 35,700 | 207,300 | 15.0 % |
-| 50 % | 19,100 | 27.9 | 110,200 | 34,000 | 141,500 | 15.4 % |
-| 10 % | 12,980 | 25.9 | 58,800 | 32,500 | 88,800 | 16.1 % |
-| none | 11,450 | 25.0 | 45,900 | 32,200 | 75,600 | 16.4 % |
+| 100 % | 26,750 | 24.4 | 174,400 | 36,300 | 207,900 | 16.6 % |
+| 50 % | 19,100 | 23.1 | 110,200 | 34,500 | 142,000 | 17.0 % |
+| 10 % | 12,980 | 20.9 | 58,800 | 33,000 | 89,300 | 17.8 % |
+| none | 11,450 | 20.0 | 45,900 | 32,700 | 76,100 | 18.1 % |
 
-The centre of gravity is a choice, not a finding: the tail is small (horizontal volume 0.277), so the neutral point
-will be well ahead of mid-chord, and the choice is looked at again when the aerodynamic model gives the neutral
-point. The roll and yaw inertias fall by almost three quarters as the wing fuel burns; that is real for an aircraft
-that carries more than half its weight as fuel, and the flight laws have to cope with it.
+The centre of gravity is a choice, not a finding. It was first put at 25 to 29 % of the mean chord; the aerodynamic
+models then put the neutral point at 30 to 33 % (next section), so it was moved forward until 5 % of the mean chord
+lies between the two with full tanks, the aft-most case. The roll and yaw inertias fall by almost three quarters as
+the wing fuel burns; that is real for an aircraft that carries more than half its weight as fuel, and the flight
+laws have to cope with it.
 
-## Weights
+## Aerodynamics
 
-| Item | Value | Source |
-|---|---|---|
-| Maximum takeoff weight | 26,750 lb | NASA fact sheet FS-098, NASA flight-operations briefings 2009 and 2010, FAA programme briefing, Designation-Systems |
-| Maximum takeoff weight, NASA 2008 | 25,600 lb | NASA project update, November 2008 (air vehicle characteristics table) |
-| Fuel capacity | 15,300 lb | NASA flight-operations briefings 2009 and 2010 |
-| Fuel tank capacity, NASA 2008 | 15,436 lb, with a takeoff fuel of 14,500 lb | NASA project update, November 2008 |
-| Empty weight with fluids | 9,100 lb | NASA project update, November 2008 |
-| Empty weight | 9,200 lb [FAA programme briefing]; 4,177 kg = 9,209 lb [Jane's 1999] | |
-| Payload | over 1,500 lb [NASA 2007-2009]; 1,000-1,500 lb [NASA 2009, 2011]; 2,000 lb [NASA 2010, FAA]; 1,200 lb demonstrated [NASA 2017] | |
+No wind-tunnel or CFD data of the Global Hawk is public. Two models are built and compared, and the flight data
+calibrates what they leave open.
 
-The two NASA sets are each consistent: 9,100 + 14,500 + 2,000 = 25,600 lb, and 26,750 - 15,300 = 11,450 lb for the
-aircraft with its payload. Choice: empty 9,100 lb, fuel 15,300 lb, gross 26,750 lb, which leaves 2,350 lb for payload
-and its fittings (derived). Designation-Systems gives an "empty" weight of 14,800 lb beside the RQ-4A; it is the
-RQ-4B's (14,950 lb [USAF]) and is not used.
+- **The strip model, `fdm/strips.py`: what ships.** The wing is 80 strips on a lifting line, each taking its lift,
+  drag and moment from the LRN 1015's section table at its own angle of attack and Reynolds number and the flight
+  Mach number, with the trailing vortices of all strips giving each its downwash. The V-tail's strips sit in the
+  wing's downwash and sidewash. Fuselage and nacelle add skin-friction drag and the slender-body moments.
+- **The reference model, `fdm/aero_ref.py`:** the same geometry in AeroSandbox, by its build-up method (bodies and
+  control surfaces in it) and its vortex lattice (wing and tail only).
+- **Section data:** NeuralFoil through AeroSandbox, which adds a compressibility correction.
 
-Centre of gravity and inertias are not published. They are built up from the parts and labelled estimates.
+Not in either model: the wing's bending in flight (the real wing takes up dihedral under load, which adds roll
+due to sideslip), spoilers, the gear, ground effect. Estimates that no source gives: the ailerons (55 to 95 % of the
+semi-span, 25 % chord), the ruddervators (the whole panel span, 30 % chord), the tail section (symmetric, 10 %
+thick), 15 % on body drag for antennas and radomes, 60 % of the nacelle's surface in the airflow, and the wing's
+incidence on the fuselage (zero for now: the flight data's angle of attack sets it).
 
-## Performance, published
+### The section data against NASA's tunnel test
 
-| Item | Value | Source |
-|---|---|---|
-| Maximum altitude | 65,000 ft | NASA overviews |
-| Service ceiling | 62,500 ft | NASA overview 2017 (earlier overviews: 65,000 ft) |
-| Cruise speed above 55,000 ft | 335 KTAS | NASA overviews; "from 56,000 to 65,000 ft" [NASA 2009] |
-| Other cruise figures | 350 kt [NASA TM, 2007]; loiter 342-343 KTAS [FAA; NASA TM 2012] | |
-| Never-exceed speed | 355 KTAS | NASA project update, November 2008 |
-| Turn radius above 55,000 ft | 6.5 nmi | NASA project update, November 2008. Derived: 14.1 deg of bank at 335 KTAS |
-| Endurance | over 31 h [NASA 2008]; over 31.5 h [NASA 2009]; over 30 h [NASA 2009-2017]; about 35 h [FAA] | |
-| Range | over 11,000 nmi [NASA 2008]; over 10,000 nmi [NASA 2009]; 12,500 nmi [FAA] | |
-| Runway | 8,000 ft by 150 ft minimum | NASA 2009 |
-| Crosswind for landing | 15 kt maximum | NASA flight-operations briefing |
-| Electrical | 28 V DC, 186.3 A (5.2 kW) from the engine's generator; 115 V AC, 400 Hz, 8.3 kVA from a hydraulic generator | NASA project update, November 2008 |
+NASA TM 102840, figure 24, gives measured lift, drag and moment of the LRN 1015. `fdm/digitise_lrn1015.py` reads the
+points off the scanned figure into `lrn1015_tunnel.json`: the three cases whose axes were verified by eye, Mach 0.2
+at Reynolds 1 million and Mach 0.6 at 1 and 2 million, which is where the wing cruises. Compared at equal lift
+coefficient between 0.4 and 1.0, as the report itself does: it calls its angles of attack uncertain by up to 3 deg
+of wall correction. Limits were written first.
 
-Derived from these: 14,500 lb of fuel over 31 h is 470 lb/h on average.
+| | Mach 0.2, Re 1 million | Mach 0.6, Re 1 million | Mach 0.6, Re 2 million | Limit | |
+|---|---|---|---|---|---|
+| Profile drag: tunnel, model | 0.00754, 0.00803 | 0.00964, 0.00829 | 0.00751, 0.00655 | | |
+| Drag error | +6.5 % | -14.0 % | -12.8 % | 15 % | pass, measured |
+| Moment about the quarter chord: tunnel, model | -0.095, -0.107 | -0.108, -0.133 | -0.111, -0.134 | | |
+| Moment difference | -0.013 | -0.025 | -0.023 | 0.02 | **miss** at Mach 0.6 |
+| Maximum lift: tunnel, model | 1.43, 1.36 | 1.31, 1.20 | 1.42, 1.20 | | |
+| Maximum lift error | -5.4 % | -8.8 % | -15.8 % | 10 % | **miss** at Re 2 million |
+| Angle of attack, model less tunnel | -0.9 deg | -0.3 deg | -0.3 deg | none | |
+| Lift-curve slope per deg: tunnel, model | 0.113, 0.108 | 0.165, 0.131 | 0.154, 0.137 | none | |
 
-## Performance, measured in flight
+- **Drag is inside the limit but one-sided at Mach 0.6:** the model's sections have 13 to 14 % less drag than the
+  tunnel there (five and six points). Wing profile drag is about 45 % of the aircraft's drag at cruise, so this
+  alone would make the model's lift-to-drag ratio about 6 % too good. It is left as it is, and the calibration
+  against the measured cruise-climb decides.
+- **Moment:** the compressibility correction scales the low-speed moment by 1.25 at Mach 0.6; the tunnel shows it
+  growing by 1.15. The model's wing is more nose-down than the real section by about 0.024, which costs about a
+  degree of ruddervator in trim.
+- **Maximum lift at Mach 0.6:** the model stops at 1.20, at 4 deg, where the correction puts a shock stall; the
+  tunnel reached 1.31 and 1.42. The model stalls early, on the safe side for the flight laws' limits.
+- **Lift-curve slope at Mach 0.6:** the tunnel's is 13 to 26 % steeper than the model's. The report's own caveat
+  on angle of attack applies, but lift does grow faster than the simple correction says once the flow over the
+  section turns supersonic. The flight data's lift curve will tell.
 
-From the paper by Pastor and others (2018), which analysed NASA's navigation records of two 2010 flights of N872NA
-(sorties 872-0060 and 872-0062). Speeds are indicated unless marked.
+### The two models against each other
 
-| Item | Value |
-|---|---|
-| Takeoff | rotation at about 130 kt, 37-38 s after the start of the roll; then 150-157 kt |
-| Initial climb | 2,500 to 5,000 ft in 59-63 s (2,300-2,500 ft/min) |
-| Climb speed | about 150 kt to FL220, then falling so that Mach rises steadily to 0.6 at FL550 |
-| Climb rate, 10,000-20,000 ft | 2,538 and 2,357 ft/min |
-| 20,000-30,000 ft | 1,961 and 2,113 ft/min |
-| 30,000-40,000 ft | 1,319 and 1,354 ft/min |
-| 40,000-50,000 ft | 516 and 533 ft/min |
-| 50,000-55,000 ft | 123 and 121 ft/min |
-| Time from 10,000 to 55,000 ft | 4,607 and 4,584 s (590 ft/min on average) |
-| Cruise-climb | from about FL550 at Mach 0.6; 56,250 ft at 83 min, 59,375 ft at 417 min, 62,000 ft at 750 min, 63,750 ft at 1,250 min (first flight); 2-11 ft/min after the first hours |
-| Descent | 4,300 ft/min from FL550 to FL300 with a level-off at FL475; 3,900 ft/min from FL300 to FL100 |
-| Approach | 1,480 ft/min, then 840 ft/min to touchdown; 160 kt slowing to 145 kt, then 120 kt with the gear down |
-| Turns | bank 21 deg at 3,800 ft falling to 14-15 deg above 50,000 ft; 0.86-0.88 deg/s there |
+At Mach 0.6 and 60,000 ft, 2.5 deg, moments about 27 % of the mean chord (`fdm/out/aero_compare.txt`,
+`aero_compare.json`). The plan set no limits here: the spread between the models is each quantity's uncertainty.
 
-From the ATTREX data, read by `fdm/attrex.py` (next section): cruise at a median Mach 0.605-0.614 and 322-345 KTAS in
-the 2013-2015 flights; the highest pressure altitude in any record is 62,769 ft. Banks in the long turns are about
-15 deg, which agrees with the table and with the published turn radius.
+| | Strips | Build-up | Vortex lattice | |
+|---|---|---|---|---|
+| Lift coefficient at 2.5 deg | 0.712 | 0.774 | | 0.5 deg apart in zero-lift angle |
+| Lift-curve slope, per deg | 0.134 | 0.132 | 0.139 | within 5 % |
+| **Neutral point, % mean chord** | **29.8** | **32.5** | | |
+| Neutral point without the bodies | 35.8 | | 42.3 | the bodies cost 6 % in ours |
+| Pitching moment at 2.5 deg | -0.080 | -0.119 | | nose-down: the section's own moment |
+| Side force due to sideslip, per deg | -0.0087 | -0.0067 | -0.0084 | |
+| Roll due to sideslip, per deg | -0.0003 | -0.0003 | -0.0007 | almost none: no dihedral modelled |
+| Yaw due to sideslip, per deg | +0.0008 | +0.0005 | +0.0013 | stable, weakly; the lattice has no bodies |
+| Roll due to aileron, per deg | -0.0065 | -0.0080 | | 20 % apart |
+| Pitch due to ruddervators, per deg | -0.0219 | none | | the reference gives no tail-control effect; hand formula -0.023 |
+| Yaw due to ruddervators, per deg | +0.0010 | none | | |
+| Roll damping | -0.91 | -0.83 | -0.85 | within 10 % |
+| Pitch damping | -13.0 | -8.9 | -26.1 | a factor of 3 between the reference's own two methods |
+| Yaw damping | -0.024 | -0.016 | -0.053 | the same |
+
+| Angle of attack | CL: strips, build-up | CD: strips, build-up | L/D: strips, build-up |
+|---|---|---|---|
+| 0 deg | 0.371, 0.448 | 0.0194, 0.0188 | 19.1, 23.9 |
+| 2 deg | 0.632, 0.710 | 0.0210, 0.0218 | 30.0, 32.5 |
+| 4 deg | 0.902, 0.976 | 0.0252, 0.0289 | 35.9, 33.8 |
+| 5 deg | 1.026, 1.099 | 0.0284, 0.0341 | 36.1, 32.2 |
+
+Trimmed with the ruddervators (strips): lift-to-drag ratio 29.8 at a lift coefficient of 0.6, 31.9 at 0.7, 34.7 at
+0.8, 36.8 at 0.9, with 3.7 to 4.2 deg of ruddervator, trailing edge up.
+
+- **Lift-to-drag ratio:** both models reach 34 to 36, inside the window set beforehand (25 to 40). With the Phase 2
+  engine that is about 45 h of Breguet endurance against NASA's 31: too good. Known reasons on the model's side
+  are the sections' drag (13 % low against the tunnel), no trim drag from the thrust line, no tail induced drag in
+  ours, and whatever the real airframe's antennas, gaps and leaks cost. This is what the flight data is for.
+- **Static margin:** with the neutral point at 29.8 % (ours) the first centre-of-gravity choice, up to 29 %, left
+  almost none. It is now 20.0 to 24.4 %: 5.4 % of margin at the worst in ours, 8.1 % in the build-up.
+- **Pitch and yaw damping** differ by a factor of 2 to 3 between methods. They matter to the flight laws' gains,
+  which therefore have to be robust to it.
+- **The reference gives no ruddervator derivatives** (its control surfaces on the two tail panels had no effect in
+  either of its methods as set up here). The strips' value agrees with the textbook V-tail formula within 5 %.
 
 ## ATTREX flight data
 
