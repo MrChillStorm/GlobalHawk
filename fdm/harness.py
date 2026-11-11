@@ -92,6 +92,10 @@ def state(f, cond, alpha, pitch_cmd, throttle, x=None):
             f[k] = v
     f['ap/engaged'] = 0                                   # the laws off: a state is set on the direct commands
     f['ap/land-mode'] = 0                                 # and any landing over: its rollout latch clears on the next frame
+    f['ap/manual'] = 0
+    for k in ('elevator', 'aileron', 'rudder'):
+        f['fcs/%s-cmd-norm' % k] = 0.0
+    f['limits/overstress'] = f['limits/failed'] = 0
     f['ap/ground-steer'] = 0
     f['ap/spoiler-mode'] = 0
     f['fcs/elevator-cmd-norm'] = pitch_cmd

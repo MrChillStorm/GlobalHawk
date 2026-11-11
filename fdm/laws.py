@@ -127,6 +127,27 @@ def _final(name, law, manual, desc, out=None):
                     'ctl/%s' % name, desc, name, name, ('\n      <output>%s</output>' % out) if out else '')
 
 
+STICK_DEAD = 0.05
+MANUAL_PITCH_RATE = 3.0                    # deg/s of pitch attitude at full stick
+MANUAL_NZ = 0.5                            # g: the load factor change a full stick may ask for
+MANUAL_BETA = 5.0                          # deg of sideslip at full pedal
+MANUAL_PEDAL = 5.0                         # deg of ruddervator straight from the pedals
+DIRECT = dict(pitch=12.0, roll=15.0, yaw=10.0)     # deg of surface at full stick in the direct law
+LEAD_ALPHA, LEAD_SPEED = 2.0, 8.0          # s: how far ahead the protections look in the protected manual law
+FAST_KCAS = 175.0                          # the governor pulls the nose up above this
+LIMIT_NZ = (-1.0, 2.5)                     # assumed limit load factors (2.5: what the Phase 6 beam was sized for)
+LIMIT_KEAS, LIMIT_MACH, FAIL_KEAS = 200.0, 0.70, 230.0      # assumed
+
+
+def _direct_latch(axis, follow):
+    """The surface command as it was on entering the direct law."""
+    return '''    <switch name="ap/latch-direct-%s">
+      <default value="ap/direct-%s-deg"/>
+      <test value="%s">ap/manual lt 2</test>
+      <output>ap/direct-%s-deg</output>
+    </switch>''' % (axis, axis, follow, axis)
+
+
 NAVS = ('kna', 'knb', 'lna', 'lnb')        # two Kearfott KN-4074E, two Litton LN-100G
 NAV_DISAGREE_DEG = 3.0
 
@@ -207,7 +228,8 @@ def laws_file():
         ('theta-latched-deg', 0), ('theta-delta-deg', 0), ('land-mode', 0), ('ground-steer', 0), ('taxi-speed-kt', 0),
         ('spoiler-mode', 0), ('spoiler-cmd', 0), ('rwy-elev-ft', 0), ('leg-lat0-deg', 0), ('leg-lon0-deg', 0), ('leg-lat1-deg', 0.01),
         ('leg-lon1-deg', 0), ('rollout', 0), ('spoiler-base', 0.667), ('link-last-sec', 0), ('link-timeout-sec', 30), ('link-monitor', 0),
-        ('link-lost', 0)))
+        ('link-lost', 0), ('manual', 0), ('direct-pitch-deg', 0), ('direct-roll-deg', 0), ('direct-yaw-deg', 0)))
+    props += ''.join('  <property value="0">limits/%s</property>\n' % k for k in ('overstress', 'failed', 'reset'))
     ch = []
     # ---- part C: navigators and the link, ahead of everything that uses them
     ch += _navigators()
@@ -222,6 +244,12 @@ def laws_file():
       </test>
       <output>ap/link-lost</output>
     </switch>''')
+    # ---- manual mode (section 7): the stick, pedals and their dead band
+    for nm, src in (('stick-pitch', 'fcs/elevator-cmd-norm'), ('stick-roll', 'fcs/aileron-cmd-norm'), ('pedal', 'fcs/rudder-cmd-norm')):
+        ch.append(_fn('ap/' + nm, '        <quotient><difference>%s<max><min>%s%s</min>%s</max></difference>%s</quotient>' % (
+            _p(src), _p(src), _v(STICK_DEAD), _v(-STICK_DEAD), _v(1 - STICK_DEAD)), 'with a dead band of %g; forward, right and nose right are positive' % STICK_DEAD,
+            clip=('-1', '1')))
+    ch.append(_fn('ap/protected', '        <eq>%s%s</eq>' % (_p('ap/manual'), _v(1)), '1 in the protected manual law'))
     # ---- schedules
     ch.append(_fn('ap/gain-q', _op('quotient', _v(50), '<max>%s%s</max>' % (_p('aero/qbar-psf'), _v(1))),
                   'gain schedule: control power goes with dynamic pressure', clip=('0.4', '2.5')))
@@ -326,11 +354,20 @@ def laws_file():
     ch.append('''    <switch name="ap/theta-mode-deg">
       <description>pitch attitude asked for by the mode, from the attitude latched at engagement</description>
       <default value="ap/theta-cmd-less-latched"/>
+      <test value="ap/theta-follow-deg">ap/manual == 2</test>
+      <test value="ap/theta-manual-deg">ap/manual == 1</test>
       <test value="ap/theta-flare-deg">ap/flare == 1</test>
       <test value="ap/theta-takeoff-deg">ap/pitch-mode == 3</test>
       <test value="ap/theta-speed-deg">ap/pitch-mode == 1</test>
       <test value="ap/theta-alt-deg">ap/pitch-mode == 2</test>
     </switch>''')
+    ch.insert(len(ch) - 1, _fn('ap/theta-manual-deg', '        <difference>%s<product>%s%s</product></difference>' % (
+        _p('ap/theta-delta-deg'), '<min>%s<quotient>%s<max>%s%s</max></quotient></min>' % (
+            _v(MANUAL_PITCH_RATE / 2.0), _v(0.5 * MANUAL_NZ * 32.174 * 57.29578), _v(100), _p('velocities/vt-fps')), _p('ap/stick-pitch')),
+        'by hand: the stick asks for a rate, %g deg/s at full travel or what gives %g g more or less than 1, whichever is less '
+        '(the governor moves at twice the difference)' % (MANUAL_PITCH_RATE, MANUAL_NZ)))
+    ch.insert(len(ch) - 1, _fn('ap/theta-follow-deg', _op('difference', _p('nav/pitch-deg'), _p('ap/theta-latched-deg')),
+                               'in the direct law the command follows the aircraft, so that coming back is bumpless'))
     ch.insert(len(ch) - 1, _fn('ap/theta-cmd-less-latched', _op('difference', _p('ap/theta-cmd-deg'), _p('ap/theta-latched-deg'))))
     ch.insert(len(ch) - 1, _fn('ap/theta-flare-deg', _op('difference', _v(FLARE_PITCH), _p('ap/theta-latched-deg')), 'the flare\'s pitch attitude'))
     ch.insert(len(ch) - 1, _fn('ap/theta-takeoff-deg', '''        <ifthen>
@@ -342,15 +379,23 @@ def laws_file():
     # ---- the pitch command governor: the command is a state that moves towards what the mode asks at 2 deg/s at
     # most, and is pulled down, whatever the mode asks, while the angle of attack is over its limit or the speed is
     # under its floor. Being a rate, it has nothing to wind up and nothing to release with a jump.
-    ch.append(_fn('ap/alpha-margin-deg', _op('difference', _p('ap/alpha-limit-deg'), _p('aero/alpha-deg')), 'room under the angle-of-attack limit'))
+    # by hand the stick can hold the nose where the speed runs away from it, so there the protections look ahead:
+    # the angle of attack 2 s on at its present rate, the speed 8 s on at its present acceleration
+    ch.append(_fn('ap/alpha-ahead-deg', '        <sum>%s<product>%s%s%s%s</product></sum>' % (
+        _p('aero/alpha-deg'), _p('ap/protected'), _v(LEAD_ALPHA), _v(57.29578), _p('aero/alphadot-rad_sec')), 'angle of attack, looked ahead by hand'))
+    ch.append(_fn('ap/speed-ahead', '        <sum>%s<product>%s%s<quotient>%s<max>%s%s</max></quotient></product></sum>' % (
+        _v(1), _p('ap/protected'), _v(LEAD_SPEED), _p('accelerations/udot-ft_sec2'), _v(100), _p('velocities/vt-fps')),
+        'the factor on speed and Mach number when looked ahead by hand', clip=('0.8', '1.5')))
+    ch.append(_fn('ap/alpha-margin-deg', _op('difference', _p('ap/alpha-limit-deg'), _p('ap/alpha-ahead-deg')), 'room under the angle-of-attack limit'))
     ch.append(_fn('ap/speed-margin-kt', '''        <ifthen>
-          <gt>%s%s</gt>
+          <or><gt>%s%s</gt><ge>%s%s</ge></or>
           %s
           <difference>%s<difference>%s%s</difference></difference>
-        </ifthen>''' % (_p('ap/on-mains'), _v(0), _v(50), _p('velocities/vc-kts'), _p('ap/speed-target-kcas'), _v(15)),
+        </ifthen>''' % (_p('ap/on-mains'), _v(0), _p('ap/manual'), _v(1), _v(50), _p('velocities/vc-kts'), _p('ap/speed-target-kcas'), _v(15)),
                   'room above the lowest speed allowed: 15 kt under the commanded speed. Not on the ground: a takeoff starts from rest'))
-    ch.append(_fn('ap/protect-fast-deg', '        <product>%s<max>%s<difference>%s%s</difference></max></product>' % (
-        _v(200.0), _v(0), _p('velocities/mach'), _v(0.63)), 'nose up above Mach 0.63'))
+    ch.append(_fn('ap/protect-fast-deg', '        <sum><product>%s<max>%s<difference>%s%s</difference></max></product><product>%s<max>%s<difference>%s%s</difference></max></product></sum>' % (
+        _v(200.0), _v(0), '<product>%s%s</product>' % (_p('velocities/mach'), _p('ap/speed-ahead')), _v(0.63),
+        _v(0.3), _v(0), '<product>%s%s</product>' % (_p('velocities/vc-kts'), _p('ap/speed-ahead')), _v(FAST_KCAS)), 'nose up above Mach 0.63 or %g KCAS' % FAST_KCAS))
     ch.append(_fn('ap/theta-rate-deg_sec', '''        <max>
           <max>%s<product>%s<difference>%s%s</difference></product></max>
           <min>
@@ -358,10 +403,11 @@ def laws_file():
             <min>%s<max>%s<product>%s<difference><sum>%s%s</sum>%s</difference></product></max></min>
             <product>%s%s</product>
             <product>%s%s</product>
+            <product>%s%s</product>
           </min>
         </max>''' % (_v(-6), _v(10), _v(-16), _p('ap/theta-delta-deg'), _v(10), _v(18), _p('ap/theta-delta-deg'),
                      _v(3), _v(-3), _v(2.0), _p('ap/theta-mode-deg'), _p('ap/protect-fast-deg'), _p('ap/theta-delta-deg'),
-                     _v(G['K_alpha']), _p('ap/alpha-margin-deg'), _v(G['K_slow']), _p('ap/speed-margin-kt')),
+                     _v(G['K_alpha']), _p('ap/alpha-margin-deg'), '<sum>%s<product>%s%s</product></sum>' % (_v(G['K_alpha']), _v(2 * G['K_alpha']), _p('ap/protected')), _p('ap/alpha-margin-deg'), _v(G['K_slow']), _p('ap/speed-margin-kt')),
                   'how fast the pitch command moves: towards the mode\'s, or down for angle of attack or speed, whichever is lowest; and never past -16 or +18 deg (the integrator behind it has no limit of its own)'))
     ch.append(_trigger('governor'))
     ch.append('''    <pid name="ap/theta-governor">
@@ -399,8 +445,16 @@ def laws_file():
     ch.append('''    <switch name="ap/pitch-out-deg">
       <description>on the runway after landing: 3 deg nose-down</description>
       <default value="ap/pitch-law-deg"/>
-      <test value="3">ap/rollout == 1</test>
+      <test value="ap/pitch-direct-deg">ap/manual == 2</test>
+      <test logic="AND" value="3">
+        ap/rollout == 1
+        ap/manual == 0
+      </test>
     </switch>''')
+    ch.insert(len(ch) - 1, _direct_latch('pitch', 'ap/pitch-law-deg'))
+    ch.insert(len(ch) - 1, _fn('ap/pitch-direct-deg', '        <sum>%s<product>%s%s</product><product>%s%s%s</product></sum>' % (
+        _p('ap/direct-pitch-deg'), _v(DIRECT['pitch']), _p('ap/stick-pitch'), _p('ap/k-q'), _v(57.29578), _p('velocities/q-rad_sec')),
+        'direct law: the angle on entry, the stick, and pitch-rate damping', clip=('-20', '20')))
     # ---- basic law: roll
     ch.append(_fn('ap/heading-error-deg', '''        <difference>
           <mod><sum><difference>%s%s</difference>%s</sum>%s</mod>
@@ -411,12 +465,15 @@ def laws_file():
     ch.append('''    <switch name="ap/bank-mode-deg">
       <default value="ap/bank-cmd-deg"/>
       <test value="0">ap/on-mains gt 0</test>
+      <test value="nav/roll-deg">ap/manual == 2</test>
+      <test value="ap/bank-manual-deg">ap/manual == 1</test>
       <test value="ap/bank-heading-deg">ap/roll-mode == 1</test>
       <test value="ap/bank-track-deg">ap/roll-mode == 2</test>
     </switch>''')
     ch.append(_fn('ap/bank-command-limit-deg', _op('product', _p('ap/bank-limit-deg'), _v(BANK_COMMAND)),
                   'the bank command stops at %g of the limit: turning, the bank overshoots its command and then settles '
                   'above it (a proportional law; an integral was tried and overshot)' % BANK_COMMAND))
+    ch.append(_fn('ap/bank-manual-deg', _op('product', _p('ap/stick-roll'), _p('ap/bank-command-limit-deg')), 'by hand: the stick\'s position is the bank'))
     ch.append(_fn('ap/bank-clipped-deg', '''        <max>
           <product>%s%s</product>
           <min>%s%s</min>
@@ -446,8 +503,10 @@ def laws_file():
       <c1>0.3333</c1>
     </washout_filter>''')
     ch.append(_trigger('beta'))
+    ch.append(_fn('ap/beta-error-deg', '        <sum>%s<product>%s%s%s</product></sum>' % (_p('aero/beta-deg'), _v(MANUAL_BETA), _p('ap/protected'), _p('ap/pedal')),
+                  'sideslip less the pedals\' (nose right is negative sideslip)'))
     ch.append(_fn('ap/beta-gated-deg', '        <product>%s<max>%s<min>%s<quotient><difference>%s%s</difference>%s</quotient></min></max></product>' % (
-        _p('aero/beta-deg'), _v(0), _v(1), _p('velocities/vc-kts'), _v(40), _v(20)), 'sideslip, faded out below 60 kt: it means nothing at a walk'))
+        _p('ap/beta-error-deg'), _v(0), _v(1), _p('velocities/vc-kts'), _v(40), _v(20)), 'sideslip, faded out below 60 kt: it means nothing at a walk'))
     ch.append(_pid('ap/yaw-beta-deg', 'ap/beta-gated-deg', 'ap/k-beta', 'ap/k-beta-i', 'beta', clip=('-12', '12')))
     ch.append(_fn('ap/yaw-ground-deg', _op('product', _p('ap/ground-steer'), '<min>%s%s</min>' % (_v(1), _p('ap/on-mains')), _v(0.5), _p('ap/ground-error-deg')),
                   'on the ground the ruddervators help the nose wheel', clip=('-10', '10')))
@@ -457,8 +516,9 @@ def laws_file():
           %s
           <product>%s%s</product>
           %s
+          <product>%s%s%s</product>
         </sum>''' % (_p('ap/bias-yaw-deg'), _v(-1), _p('ap/k-r'), _v(57.29578), _p('ap/yaw-rate-washed'), _p('ap/yaw-beta-deg'),
-                     _v(-G['K_ari']), _p('ap/roll-law-deg'), _p('ap/yaw-ground-deg')),
+                     _v(-G['K_ari']), _p('ap/roll-law-deg'), _p('ap/yaw-ground-deg'), _v(MANUAL_PEDAL), _p('ap/protected'), _p('ap/pedal')),
                   'ruddervators against each other, nose right positive: damper, sideslip to zero (interconnect with the ailerons: gain 0 for now)', clip=('-20', '20')))
     # ---- thrust
     ch.append(_fn('ap/thrust-error-kt', _op('difference', _p('ap/speed-target-kcas'), _p('velocities/vc-kts')), 'slow is positive'))
@@ -470,6 +530,7 @@ def laws_file():
     ch.append(_pid('ap/taxi-throttle', 'ap/taxi-error-kt', 0.03, 0.003, 'taxi', clip=('0', '0.4')))
     ch.append('''    <switch name="ap/thrust-law">
       <default value="ap/throttle-cmd"/>
+      <test value="fcs/throttle-cmd-norm">ap/manual ge 1</test>
       <test value="0">ap/land-mode == 1</test>
       <test value="ap/taxi-throttle">ap/thrust-mode == 4</test>
       <test value="1">ap/thrust-mode == 1</test>
@@ -506,6 +567,7 @@ def laws_file():
         'in the flare the spoilers work on sink rate alone: they come in as far as the sink needs', clip=('0.10', '1')))
     ch.append('''    <switch name="ap/spoiler-law">
       <default value="ctl/manual-spoiler-norm"/>
+      <test value="ctl/manual-spoiler-norm">ap/manual ge 1</test>
       <test value="1">ap/rollout == 1</test>
       <test value="ap/spoiler-flare">ap/flare == 1</test>
       <test value="ap/spoiler-glide">ap/land-mode == 1</test>
@@ -542,7 +604,7 @@ def laws_file():
       <test value="ap/brake-taxi">ap/thrust-mode == 4</test>
     </switch>''')
     for side in ('left', 'right'):
-        ch.append(_fn('ap/brake-%s' % side, '        <ifthen><eq>%s%s</eq>%s%s</ifthen>' % (_p('ap/engaged'), _v(1), _p('ap/brake-law'), _p('fcs/%s-brake-cmd-norm' % side)),
+        ch.append(_fn('ap/brake-%s' % side, '        <ifthen><and><eq>%s%s</eq><eq>%s%s</eq></and>%s%s</ifthen>' % (_p('ap/engaged'), _v(1), _p('ap/manual'), _v(0), _p('ap/brake-law'), _p('fcs/%s-brake-cmd-norm' % side)),
                       out='fcs/%s-brake-cmd-norm' % side))
     ch.append(_fn('ap/steer-limit', '        <quotient>%s<max>%s%s</max></quotient>' % (_v(12), _v(1), _p('velocities/vg-fps')),
                   'nose-wheel travel allowed, falling with speed', clip=('0.08', '0.6')))
@@ -552,13 +614,62 @@ def laws_file():
         </max>''' % (_v(-1), _p('ap/steer-limit'), _p('ap/steer-limit'), _v(0.02), _p('ap/ground-error-deg'), _v(0.8), _p('velocities/r-rad_sec'))))
     ch.append(_fn('ap/steer-out-deg', '''        <product>
           %s
-          <ifthen><and><eq>%s%s</eq><eq>%s%s</eq></and>%s%s</ifthen>
-        </product>''' % (_v(60), _p('ap/engaged'), _v(1), _p('ap/ground-steer'), _v(1), _p('ap/steer-law'), _p('fcs/steer-cmd-norm')),
+          <ifthen><and><eq>%s%s</eq><eq>%s%s</eq><eq>%s%s</eq></and>%s%s</ifthen>
+        </product>''' % (_v(60), _p('ap/engaged'), _v(1), _p('ap/ground-steer'), _v(1), _p('ap/manual'), _v(0), _p('ap/steer-law'), _p('fcs/steer-cmd-norm')),
                   'the nose wheel: the law\'s when steering on the ground, the direct command otherwise', out='fcs/steer-pos-deg'))
     # ---- surfaces
     ch.append(_final('pitch-deg', 'ap/pitch-out-deg', 'ctl/manual-pitch-deg', 'both ruddervators, trailing edge down positive: nose down'))
-    ch.append(_final('roll-cmd-deg', 'ap/roll-law-deg', 'ctl/manual-roll-deg', 'roll command, right wing down positive'))
-    ch.append(_final('yaw-deg', 'ap/yaw-law-deg', 'ctl/manual-yaw-deg', 'ruddervators against each other, nose right positive'))
+    ch.append(_direct_latch('roll', 'ap/roll-law-deg'))
+    ch.append(_fn('ap/roll-direct-deg', '        <difference><sum>%s<product>%s%s</product></sum><product>%s%s%s</product></difference>' % (
+        _p('ap/direct-roll-deg'), _v(DIRECT['roll']), _p('ap/stick-roll'), _p('ap/k-p'), _v(57.29578), _p('velocities/p-rad_sec')),
+        'direct law: the stick and roll-rate damping', clip=('-20', '20')))
+    ch.append(_direct_latch('yaw', 'ap/yaw-law-deg'))
+    ch.append(_fn('ap/yaw-direct-deg', '        <difference><sum>%s<product>%s%s</product></sum><product>%s%s%s</product></difference>' % (
+        _p('ap/direct-yaw-deg'), _v(DIRECT['yaw']), _p('ap/pedal'), _p('ap/k-r'), _v(57.29578), _p('ap/yaw-rate-washed')),
+        'direct law: the pedals and the yaw damper', clip=('-20', '20')))
+    for ax in ('roll', 'yaw'):
+        ch.append('''    <switch name="ap/%s-out-deg">
+      <default value="ap/%s-law-deg"/>
+      <test value="ap/%s-direct-deg">ap/manual == 2</test>
+    </switch>''' % (ax, ax, ax))
+    ch.append(_final('roll-cmd-deg', 'ap/roll-out-deg', 'ctl/manual-roll-deg', 'roll command, right wing down positive'))
+    ch.append(_final('yaw-deg', 'ap/yaw-out-deg', 'ctl/manual-yaw-deg', 'ruddervators against each other, nose right positive'))
+    # ---- structural limits (section 7.3): assumed, not published. Always running
+    ch.append('''    <switch name="limits/latch-overstress">
+      <description>past a limit: load factor %(n1)g or %(n0)g, %(v)g KEAS, Mach %(m)g. Latched until limits/reset. Load factor counts in the air only: on the wheels it is the gear's</description>
+      <default value="limits/overstress"/>
+      <test value="0">limits/reset == 1</test>
+      <test logic="OR" value="1">
+        velocities/ve-kts gt %(v)g
+        velocities/mach gt %(m)g
+        <test logic="AND">
+          ap/on-mains == 0
+          accelerations/Nz gt %(n1)g
+        </test>
+        <test logic="AND">
+          ap/on-mains == 0
+          accelerations/Nz lt %(n0)g
+        </test>
+      </test>
+      <output>limits/overstress</output>
+    </switch>
+    <switch name="limits/latch-failed">
+      <description>past an ultimate: load factor %(u1)g or %(u0)g, %(vf)g KEAS. The structure is taken to have failed</description>
+      <default value="limits/failed"/>
+      <test value="0">limits/reset == 1</test>
+      <test logic="OR" value="1">
+        velocities/ve-kts gt %(vf)g
+        <test logic="AND">
+          ap/on-mains == 0
+          accelerations/Nz gt %(u1)g
+        </test>
+        <test logic="AND">
+          ap/on-mains == 0
+          accelerations/Nz lt %(u0)g
+        </test>
+      </test>
+      <output>limits/failed</output>
+    </switch>''' % dict(n1=LIMIT_NZ[1], n0=LIMIT_NZ[0], u1=1.5 * LIMIT_NZ[1], u0=1.5 * LIMIT_NZ[0], v=LIMIT_KEAS, m=LIMIT_MACH, vf=FAIL_KEAS))
     ch.append(_fn('ctl/aileron-deg', _op('product', _v(-1), _p('ctl/roll-cmd-deg')),
                   'ailerons as the aerodynamic tables take them: right trailing edge down positive, which rolls left'))
     props += ''.join('  <property value="%g">nav/%s</property>\n' % (v, k) for k, v in (

@@ -540,6 +540,33 @@ in 2017 when it flew on one bad navigator of two.
 The model glides at 31-33 to 1 at that speed; the planner counts on 20 until wind is modelled. Not modelled: the
 windmilling engine's drag, and emergency electrical and hydraulic power.
 
+## Manual mode: flying it by hand
+
+The real aircraft has no stick. This is a simulator choice, so that it can be hand-flown in FlightGear and, from
+the ground station with the link's delay, so one can see why nobody does. `ap/manual`: 0 automatic, 1 protected, 2 direct.
+
+- **Protected:** the stick fore and aft asks for a pitch-attitude rate (3 deg/s, less at speed: never more than
+  half a g) and holds the attitude when released; sideways it asks for a bank angle, wings level when released;
+  pedals ask for sideslip. It goes through the automatic laws' own limits, which here look ahead: the angle of
+  attack 2 s on, the speed 8 s on.
+- **Direct:** the surfaces follow the stick, with rate damping only. No limits.
+- **Structural flags** `limits/overstress` and `limits/failed`: load factor past +2.5 or -1.0 (ultimate 1.5 times),
+  200 KEAS, Mach 0.70. **These numbers are assumed**: none is published.
+
+`fdm/phase7d_checks.py`, 26 checks, limits written first, all pass; all predicted:
+
+| | Result |
+|---|---|
+| Automatic to protected, and protected to direct and back | surfaces move under 0.002 deg |
+| Protected, full back stick for 30 s | angle of attack 0.17-0.25 deg over its limit at most; load factor under 1.5 |
+| Protected, full forward stick for 30 s | Mach 0.649 at cruise, 179 KCAS low down; load factor above 0 |
+| Protected, full side stick | bank 13.0 deg at cruise (limit 15), 22 deg lower (limit 25); level 15 s after release |
+| A simple pilot climbs 500 ft and turns 30 deg, stick delayed 0, 0.3, 1.5 s | within 6 ft and 0.4 deg with 0 and 0.3 s; with 1.5 s it arrives but the height hunts 84 ft |
+| Takeoff and landing by that pilot | liftoff at 143 KEAS; touchdown at 1.41 m/s, 8 ft off the centreline |
+| Direct: Dutch roll damping ratio | 0.29-0.35 (bare airframe 0.03-0.07) |
+| Direct at cruise, a nudge and hands off | 10 kt off speed after 81 s |
+| Direct, a dive and full back stick | 3.28 g; flagged 0.008 s after passing 2.5 |
+
 ## Gear, ground, takeoff and landing
 
 `fdm/phase5_checks.py` (12 checks, all pass). The pilot in these runs is plain Python at the model's rate

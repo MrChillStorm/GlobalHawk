@@ -38,6 +38,7 @@ station and the FlightGear aircraft don't exist yet.
 - [fdm/missionmgr.py](fdm/missionmgr.py): a stand-in for the mission manager; `fdm/phase7b_checks.py` flies the two
   recorded landings and one whole mission with it.
   `fdm/phase7c_checks.py`: a failed navigator, a lost link and a landing without the engine.
+  `fdm/phase7d_checks.py`: flying it by hand, protected and direct.
 
 ## Licence
 
