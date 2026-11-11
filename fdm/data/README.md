@@ -357,14 +357,14 @@ within 3 % of Pastor's. Above about 27,000 ft the fan-speed limit is the lower o
 
 | Fit | Value | Fitted to |
 |---|---|---|
-| A constant added to the drag coefficient | 0.00575 | Pastor's climb rates from 40,000 to 55,000 ft and his four cruise-climb heights, together with the next |
+| A constant added to the drag coefficient | 0.00564 | Pastor's climb rates from 40,000 to 55,000 ft and his four cruise-climb heights, together with the next |
 | A factor on the engine's fan-speed limit | 1.01 | the same. The limit came from the Citation X's engine in Phase 2 |
 | The wing's incidence | 2.0 deg | the ATTREX lift curve: the model's trimmed lift at a given angle of attack |
 | A fuel-flow factor | not used | allowed if endurance missed; it misses by 0.3 h and is left alone |
 
 - **Why two numbers.** More drag slows the climb above 40,000 ft, as measured, but also lowers the cruise-climb,
   which already matched. The best pair sits in a shallow valley: fan-speed factors from 1.00 to 1.02 with drag
-  increments from 0.0047 to 0.0070 fit almost equally well. Thrust and drag can't be told apart with this data.
+  increments from 0.0046 to 0.0068 fit almost equally well. Thrust and drag can't be told apart with this data.
 - **The drag increment adds 26 % to the model's own drag at cruise.** It stands for everything the strip model doesn't
   have: the section's own drag shortfall against the tunnel (about 6 %), antennas, radomes, leaks, the nacelle's
   inlet, the tail's induced drag, the flexible wing's shape. Lift-to-drag falls from 32.7 to 25.9 at the 15,000 lb cruise trim; in the cruise-climb, at a higher lift
@@ -377,25 +377,29 @@ within 3 % of Pastor's. Above about 27,000 ft the fan-speed limit is the lower o
 
 | Check | Model | Measured | Error | Limit | |
 |---|---|---|---|---|---|
-| Climb rate 10,000 to 20,000 ft | 2,455 ft/min | 2,447 [Pastor] | +0.3 % | 15 % | pass, predicted by the temperature limit |
-| 20,000 to 30,000 ft | 2,046 | 2,037 | +0.4 % | 15 % | pass, predicted |
-| 30,000 to 40,000 ft | 1,297 | 1,336 | -3.0 % | 15 % | pass, predicted |
-| 40,000 to 50,000 ft | 579 | 525 | +10.4 % | 15 % | pass, fitted |
-| 50,000 to 55,000 ft | 141 | 122 | +15.9 % | 30 % | pass, fitted |
-| Time from 10,000 to 55,000 ft | 4,161 s | 4,596 | -9.5 % | 5 % | **miss** |
-| Height 237 min after takeoff | 57,082 ft | 57,473 | -392 ft | 1,000 ft | pass, fitted in level |
-| 404 min | 58,327 | 58,836 | -510 ft | 1,000 ft | pass |
-| 737 min | 60,815 | 61,638 | -823 ft | 1,000 ft | pass |
-| 1,237 min | 64,548 | 64,109 | +439 ft | 1,000 ft | pass |
-| Endurance, 14,500 lb of fuel to 5 % left | 35.3 h | "31+ h" [NASA] | | 29 to 35 h | **miss**, by 0.3 h |
+| Climb rate 10,000 to 20,000 ft | 2,342 ft/min | 2,447 [Pastor] | -4.3 % | 15 % | pass, predicted by the temperature limit |
+| 20,000 to 30,000 ft | 1,916 | 2,037 | -5.9 % | 15 % | pass, predicted |
+| 30,000 to 40,000 ft | 1,196 | 1,336 | -10.5 % | 15 % | pass, predicted |
+| 40,000 to 50,000 ft | 524 | 525 | -0.2 % | 15 % | pass, fitted |
+| 50,000 to 55,000 ft | 134 | 122 | +10.1 % | 30 % | pass, fitted |
+| Time from 10,000 to 55,000 ft | 4,452 s | 4,596 | -3.1 % | 5 % | pass |
+| The same, flown in time by the flight laws | 4,354 s | 4,596 | -5.3 % | 5 % | just outside |
+| Height 237 min after takeoff | 57,199 ft | 57,473 | -274 ft | 1,000 ft | pass, fitted in level |
+| 404 min | 58,439 | 58,836 | -397 ft | 1,000 ft | pass |
+| 737 min | 60,911 | 61,638 | -728 ft | 1,000 ft | pass |
+| 1,237 min | 64,618 | 64,109 | +508 ft | 1,000 ft | pass |
+| Endurance, 14,500 lb of fuel to 5 % left | 35.4 h | "31+ h" [NASA] | | 29 to 35 h | **miss**, by 0.4 h |
 | ATTREX: trimmed lift-curve slope, Mach 0.59 to 0.62 | 0.121 per deg | 0.116 | +4.0 % | 10 % | pass, predicted |
 | ATTREX: the same, Mach 0.50 to 0.54 | 0.131 | 0.130 | +1.1 % | 10 % | pass, predicted |
 | ATTREX: bank in 409 long turns against speed times turn rate | | 15.1 deg mean | -0.06 deg, scatter 1.2 | 1 deg | pass |
 
-- **Time to 55,000 ft:** the model is still 7 minutes quick, all of it above 40,000 ft, where the climb rate is a
-  small difference of thrust and drag: 10 % and 16 % fast in the last two blocks add up.
-- **Endurance:** 35.3 h to 5 % of the fuel. NASA's figure is a lower bound with unknown reserves. A fan-speed
-  factor of 1.04 with a drag increment of 0.0094 would give 31.3 h, at twice the misfit to the climb and
+- **A correction made later.** The first fit left out the energy that goes into true airspeed rising with height
+  on the schedule (the climb rate is the unaccelerated trim's divided by 1 + (V / g) dV/dh, 7 to 10 % here). It
+  showed when the flight laws flew the climb in time and took 6.6 % longer than the quasi-steady mission. With the
+  term in and the fit redone, the time to 55,000 ft is inside its limit; the climb rates from 10,000 to 40,000 ft,
+  which had looked 1 % off, are 4 to 10 % low. The numbers in this section are from the corrected fit.
+- **Endurance:** 35.4 h to 5 % of the fuel. NASA's figure is a lower bound with unknown reserves. A fan-speed
+  factor of 1.04 with a drag increment of 0.0094 would give 31.4 h, at twice the misfit to the climb and
   cruise-climb. The fuel flow may also simply be low: Phase 2 put plus or minus 6 % on it.
 - **Cruise-climb:** the model follows Pastor's heights within 830 ft for 20 hours, at a lift coefficient of 0.96 to
   0.97 and a lift-to-drag ratio of 30. It goes on climbing past 65,000 ft as it empties, to 71,000 ft; NASA quotes
@@ -420,6 +424,44 @@ within 3 % of Pastor's. Above about 27,000 ft the fan-speed limit is the lower o
   it had a phugoid before the incidences: pitching moment and lift change with Mach number near 0.6. The flight
   laws will hold speed with the elevator, as the real aircraft does, but it is a property to look at again.
 - Off-standard temperatures, the two ATTREX landings, sideslip in turns, and the Air Force paper's figures 5 to 13.
+
+## Flight laws, part A
+
+The real flight control laws are not public. These are ours (`fdm/laws.py`, generated into
+`GlobalHawk/Systems/laws.xml`), built to behave as the public sources say the aircraft does: in climb the throttle
+is at maximum and the elevator holds a scheduled airspeed; ruddervators together are the elevator and against each
+other the rudder [Eaton and Woolf]; turns are flown at 15 deg of bank at height and about 21 deg low down [Pastor,
+ATTREX]. `ap/engaged` = 0 leaves the surfaces on the direct commands.
+
+- **Basic laws:** pitch attitude (proportional, integral, pitch-rate damping), bank (proportional with roll-rate
+  damping), yaw (a washed-out yaw-rate damper and sideslip held to zero). Gains follow dynamic pressure.
+- **Modes:** speed by elevator, on the schedule or a commanded speed; altitude hold with speed by thrust; heading
+  or bank; thrust as commanded, maximum, idle or holding speed.
+- **Protections:** the pitch command is a state that moves towards what the mode asks at 2 deg/s at most, and is
+  pulled down while the angle of attack is over its limit (the lift break less a margin, by Mach number) or the
+  speed is 15 kt under its command. The bank command stops 2 deg inside a bank limit of 25 deg below 30,000 ft and
+  15 deg above 50,000 ft.
+- **Actuators:** a lag of 0.05 s and 40 deg/s on ruddervators and ailerons: estimates.
+- Engaging at a trim is bumpless: the surface angles, attitude and throttle of that moment are latched.
+
+`fdm/phase7a_checks.py`: 44 checks at cruise, at the climb point and in the approach configuration, with the wing
+bending's effect on and off; limits written first; all pass.
+
+| | Result |
+|---|---|
+| Altitude hold, 300 s | within 0.5 ft and 0.01 kt at cruise and climb; 22 ft and 0.4 kt in the approach configuration |
+| Pitch step of 2 deg | overshoot 8-9 %, settled in 1.8 s |
+| Bank step to half the limit | overshoot 0-9 %, settled in 4-7 s, sideslip up to 0.5 deg at cruise, 1.3 deg on the approach |
+| Heading change of 90 deg | final error under 0.2 deg; bank 13.1 deg at cruise, 23.9 at the climb point |
+| Sideslip kick of 2 deg | under 0.2 deg after three periods of the bare airframe's Dutch roll, everywhere |
+| Speed by elevator at maximum thrust | within 0.8 kt; the bare airframe's unstable speed mode at cruise is held |
+| Every gain doubled, and halved | stable |
+| Pitch command of 15 deg at cruise | angle of attack held to 3.8 deg (limit 3.5); speed dipped 8 kt under its floor |
+| Climb from 10,000 to 55,000 ft, hands off | 4,354 s, speed within 0.5 kt of the schedule; Pastor measured 4,596 s |
+
+Known shortcomings: the yaw law reads true sideslip, which the real aircraft cannot measure (it uses lateral load
+factor); phase margin is not measured; no load-factor loop; no sensor or navigator models; energy control above
+45,000 ft is not built (the aircraft cruise-climbs at maximum thrust there, as the real one mostly does).
 
 ## Gear, ground, takeoff and landing
 

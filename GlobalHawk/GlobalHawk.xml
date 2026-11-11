@@ -129,6 +129,7 @@
     </force>
   </external_reactions>
   <system file="controls"/>
+  <system file="laws"/>
   <system file="engine"/>
   <system file="fuel"/>
   <system file="flex"/>

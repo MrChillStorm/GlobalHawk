@@ -89,6 +89,7 @@ def state(f, cond, alpha, pitch_cmd, throttle, x=None):
     if x is not None:
         for k, v in zip(('ic/u-fps', 'ic/v-fps', 'ic/w-fps', 'ic/p-rad_sec', 'ic/q-rad_sec', 'ic/r-rad_sec', 'ic/phi-rad', 'ic/theta-rad'), x):
             f[k] = v
+    f['ap/engaged'] = 0                                   # the laws off: a state is set on the direct commands
     f['fcs/elevator-cmd-norm'] = pitch_cmd
     f['fcs/aileron-cmd-norm'] = 0
     f['fcs/rudder-cmd-norm'] = 0
@@ -270,7 +271,8 @@ def takeoff(f, weight=25600.0, elevation=2300.0, rotate_kias=130.0, pitch_deg=6.
             f['fcs/elevator-cmd-norm'] = 0.0
         else:
             gain = 0.30 if not airborne else 0.08            # on the ground the nose is heavy: the tail has to work hard
-            f['fcs/elevator-cmd-norm'] = float(np.clip(-gain * (target - f['attitude/theta-deg']) + 1.5 * f['velocities/q-rad_sec'], -1, 1))
+            damp = 4.0 if not airborne else 1.5              # and once it comes up it comes up fast (the surfaces have actuators now)
+            f['fcs/elevator-cmd-norm'] = float(np.clip(-gain * (target - f['attitude/theta-deg']) + damp * f['velocities/q-rad_sec'], -1, 1))
         f['fcs/aileron-cmd-norm'] = float(np.clip(-1.5 * f['attitude/phi-rad'] - 0.5 * f['velocities/p-rad_sec'], -1, 1))
         if not f.run():
             break
@@ -341,4 +343,56 @@ def landing(f, approach, weight=20800.0, elevation=2300.0, start_agl=600.0, flar
     out = {k: np.array(v) for k, v in log.items()}
     out['t'] = out['t'] - t0
     out['touchdown'] = td
+    return out
+
+
+# ---- the flight laws (Systems/laws.xml)
+AP_LOG = (('t', 'simulation/sim-time-sec'), ('alt', 'position/h-sl-ft'), ('kcas', 'velocities/vc-kts'), ('mach', 'velocities/mach'),
+          ('theta', 'attitude/theta-deg'), ('phi', 'attitude/phi-deg'), ('psi', 'attitude/psi-deg'), ('beta', 'aero/beta-deg'),
+          ('alpha', 'aero/alpha-deg'), ('pitch', 'ctl/pitch-deg'), ('roll', 'ctl/roll-cmd-deg'), ('yaw', 'ctl/yaw-deg'),
+          ('throttle', 'ctl/throttle-norm'), ('target', 'ap/speed-target-kcas'), ('weight', 'inertia/weight-lbs'), ('nz', 'accelerations/Nz'))
+
+
+def engage(f, t, x=None, **ap):
+    """Start from a trim with everything slow settled, then switch the laws on. ap: properties under ap/ with
+    underscores for dashes (pitch_mode=2, alt_cmd_ft=...). x: a disturbed starting motion, as in state()."""
+    state(f, t['cond'], t['alpha'], t['pitch_cmd'], t['throttle'])
+    f['ap/engaged'] = 0
+    f['ctl/instant'] = 0
+    for _ in range(int(12 * HZ)):
+        f.run()
+    if x is not None:
+        state(f, t['cond'], t['alpha'], t['pitch_cmd'], t['throttle'], x=x)
+        f['ctl/instant'] = 0
+        f.run()
+    freeze(f, False)
+    f['ap/theta-cmd-deg'] = f['attitude/theta-deg']
+    f['ap/alt-cmd-ft'] = f['position/h-sl-ft']
+    f['ap/heading-cmd-deg'] = f['attitude/psi-deg']
+    f['ap/bank-cmd-deg'] = 0.0
+    for k in ('pitch-mode', 'roll-mode', 'thrust-mode'):
+        f['ap/' + k] = 0
+    f['ap/throttle-cmd'] = t['throttle']
+    f['ap/speed-schedule'] = 0
+    f['ap/speed-cmd-kcas'] = f['velocities/vc-kts']
+    f['ap/gain-scale'] = 1.0
+    for k, v in ap.items():
+        f['ap/' + k.replace('_', '-')] = v
+    f['ap/engaged'] = 1
+
+
+def run(f, seconds, every=12, hook=None):
+    """Run on, logging. hook(f, time since the start of this run) is called every frame."""
+    log = {k: [] for k, _ in AP_LOG}
+    t0 = f['simulation/sim-time-sec']
+    for i in range(int(seconds * HZ)):
+        if hook:
+            hook(f, f['simulation/sim-time-sec'] - t0)
+        if not f.run():
+            break
+        if i % every == 0:
+            for k, p in AP_LOG:
+                log[k].append(f[p])
+    out = {k: np.array(v) for k, v in log.items()}
+    out['t'] = out['t'] - t0
     return out

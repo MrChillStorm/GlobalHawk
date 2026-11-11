@@ -40,11 +40,29 @@ def schedule(alt):
     return dict(mach=min(0.6, 0.345 + (alt - 22000.0) / 33000.0 * (0.6 - 0.345)))
 
 
+def true_airspeed(alt):
+    """True airspeed (ft/s) on the schedule at a height, standard atmosphere."""
+    import engine as E
+    T, P = E.isa(alt)
+    a = np.sqrt(1.4 * 287.05287 * T) / 0.3048
+    sch = schedule(alt)
+    if 'mach' in sch:
+        return sch['mach'] * a
+    qc = 101325.0 * ((1 + 0.2 * (sch['kcas'] * 0.514444 / 340.294) ** 2) ** 3.5 - 1)      # impact pressure of the calibrated airspeed
+    return a * np.sqrt(5 * ((qc / P + 1) ** (2 / 7.0) - 1))
+
+
 def point(f, alt, weight):
-    """Climb rate (ft/min), fuel flow (lb/h) and the trim at maximum thrust on the schedule."""
+    """Climb rate (ft/min), fuel flow (lb/h) and the trim at maximum thrust on the schedule.
+
+    The trim is unaccelerated, but on the schedule the true airspeed rises with height, and gaining speed takes
+    energy that would otherwise be height: the climb rate is the trim's divided by 1 + (V / g) dV/dh.
+    (Left out at first; flown in time with the flight laws, the climb showed the difference: 6.6 %.)
+    """
     t = H.trim(f, alt=alt, weight=weight, throttle=1.0, **schedule(alt))
     roc = t['ktas'] * H.KT * np.sin(np.radians(t['cond']['gamma'])) * 60.0
-    return roc, t['fuel_flow'], t
+    dvdh = (true_airspeed(alt + 250.0) - true_airspeed(alt - 250.0)) / 500.0
+    return roc / (1.0 + t['ktas'] * H.KT / 32.174 * dvdh), t['fuel_flow'], t
 
 
 def fly(f, weight=TAKEOFF_WEIGHT, fuel=TAKEOFF_FUEL, alt=FIELD, reserve=0.05, hours=40.0):

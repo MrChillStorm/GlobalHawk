@@ -3,7 +3,7 @@
 <system name="engine">
   <property value="1">engine/running</property>
   <property value="1">cal/fuel-factor</property>
-  <property value="0.00575">cal/drag-increment</property>
+  <property value="0.00564">cal/drag-increment</property>
   <channel name="engine">
     <fcs_function name="engine/pressure-altitude-ft">
       <description>pressure altitude from the static pressure, standard atmosphere</description>
@@ -182,7 +182,7 @@
           <sum>
             <property>engine/idle-thrust-lbf</property>
             <product>
-              <property>fcs/throttle-cmd-norm</property>
+              <property>ctl/throttle-norm</property>
               <difference><property>engine/max-thrust-lbf</property><property>engine/idle-thrust-lbf</property></difference>
             </product>
           </sum>
