@@ -255,12 +255,148 @@ What the records do and don't cover:
 | Fan diameter, length, weight | 38.5 in, 115.1 in, 1,644 lb | Rolls-Royce data sheet |
 | Layout | one fan stage, 14 high-pressure compressor stages, 2 high-pressure and 3 low-pressure turbine stages (the sheet's table says 2 low-pressure) | Rolls-Royce data sheet |
 
-No thrust or fuel-flow map of the H is public. The method that replaces one, and the sea-level fuel flows of the
-civil AE 3007 variants from the ICAO databank, are described with the engine model.
+No thrust or fuel-flow map of the H is public. `fdm/engine.py` is the model that replaces one; it writes
+`engine.json` (maximum thrust and its fuel flow, idle, and TSFC at part power, over altitude to 70,000 ft and Mach to
+0.7, standard atmosphere).
 
-Thrust rating: NASA's own figure for its aircraft is 7,500 lbf flat rated. It was found after the plan had set 7,050 lbf
-as the starting value; the choice between them is made from the measured climb rates above, and what decides it is
-written down before the comparison is run.
+### The engine model
+
+**One engine, several ratings.** The AE 3007 family is treated as one piece of hardware run at different ratings.
+The ICAO Engine Emissions Databank measures every civil variant at sea level (thrust, fuel flow at 100, 85, 30 and
+7 % thrust, pressure ratio, bypass ratio). The highest-rated, the AE 3007A2 at 9,494 lbf, is where the model's
+reference point is fitted; that is also Rolls-Royce's "9,500 lbf" for the H. The Citation X's C1 at 7,073 lbf is
+then the same engine throttled back, and its ICAO row becomes a check. **Our reading of the thrust figures:** the
+H can give about 9,500 lbf at sea level and is flat rated at 7,500 lbf in the Global Hawk [NASA], as the C1 is
+flat rated in the Citation X; 7,600 and 7,050 lbf are other statements of a rating. Above about 15,000 ft the
+rating no longer matters: the engine is on its own limits.
+
+**The cycle.** A two-spool turbofan with separate exhausts, by the textbook analysis (Mattingly, *Elements of
+Propulsion*): away from the reference point both turbines stay choked, and the power balance of each spool gives the
+fan and compressor pressure ratios, the bypass ratio and the air flow. Component efficiencies are fixed. It has no
+component maps and no Reynolds-number effect.
+
+| Reference point (sea level, static) | Value | |
+|---|---|---|
+| Thrust, pressure ratio, bypass ratio, fuel flow | 42.23 kN, 20.2, 4.79, 0.466 kg/s | ICAO, AE 3007A2 |
+| Air flow | 129 kg/s (284 lb/s) | **estimate:** the 38.5 in fan with Mach 0.55 at its face |
+| Bypass jet speed over core jet speed | 0.8 | **choice:** usual design practice |
+| Fan pressure ratio, turbine entry temperature, polytropic efficiencies | 1.758, 1,380 K, 0.918 | fitted to the three lines above |
+
+**Limits on maximum thrust**, the lowest of:
+- the fan's corrected speed: 1.064 of its value at the A2's takeoff. **A fit** to one number, the C1's thrust at
+  45,000 ft in Ghazi's table;
+- the turbine entry temperature of the A2's takeoff, 1,380 K;
+- the flat rating, 7,500 lbf.
+
+**Fuel flow** is the cycle's above 60 % of the thrust at the reference fan speed. Throttled further back the cycle
+fails (at 30 % thrust it is 40 to 60 % low), so below 30 % the fuel flow follows the shape of the A2's ICAO points,
+with a blend between. Idle is 7 % thrust, as the ICAO idle point: a class estimate, as are spool times later.
+On top lies an **installation factor, a fit:** the engine in the Citation X burns 6.2 % more at 1,500 ft and 10.1 %
+more at 45,000 ft than the cycle fitted to the bare engine's ICAO test (bleed, power offtake, inlet). The factor is
+held at 10.1 % above 45,000 ft and used unchanged for the Global Hawk, whose installation is not the Citation X's.
+
+### Checks
+
+Limits were written before any result. "Predicted" rows used nothing from the source they are compared with.
+
+| Check | Model | Source | Error | Limit | |
+|---|---|---|---|---|---|
+| C1 takeoff as a rating of this engine: fuel flow | 0.3308 kg/s | 0.3222 [ICAO] | +2.7 % | 5 % | pass, predicted |
+| C1 takeoff: pressure ratio | 15.88 | 16.58 [ICAO] | -4.2 % | 5 % | pass, predicted |
+| C1 takeoff: bypass ratio | 5.21 | 5.10 [ICAO] | +2.1 % | 5 % | pass, predicted |
+| C1 fuel flow at 85 % thrust | 0.2858 kg/s | 0.2689 [ICAO] | +6.3 % | 5 % | **miss**, predicted |
+| C1 fuel flow at 30 % thrust | 0.1103 kg/s | 0.0991 [ICAO] | +11.3 % | 15 % | pass, from the A2's ICAO shape |
+| C1 fuel flow at 7 % thrust | 0.0521 kg/s | 0.0418 [ICAO] | +24.7 % | none | from the A2's ICAO shape |
+| A2 fuel flow at 85 % thrust | 0.3832 kg/s | 0.3880 [ICAO] | -1.2 % | 5 % | pass, predicted |
+| TSFC at 1,500 ft, Mach 0.234, maximum climb | 0.500 | 0.531 [Ghazi] | -5.9 % | 8 % | pass, predicted |
+| TSFC at 45,000 ft, Mach 0.564, maximum climb | 0.565 | 0.622 [Ghazi] | -9.2 % | 8 % | **miss**, predicted |
+| Fan corrected speed, 45,000 ft over 1,500 ft | 1.220 | 1.258 [Ghazi's N1] | -3.0 % | 5 % | pass, predicted |
+| Thrust at 43,835 ft at the fitted limit | 1,382 lbf | 1,335 [Ghazi] | +3.5 % | 2 % | **miss**, after the fit |
+| H: pressure ratio at the limit, 60,000 ft, Mach 0.6 | 23.7 | 23 [Rolls-Royce] | +3.1 % | 10 % | pass, predicted |
+
+- **The two TSFC rows** say the bare-engine cycle is 6 to 9 % low on fuel against the installed engine, more at
+  altitude. That is what the installation factor then takes up; after it, Ghazi's five other rows are within 0.4 %,
+  which only shows the fit is smooth.
+- **C1 at 85 %:** the family members differ by a few percent at the same thrust (the A1E burns 3 % more than the
+  model there, the C1 6 % less). The H's own place in that spread isn't known: plus or minus 6 % on fuel flow.
+- **Thrust at 43,835 ft:** Ghazi's table gives 2 % more thrust for 3.5 % more air pressure. The table is an
+  illustration in his thesis (its time column implies 2,600 ft/min at 45,000 ft), so 2 % was too tight a limit for it.
+- **Pressure ratio 23:** the model reaches Rolls-Royce's figure at its altitude limit, not at sea level takeoff
+  (16.6 at the flat rating). The data sheet's 23 is taken to be the top-of-climb value.
+- **The altitude data is thin:** one table of seven rows at two heights, from a simulator model of another aircraft's
+  engine, stopping at 45,000 ft. From 45,000 to 65,000 ft the model is physics with nothing to check it against
+  until the whole aircraft is compared with NASA's climb and cruise-climb.
+### A second model: NASA's pyCycle
+
+`fdm/engine_pycycle.py` builds the same engine in pyCycle (NASA's cycle analysis tool on OpenMDAO): fan, splitter,
+high-pressure compressor, burner, two turbines, two nozzles, two shafts, laid out as pyCycle's own turbofan example
+without its booster. It differs from the model above where that one is weakest: it has component maps (pyCycle's
+generic ones, scaled), turbine cooling flows and tabulated gas properties. Its design point is the same ICAO row of
+the A2 with the same fan pressure ratio; the turbine entry temperature is a round 3,000 R (1,667 K), because at the
+first model's 1,380 K this cycle has no solution; nothing is tuned. pyCycle is a tool, not part of this repository:
+`fdm/mkpycycle.sh` sets it up in `tools/pycycle/`, which git ignores (pyCycle 4.4.0 needs two lines patched to run
+under NumPy 2, which the script does on a copy).
+
+Limits written before any run of it.
+
+| Check | pyCycle | Source | Error | Limit | |
+|---|---|---|---|---|---|
+| A2 takeoff (the design point): fuel flow | 3,589 lb/h | 3,698 [ICAO] | -3.0 % | 5 % | pass, predicted |
+| A2 fuel flow at 85 % thrust | 2,876 lb/h | 3,079 [ICAO] | -6.6 % | 5 % | **miss** |
+| C1 takeoff as a rating: fuel flow | 2,464 lb/h | 2,557 [ICAO] | -3.6 % | 5 % | pass |
+| C1 takeoff: pressure ratio | 15.66 | 16.58 [ICAO] | -5.6 % | 5 % | **miss** |
+| C1 takeoff: bypass ratio | 5.10 | 5.10 [ICAO] | 0.0 % | 5 % | pass |
+| TSFC at 1,500 ft, Mach 0.234 | 0.448 | 0.531 [Ghazi] | -15.6 % | 8 % | **miss** |
+| TSFC at 45,000 ft, Mach 0.564 | 0.556 | 0.622 [Ghazi] | -10.6 % | 8 % | **miss** |
+| Fan corrected speed, 45,000 ft over 1,500 ft | 1.462 | 1.258 [Ghazi's N1] | +16.2 % | 5 % | **miss** |
+| Pressure ratio at the limit, 60,000 ft | 23.7 | 23 [Rolls-Royce] | +3.1 % | 10 % | pass |
+
+The two models against each other, each with its fan-speed limit fitted to the same number (Ghazi's thrust at
+45,000 ft), at Mach 0.6, bare engine:
+
+| Altitude, ft | Maximum thrust, lbf: pyCycle, ours | Difference | TSFC: pyCycle, ours | Difference | Limit |
+|---|---|---|---|---|---|
+| 50,000 | 1,033, 1,035 | -0.2 % | 0.572, 0.580 | -1.4 % | 5 %, pass |
+| 55,000 | 817, 814 | +0.4 % | 0.573, 0.580 | -1.2 % | 5 %, pass |
+| 60,000 | 645, 640 | +0.7 % | 0.572, 0.580 | -1.4 % | 5 %, pass |
+| 65,000 | 502, 503 | -0.2 % | 0.572, 0.580 | -1.4 % | 5 %, pass |
+
+What this does and doesn't show:
+
+- **At altitude the two models are the same engine:** pressure ratio 23.7 and bypass ratio 4.5 in both at the limit,
+  fuel within 1.4 %. They share the design point and the one fitted thrust, and nothing else: one has component
+  maps and cooling flows, the other neither.
+- **The thrust agreement is weaker evidence than it looks.** Above 45,000 ft the air temperature is constant, so at
+  a fixed fan corrected speed and nearly the same Mach number any cycle model scales thrust with air pressure. Both
+  do. What neither has is the loss of efficiency at low Reynolds number, which grows with height: that stays open
+  until the whole aircraft is compared with NASA's cruise-climb.
+- **Both bare-engine models burn about 10 % less than the Citation X's installed engine at 45,000 ft** (-9.2 and
+  -10.6 %). Two models agreeing on that supports reading the difference as installation, which is what the
+  installation factor carries.
+- **At low altitude and part power they differ:** at 1,500 ft pyCycle is 15.6 % under Ghazi, the first model 5.9 %.
+  There the fuel flow carries about 10 % of model uncertainty. It matters for the climb's fuel, little for endurance.
+- **pyCycle's fan needs far more speed for the same job** (+16 % on the speed ratio; its fan runs at 118 % of the
+  top speed line of its generic map at the limit, extrapolated). The first model's simple fan-speed measure is the
+  closer one to Ghazi's N1 (-3 %). Fan speed from either is for display only.
+
+### The AE 3007H as modelled (standard atmosphere)
+
+| Altitude, ft | Mach | Maximum thrust, lbf | Fuel flow, lb/h | TSFC | Limit |
+|---|---|---|---|---|---|
+| 0 | 0 | 7,500 | 2,972 | 0.396 | rating (9,494 lbf without it) |
+| 10,000 | 0.27 | 6,149 | 3,283 | 0.534 | temperature |
+| 20,000 | 0.33 | 4,212 | 2,305 | 0.547 | fan speed |
+| 30,000 | 0.42 | 2,666 | 1,515 | 0.568 | fan speed |
+| 40,000 | 0.50 | 1,654 | 979 | 0.592 | fan speed |
+| 50,000 | 0.60 | 1,035 | 661 | 0.638 | fan speed |
+| 55,000 | 0.60 | 814 | 520 | 0.638 | fan speed |
+| 60,000 | 0.60 | 640 | 409 | 0.638 | fan speed |
+| 65,000 | 0.60 | 503 | 321 | 0.638 | fan speed |
+
+Against NASA's whole-aircraft figures (windows, not checks, until the drag model exists): at 60,000 ft and 15,000 lb,
+a lift-to-drag ratio of 25 to 35 needs 430 to 600 lbf of the 640 available and burns 273 to 382 lb/h; NASA's flights
+average about 470 lb/h over 31 h with the climb in it. Breguet endurance with TSFC 0.637 and all 15,300 lb of fuel
+is 33 h at a lift-to-drag ratio of 25 and 40 h at 30.
 
 ## How the real aircraft is flown (for the flight laws and the ground station)
 
@@ -297,5 +433,8 @@ NASA reports are on the NASA Technical Reports Server (ntrs.nasa.gov) under thes
 | USAF accident report, 2017 | Accident Investigation Board report, RQ-4B T/N 07-2029, near Lone Pine, California, 21 June 2017 |
 | DOT&E annual report, FY 2009 | Director, Operational Test and Evaluation, *Global Hawk*, FY 2009 |
 | Rolls-Royce data sheet | *AE 3007 turbofan*, rolls-royce.com |
+| ICAO | ICAO Aircraft Engine Emissions Databank, rows for the AE 3007 variants, through TU Delft's OpenAP (`engines.csv`) |
+| Ghazi | G. Ghazi, doctoral thesis on a Cessna Citation X performance model, ETS Montréal (LARCASE): table 2.1, one AE 3007C1 at maximum climb, from a Level D simulator's model |
+| Mattingly | J. D. Mattingly, *Elements of Propulsion: Gas Turbines and Rockets*, AIAA, chapter 8 |
 | Designation-Systems | designation-systems.net, *Northrop Grumman RQ-4 Global Hawk* |
 | UTHM thesis | a 2013 thesis on transient flight analysis, Universiti Tun Hussein Onn Malaysia; its table 2.4, *Global Hawk Geometry*, quotes Jane's 1999 |
