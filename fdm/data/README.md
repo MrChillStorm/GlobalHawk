@@ -268,7 +268,9 @@ Trimmed with the ruddervators (strips): lift-to-drag ratio 29.8 at a lift coeffi
 ## The JSBSim model
 
 `fdm/genghawk.py` writes `GlobalHawk/GlobalHawk.xml` and `GlobalHawk/Systems/` from the data files in this folder;
-`fdm/harness.py` loads, trims and flies it; `fdm/phase3_checks.py` checks it (32 checks, all pass).
+`fdm/harness.py` loads, trims and flies it; `fdm/phase3_checks.py` checks it (32 checks; all passed before the
+calibration, and 30 pass after it: the reference build no longer trims at cruise, see "Calibration"). The trims and
+modes in the tables below are from before the calibration.
 
 - **Aerodynamics:** tables over angle of attack and Mach number, sampled from the strip model by
   `fdm/aerotables.py`. Each Mach number is sampled at one altitude, the one where the aircraft flies that Mach
@@ -325,6 +327,99 @@ What already disagrees with flight data, before any calibration:
   the model. The flat rating or the temperature limit binds harder than Phase 2 has it.
 - **Six degrees of ruddervator in trim** is a lot, and it comes from the wing section's nose-down moment and the
   forward centre of gravity. The real tail will have an incidence that carries this; ours has none yet.
+
+## Calibration against flight data
+
+Limits were written before any of this was run. Three things were allowed to be fitted, each to its own data.
+
+**The data.** Pastor and others (2018) measured climb rates and cruise-climb heights on two 2010 flights of N872NA;
+NASA gives an endurance of "31+ hours" from 14,500 lb of fuel; the ATTREX flights give angle of attack, Mach
+number and pressure on 18 long flights. None of them gives a weight, so the takeoff weight is **assumed**: NASA's
+2008 figure of 25,600 lb for Pastor's flights, full tanks (26,750 lb) for ATTREX. Standard atmosphere throughout,
+though the real days weren't.
+
+**The mission, `fdm/mission.py`.** The JSBSim model is trimmed at maximum thrust at each height and weight on
+Pastor's speed schedule (150 KIAS to FL220, then Mach rising with height to 0.6 at FL550); the flight-path angle
+gives the climb rate and the fuel flow takes the weight down. Near its ceiling the model stops climbing and then
+rises only as it burns fuel: the cruise-climb.
+
+### What came out without fitting: the thrust rating
+
+NASA calls the engine "flat rated at 7,500 lb thrust at sea level". Phase 2 read that as a cap of 7,500 lbf, and
+the model then climbed at 3,560 ft/min at 10,000 ft where Pastor measured about 2,450. The thrust the measured
+climb needs at 15,000 ft, with the model's drag, is about 4,200 lbf. **The turbine temperature at which the engine
+model gives 4,200 lbf there is 1,254 K, and 1,254 K is exactly the temperature at which it gives 7,500 lbf at rest
+at sea level.** So the rating is read as one limit on turbine temperature, the one that gives NASA's figure at sea
+level, held at every height. Nothing was fitted for it. With it the climb rates from 10,000 to 40,000 ft come out
+within 3 % of Pastor's. Above about 27,000 ft the fan-speed limit is the lower one.
+
+### What was fitted
+
+| Fit | Value | Fitted to |
+|---|---|---|
+| A constant added to the drag coefficient | 0.00575 | Pastor's climb rates from 40,000 to 55,000 ft and his four cruise-climb heights, together with the next |
+| A factor on the engine's fan-speed limit | 1.01 | the same. The limit came from the Citation X's engine in Phase 2 |
+| The wing's incidence | 2.0 deg | the ATTREX lift curve: the model's trimmed lift at a given angle of attack |
+| A fuel-flow factor | not used | allowed if endurance missed; it misses by 0.3 h and is left alone |
+
+- **Why two numbers.** More drag slows the climb above 40,000 ft, as measured, but also lowers the cruise-climb,
+  which already matched. The best pair sits in a shallow valley: fan-speed factors from 1.00 to 1.02 with drag
+  increments from 0.0047 to 0.0070 fit almost equally well. Thrust and drag can't be told apart with this data.
+- **The drag increment adds 26 % to the model's own drag at cruise.** It stands for everything the strip model doesn't
+  have: the section's own drag shortfall against the tunnel (about 6 %), antennas, radomes, leaks, the nacelle's
+  inlet, the tail's induced drag, the flexible wing's shape. Lift-to-drag falls from 32.7 to 25.9 at the 15,000 lb cruise trim; in the cruise-climb, at a higher lift
+  coefficient, it is 30.
+- **The tail's incidence, -3.0 deg, is a choice,** not a fit: it leaves the ruddervators within a degree of
+  neutral in cruise and climb.
+- `fdm/data/calibration.json` holds the numbers; the generator and the engine tables read it.
+
+### Checks
+
+| Check | Model | Measured | Error | Limit | |
+|---|---|---|---|---|---|
+| Climb rate 10,000 to 20,000 ft | 2,455 ft/min | 2,447 [Pastor] | +0.3 % | 15 % | pass, predicted by the temperature limit |
+| 20,000 to 30,000 ft | 2,046 | 2,037 | +0.4 % | 15 % | pass, predicted |
+| 30,000 to 40,000 ft | 1,297 | 1,336 | -3.0 % | 15 % | pass, predicted |
+| 40,000 to 50,000 ft | 579 | 525 | +10.4 % | 15 % | pass, fitted |
+| 50,000 to 55,000 ft | 141 | 122 | +15.9 % | 30 % | pass, fitted |
+| Time from 10,000 to 55,000 ft | 4,161 s | 4,596 | -9.5 % | 5 % | **miss** |
+| Height 237 min after takeoff | 57,082 ft | 57,473 | -392 ft | 1,000 ft | pass, fitted in level |
+| 404 min | 58,327 | 58,836 | -510 ft | 1,000 ft | pass |
+| 737 min | 60,815 | 61,638 | -823 ft | 1,000 ft | pass |
+| 1,237 min | 64,548 | 64,109 | +439 ft | 1,000 ft | pass |
+| Endurance, 14,500 lb of fuel to 5 % left | 35.3 h | "31+ h" [NASA] | | 29 to 35 h | **miss**, by 0.3 h |
+| ATTREX: trimmed lift-curve slope, Mach 0.59 to 0.62 | 0.121 per deg | 0.116 | +4.0 % | 10 % | pass, predicted |
+| ATTREX: the same, Mach 0.50 to 0.54 | 0.131 | 0.130 | +1.1 % | 10 % | pass, predicted |
+| ATTREX: bank in 409 long turns against speed times turn rate | | 15.1 deg mean | -0.06 deg, scatter 1.2 | 1 deg | pass |
+
+- **Time to 55,000 ft:** the model is still 7 minutes quick, all of it above 40,000 ft, where the climb rate is a
+  small difference of thrust and drag: 10 % and 16 % fast in the last two blocks add up.
+- **Endurance:** 35.3 h to 5 % of the fuel. NASA's figure is a lower bound with unknown reserves. A fan-speed
+  factor of 1.04 with a drag increment of 0.0094 would give 31.3 h, at twice the misfit to the climb and
+  cruise-climb. The fuel flow may also simply be low: Phase 2 put plus or minus 6 % on it.
+- **Cruise-climb:** the model follows Pastor's heights within 830 ft for 20 hours, at a lift coefficient of 0.96 to
+  0.97 and a lift-to-drag ratio of 30. It goes on climbing past 65,000 ft as it empties, to 71,000 ft; NASA quotes
+  65,000 ft as the maximum, which the flight laws will have to hold as a limit.
+- **ATTREX lift curve** (`fdm/attrex_lift.py`). The data's angle of attack is pitch attitude less flight-path
+  angle (they agree within 0.2 deg all flight), so it is a true angle of attack in the inertial unit's axes. The
+  weight comes from the takeoff weight less our engine model's fuel flow along each flight. Because the takeoff
+  weights differ and aren't known, the slope is fitted within flights, each with its own level; only three
+  flights at Mach 0.6 and one at Mach 0.52 span a degree of angle of attack in their steady segments (52 and 7
+  segments). The flights' levels differ by 0.09 in lift coefficient, which is 0.7 deg of incidence or 10 % of weight.
+- **The trimmed slope in flight (0.116) is 17 % below the rigid, untrimmed slope the Air Force measured (0.140)**
+  on the Block 20. The model's trimmed slope is 0.121: trim accounts for most of the difference, and the wing's
+  flexibility, which the model lacks, may be the rest.
+
+### What the calibration leaves open
+
+- The reference build (AeroSandbox's tables) **no longer trims at the cruise point** after the incidences were
+  set: it needs 14 deg of ruddervator and all the thrust, and its short period is unstable there. Its pitching
+  moment at Mach 0.6 breaks earlier than the strips'. It is not what ships; it is recorded as a miss of two of the
+  earlier checks, not repaired.
+- The shipped model has an **unstable aperiodic speed mode at cruise** (doubling in 10 s with controls fixed) where
+  it had a phugoid before the incidences: pitching moment and lift change with Mach number near 0.6. The flight
+  laws will hold speed with the elevator, as the real aircraft does, but it is a property to look at again.
+- Off-standard temperatures, the two ATTREX landings, sideslip in turns, and the Air Force paper's figures 5 to 13.
 
 ## ATTREX flight data
 
@@ -425,6 +520,11 @@ component maps and no Reynolds-number effect.
 | Air flow | 129 kg/s (284 lb/s) | **estimate:** the 38.5 in fan with Mach 0.55 at its face |
 | Bypass jet speed over core jet speed | 0.8 | **choice:** usual design practice |
 | Fan pressure ratio, turbine entry temperature, polytropic efficiencies | 1.758, 1,380 K, 0.918 | fitted to the three lines above |
+
+**Changed by the calibration against flight data** (see "Calibration"): the flat rating is no longer a cap of
+7,500 lbf but the turbine temperature that gives 7,500 lbf at rest at sea level, 1,254 K, held at every height;
+and the fan-speed limit is 1 % higher. The list and the thrust table below are Phase 2's, before that; the current
+numbers are in `engine.json`.
 
 **Limits on maximum thrust**, the lowest of:
 - the fan's corrected speed: 1.064 of its value at the A2's takeoff. **A fit** to one number, the C1's thrust at

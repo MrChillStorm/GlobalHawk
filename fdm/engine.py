@@ -320,9 +320,21 @@ def report(rows):
 
 
 def global_hawk(e):
-    """The AE 3007H: the same hardware and limits, with NASA's flat rating."""
+    """The AE 3007H in the Global Hawk: the same hardware, limited by turbine temperature to NASA's rating.
+
+    NASA: "flat rated at 7500 lbs thrust at sea level". Read here as one limit on turbine entry temperature, the
+    one at which the engine gives 7,500 lbf at rest at sea level on a standard day. Held at every height and
+    speed, that limit also gives the thrust that the climb rates measured on NASA's aircraft need at 15,000 ft
+    (fdm/data/README.md, "Calibration"), which a constant 7,500 lbf cap does not. Above about 27,000 ft the
+    fan-speed limit is the lower of the two.
+    """
     e.name = 'AE3007H'
-    e.rating = FLAT_RATING_LBF * LBF
+    e.rating = None
+    # the fan-speed limit was fitted on the Citation X's engine; the calibration against the Global Hawk's own
+    # climb and cruise-climb may move it (fdm/data/calibration.json, 1 = unchanged)
+    cal = os.path.join(HERE, 'data', 'calibration.json')
+    e.fan_speed_max *= json.load(open(cal)).get('fan_speed_factor', 1.0) if os.path.exists(cal) else 1.0
+    e.Tt4_max = brentq(lambda t: e.run(0, 0.0, t)['thrust'] - FLAT_RATING_LBF * LBF, 1000.0, e.Tt4_takeoff)
     return e
 
 
@@ -361,11 +373,8 @@ def main():
     c1, vrows, _ = validation()
     h = global_hawk(c1)
     r = h.ref
-    print('\nAE 3007H: the same engine, flat rated at %.0f lbf' % FLAT_RATING_LBF)
-    rating, h.rating = h.rating, None
-    sl = h.maximum(0, 0)
-    h.rating = rating
-    print('  sea level static without the rating: %.0f lbf (%s limit)' % (sl['thrust'] / LBF, sl['limit']))
+    print('\nAE 3007H: the same engine, limited to the turbine temperature of %.0f lbf at sea level: %.0f K (A2 takeoff %.0f K)' % (
+        FLAT_RATING_LBF, h.Tt4_max, h.Tt4_takeoff))
     hrows = []
     top = h.maximum(60000, 0.6)
     hrows.append(('H1', 'OPR at the limit, 60,000 ft, M 0.6', top['opr'], 23.0, 10.0, 'predicted'))

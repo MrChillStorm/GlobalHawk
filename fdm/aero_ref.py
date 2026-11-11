@@ -66,8 +66,8 @@ def airplane(aileron=0.0, pitch=0.0, yaw=0.0, cg_x=None):
         root = [t['root_le_x'] * FT, side * t['root_y'] * FT, t['root_z'] * FT]
         tip = [t['tip_le_x'] * FT, side * (t['root_y'] + t['panel_span'] * np.cos(dih)) * FT, t['tip_z'] * FT]
         panels.append(asb.Wing(name='vtail_%s' % ('right' if side > 0 else 'left'), symmetric=False, xsecs=[
-            asb.WingXSec(xyz_le=root, chord=t['root_chord'] * FT, airfoil=tail_af, control_surfaces=cs),
-            asb.WingXSec(xyz_le=tip, chord=t['tip_chord'] * FT, airfoil=tail_af)]))
+            asb.WingXSec(xyz_le=root, chord=t['root_chord'] * FT, twist=TAIL_INCIDENCE, airfoil=tail_af, control_surfaces=cs),
+            asb.WingXSec(xyz_le=tip, chord=t['tip_chord'] * FT, twist=TAIL_INCIDENCE, airfoil=tail_af)]))
     prof = f['profile']
     depth = np.array([p['z_top'] - p['z_bottom'] for p in prof])
     fus = asb.Fuselage(name='fuselage', xsecs=[
@@ -110,7 +110,8 @@ def buildup(alt_ft, mach, alpha, beta=0.0, p=0.0, q=0.0, r=0.0, **controls):
     return {c: float(np.ravel(res[c])[0]) for c in ('CL', 'CD', 'CY', 'Cl', 'Cm', 'Cn')}
 
 
-WING_INCIDENCE = 0.0          # deg, of the root chord to the fuselage datum. Not known: set from flight data later
+WING_INCIDENCE = 2.0          # deg, as fdm/strips.py: fitted to the ATTREX lift curve
+TAIL_INCIDENCE = -3.0         # deg, as fdm/strips.py: a choice
 LRN1015 = open(os.path.join(HERE, 'data', 'lrn1015.dat')).read() if os.path.exists(os.path.join(HERE, 'data', 'lrn1015.dat')) else ''
 
 if __name__ == '__main__':

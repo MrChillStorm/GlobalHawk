@@ -7,8 +7,8 @@ public data and is not made or endorsed by NASA or Northrop Grumman.
 **Status: in development.** So far: the published numbers with their sources, a reader for
 NASA's flight data from the ATTREX campaigns, the geometry and mass, the engine model,
 the aerodynamic model, and a JSBSim model generated from them that trims and flies in JSBSim under a plain
-attitude hold. No flight laws, no ground station, no FlightGear aircraft yet, and nothing is calibrated against the
-flight data.
+attitude hold, calibrated against NASA's measured climb, cruise-climb and lift curve. No flight laws, no ground
+station and no FlightGear aircraft yet.
 
 - [fdm/data/README.md](fdm/data/README.md): every published number the model is built from, its source, and the
   choices made where sources disagree.
@@ -25,6 +25,9 @@ flight data.
 - [fdm/genghawk.py](fdm/genghawk.py): writes the JSBSim model in [GlobalHawk/](GlobalHawk) from the data files
   ([fdm/aerotables.py](fdm/aerotables.py) samples the aerodynamic tables). [fdm/harness.py](fdm/harness.py) loads, trims
   and flies it; `fdm/phase3_checks.py` checks it.
+- [fdm/mission.py](fdm/mission.py): a whole flight in the JSBSim model, against the measured climb, cruise-climb and
+  endurance; it also fits the calibration. [fdm/attrex_lift.py](fdm/attrex_lift.py): the lift curve and the turns from
+  the ATTREX flights.
 
 ## Licence
 

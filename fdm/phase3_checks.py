@@ -72,7 +72,7 @@ def main():
                 o = ac.solve(g['engine/pressure-altitude-ft'], t['mach'], t['alpha'], pitch=t['pitch_deg'],
                              cg=[M['cg_target']['x'], 0, 5.3])
                 check('B2', 'lift coefficient at the %s trim' % label, t['CL'], o['CL'], 2.0, 'generated')
-                check('B2', 'drag coefficient at the %s trim' % label, t['CD'], o['CD'], 2.0, 'generated')
+                check('B2', 'drag coefficient at the %s trim' % label, t['CD'], o['CD'] + g['cal/drag-increment'], 2.0, 'generated')
             log = H.fly(g, t, 120.0)
             done = len(log['t']) > 0 and log['t'][-1] > 119.0 and np.all(np.isfinite(log['alt']))
             dalt, dv = float(np.max(np.abs(log['alt'] - log['alt'][0]))), float(np.max(np.abs(log['kcas'] - log['kcas'][0])))

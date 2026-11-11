@@ -47,7 +47,12 @@ FLAP_VISCOUS = 0.85            # of thin-airfoil flap effectiveness
 TAIL_TC = 0.10
 EXCRESCENCE = 1.15             # on body drag: antennas, radomes, gaps, the inlet lip
 NACELLE_EXPOSED = 0.6          # of the nacelle's surface: the rest is buried in the fuselage (from the side view)
-WING_INCIDENCE = 0.0           # deg, root chord to the fuselage datum: not known, set from flight data later
+# deg, wing root chord to the axes the aircraft's inertial unit calls level. A fit: it puts the model's trimmed lift
+# curve on the ATTREX flights' (fdm/attrex_lift.py), which need 2.1 deg at Mach 0.6 and 1.2 deg at Mach 0.52
+WING_INCIDENCE = 2.0
+# deg, each V-tail panel's chord to the same axes, leading edge down negative. A choice: it leaves the ruddervators
+# near neutral in cruise, as a designer would; the real setting isn't known
+TAIL_INCIDENCE = -3.0
 
 
 def section_tables():
@@ -237,7 +242,7 @@ class Aircraft:
             normal = vt @ pan['n']
             vmag = np.sqrt(chordwise ** 2 + normal ** 2)
             d = pitch + pan['side'] * yaw
-            an = (np.degrees(np.arctan2(normal, chordwise)) + tau * np.radians(d)) * k3d
+            an = (np.degrees(np.arctan2(normal, chordwise)) + TAIL_INCIDENCE + tau * np.radians(d)) * k3d
             clt, cdt, cmt = sec_t(an, rho * vmag * pan['c'] / mu)
             qt = 0.5 * rho * vmag ** 2 * pan['c'] * pan['ds']
             tht = np.arctan2(normal, chordwise)

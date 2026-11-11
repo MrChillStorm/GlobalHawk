@@ -1,0 +1,5 @@
+{
+ "drag_increment": 0.00575,
+ "fuel_factor": 1.0,
+ "fan_speed_factor": 1.01
+}
