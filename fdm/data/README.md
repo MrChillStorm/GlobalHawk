@@ -482,6 +482,49 @@ within 3 % of Pastor's. Above about 27,000 ft the fan-speed limit is the lower o
 - The thrust on the approach is idle with a little to spare (the model wants 130 lbf less than idle on the 2014
   approach): the spoilers' drag carries whatever the real idle thrust is, which isn't known.
 
+## Wing bending: an estimate
+
+**No stiffness, deflection or bending frequency of the Global Hawk's wing is public. Everything in this section is
+derived from assumptions and checked only against itself.** `fdm/flex.py` is the beam model; `flex/enable` = 0 in
+the JSBSim model takes its aerodynamic effect away and leaves the rigid aircraft.
+
+**The assumptions.** The half wing is a cantilever from the fuselage side, sized by strength: at 1 g and maximum
+weight its spar caps are at a strain of 0.0012 (0.0030 at a limit load factor of 2.5), over a box 85 % of the
+section's thickness deep, the strain falling linearly to 40 % of that at the tip. These are typical of composite
+wings. The load is the strip model's lift along the span less the load factor times the weight of the wing's
+structure (2,184 lb, an estimate) and of the fuel in its tanks.
+
+| | Tip deflection | |
+|---|---|---|
+| Standing, full tanks | 1.6 ft down | |
+| Standing, no fuel | 0.5 ft down | |
+| 1 g at 26,750 lb, full wing tanks | 4.3 ft up | 7.4 % of the semi-span |
+| 1 g at 19,100 lb | 3.2 ft up | |
+| 1 g at 15,000 lb, cruise | 2.6 ft up | |
+| 1 g at 12,980 lb | 2.3 ft up | |
+| First bending frequency | 1.04 Hz with full wing tanks, 1.88 Hz empty | Rayleigh's quotient on the lift shape |
+
+**What it does in the model.** One bending mode, a second-order system at that frequency (it follows the wing
+fuel) with 15 % damping (an estimate), driven by the lift and the normal load factor; `flex/tip-deflection-ft` is
+its output, for the animation. The bent wing has dihedral, so sideslip rolls the aircraft: the strip model with
+the bent shape gives -0.00041 of rolling-moment coefficient per degree of sideslip for each foot of tip
+deflection, at every Mach number tried.
+
+| Bare airframe, controls fixed | Roll due to sideslip, per deg | Dutch roll | Spiral |
+|---|---|---|---|
+| Cruise, rigid | -0.0001 | 8.2 s, damping 0.068 | doubles in 70 s |
+| Cruise, bent 2.6 ft | -0.0011 | 7.3 s, damping 0.030 | doubles in 124 s |
+| Climb at 10,000 ft, rigid | -0.0002 | 6.2 s, damping 0.126 | doubles in 32 s |
+| Climb, bent 4.3 ft | -0.0020 | 5.4 s, damping 0.073 | doubles in 65 s |
+
+The bending does what dihedral does: the spiral slows by half and the Dutch roll loses half its damping. Both
+matter to the lateral flight laws. `fdm/phase6_checks.py`: JSBSim's tip deflection equals the beam model's at two
+trims and standing, and the mode settles on its static value in flight (4 checks, consistency only).
+
+Not in it: the twist that bending gives a swept wing (it would unload the tips), any change of lift or drag with
+the shape, torsion, higher modes, and the fuselage's give at the root. A photograph with a known scale, or one
+frequency from a ground vibration test, would replace the assumptions; neither is public.
+
 ## ATTREX flight data
 
 The Meteorological Measurement System (NASA Ames) flew on N872NA through the ATTREX campaigns, 2011 to 2015. Its

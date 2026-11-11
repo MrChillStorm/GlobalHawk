@@ -175,6 +175,11 @@ def fly(f, t, seconds, hold=True, lag=False):
     """Fly on from a trim. hold: a plain attitude hold (pitch attitude by ruddervators, wings level by ailerons),
     done here in Python at the model's rate, only to show that the model flies. Returns a log."""
     state(f, t['cond'], t['alpha'], t['pitch_cmd'], t['throttle'])
+    if lag:
+        # with the motion still frozen, let the slow things reach where the trim has them: the gear, the engine's spool
+        f['ctl/instant'] = 0
+        for _ in range(int(12 * HZ)):
+            f.run()
     freeze(f, False)
     f['ctl/instant'] = 0 if lag else 1
     th0 = f['attitude/theta-rad']
@@ -202,10 +207,11 @@ def on_ground(f, weight, elevation=2300.0, heading=0.0):
     f['ic/h-agl-ft'] = 5.5
     f['ic/psi-true-deg'] = heading
     f['ic/lat-geod-deg'] = 35.0
-    for k in ('ic/u-fps', 'ic/v-fps', 'ic/w-fps', 'ic/p-rad_sec', 'ic/q-rad_sec', 'ic/r-rad_sec', 'ic/phi-deg', 'ic/theta-deg',
-              'ic/alpha-deg', 'ic/beta-deg'):
-        f[k] = 0
+    # at rest: only the speed and the attitude are set. Setting the body velocities or the flow angles to zero
+    # here leaves JSBSim's initial condition pointing backwards for the next flight state set in this session
     f['ic/vc-kts'] = 0
+    for k in ('ic/p-rad_sec', 'ic/q-rad_sec', 'ic/r-rad_sec', 'ic/phi-deg', 'ic/theta-deg'):
+        f[k] = 0
     for k in ('fcs/elevator-cmd-norm', 'fcs/aileron-cmd-norm', 'fcs/rudder-cmd-norm', 'fcs/throttle-cmd-norm', 'fcs/steer-cmd-norm',
               'fcs/speedbrake-cmd-norm'):
         f[k] = 0

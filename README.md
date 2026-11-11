@@ -30,6 +30,8 @@ station and no FlightGear aircraft yet.
   endurance; it also fits the calibration. [fdm/attrex_lift.py](fdm/attrex_lift.py): the lift curve and the turns from
   the ATTREX flights.
 - `fdm/phase5_checks.py`: standing, taxi, takeoff and landing against the measured ones.
+- [fdm/flex.py](fdm/flex.py): the wing's bending, a beam model on stated assumptions (no data of the real wing is
+  public); it gives the tip deflection for the animation and the roll due to sideslip of the bent wing.
 
 ## Licence
 

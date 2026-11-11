@@ -1,0 +1,125 @@
+{
+ "assumptions": {
+  "strain_1g": 0.0012000000000000001,
+  "tip_strain_fraction": 0.4,
+  "box_depth": 0.85,
+  "damping": 0.15,
+  "note": "a strength-sized cantilever: none of this is Global Hawk data"
+ },
+ "tip_deflection": {
+  "per_lb_lift": 0.00022088004457306362,
+  "per_lb_structure": -0.00021026309759846843,
+  "per_lb_wing_fuel": -0.00017314967946326638
+ },
+ "wing_structure_lb": 2184.0,
+ "wing_fuel_lb": 6587.6,
+ "frequency_hz": {
+  "full": 1.0445582557684656,
+  "empty": 1.8811292935379993
+ },
+ "damping": 0.15,
+ "cases": [
+  {
+   "case": "on the ground, full",
+   "tip_ft": -1.5998554335872686,
+   "tip_slope_deg": -2.589072530496828,
+   "percent_semispan": -2.7536238099608754
+  },
+  {
+   "case": "on the ground, no fuel",
+   "tip_ft": -0.459214605155055,
+   "tip_slope_deg": -0.8079087300128682,
+   "percent_semispan": -0.7903865837436402
+  },
+  {
+   "case": "1 g, 26,750 lb, full wing tanks",
+   "tip_ft": 4.3086857587421825,
+   "tip_slope_deg": 7.984714409563147,
+   "percent_semispan": 7.415982373050229
+  },
+  {
+   "case": "1 g, 19,100 lb, half",
+   "tip_ft": 3.1892738319743534,
+   "tip_slope_deg": 5.851390885825359,
+   "percent_semispan": 5.48928370391455
+  },
+  {
+   "case": "1 g, 12,980 lb, tenth",
+   "tip_ft": 2.2937442905600895,
+   "tip_slope_deg": 4.144732066835128,
+   "percent_semispan": 3.947924768606006
+  },
+  {
+   "case": "2.5 g, 26,750 lb, full",
+   "tip_ft": 10.771714396855458,
+   "tip_slope_deg": 19.96178602390787,
+   "percent_semispan": 18.539955932625574
+  }
+ ],
+ "roll_due_to_sideslip": [
+  {
+   "mach": 0.2,
+   "rigid_per_deg": -0.00010239111274597316,
+   "bent_4ft_per_deg": -0.0017405040875105033,
+   "per_ft_per_deg": -0.0004095282436911325
+  },
+  {
+   "mach": 0.45,
+   "rigid_per_deg": -0.00011257907174547526,
+   "bent_4ft_per_deg": -0.0018491833989362919,
+   "per_ft_per_deg": -0.00043415108179770416
+  },
+  {
+   "mach": 0.6,
+   "rigid_per_deg": -7.233296503831545e-05,
+   "bent_4ft_per_deg": -0.001705694467471304,
+   "per_ft_per_deg": -0.0004083403756082472
+  }
+ ],
+ "shape": {
+  "y": [
+   2.526,
+   5.311,
+   8.097,
+   10.883,
+   13.668,
+   16.454,
+   19.24,
+   22.025,
+   24.811,
+   27.597,
+   30.382,
+   33.168,
+   35.954,
+   38.739,
+   41.525,
+   44.311,
+   47.097,
+   49.882,
+   52.668,
+   55.454
+  ],
+  "deflection_over_tip": [
+   0.0,
+   0.0027,
+   0.01078,
+   0.0242,
+   0.04291,
+   0.06688,
+   0.09605,
+   0.13038,
+   0.16982,
+   0.21431,
+   0.26382,
+   0.31827,
+   0.37762,
+   0.4418,
+   0.51074,
+   0.58435,
+   0.66254,
+   0.7451,
+   0.83063,
+   0.91736
+  ]
+ }
+}

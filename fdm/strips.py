@@ -136,6 +136,7 @@ class Aircraft:
         # quarter-chord line of the trapezoid; the fillet adds chord behind it
         self.x = w['le_centreline_x'] + 0.25 * w['root_chord_centreline'] + ay * np.tan(self.sweep)
         self.z = np.full_like(y, w['z'])
+        self.dzdy = np.zeros_like(y)                          # slope of the bent wing, dz/dy: none when rigid
         self.ail = np.where((ay >= AILERON['inner'] * half) & (ay <= AILERON['outer'] * half), np.sign(y), 0.0)
         self.S, self.b, self.cbar = w['area_reference'], w['span'], w['mac']
         self.wing_area_strips = float(np.sum(self.c * self.dy))
@@ -160,6 +161,17 @@ class Aircraft:
                         volume=np.pi / 4 * nac['diameter'] ** 2 * nac['length'] * 0.8, x_mid=nac['inlet_x'] + 0.5 * nac['length'],
                         z=nac['thrust_line_z'])
         self.tables = section_tables()
+
+    def bend(self, y, deflection, slope):
+        """Give the wing a bent shape: deflection (ft, up) and slope along the half span, mirrored to both sides.
+        None puts it back flat. The strips' heights change, and a tilted strip feels sideslip as angle of attack."""
+        if y is None:
+            self.z = np.full_like(self.y, G['wing']['z'])
+            self.dzdy = np.zeros_like(self.y)
+            return
+        ay = np.abs(self.y)
+        self.z = G['wing']['z'] + np.interp(ay, y, deflection, left=0.0)
+        self.dzdy = np.sign(self.y) * np.interp(ay, y, slope, left=0.0)
 
     def cg_at(self, percent_mac):
         return np.array([G['wing']['mac_le_x'] + percent_mac / 100.0 * G['wing']['mac'], 0.0, 5.3])
@@ -213,8 +225,11 @@ class Aircraft:
         vl = local(self.x, self.y, self.z)
         sgn = np.sign(self.y)
         un = vl[:, 0] * np.cos(self.sweep) + sgn * vl[:, 1] * np.sin(self.sweep)     # normal to the quarter-chord line
-        vn = np.sqrt(un ** 2 + vl[:, 2] ** 2)
-        ageo = np.degrees(np.arctan2(vl[:, 2], un)) + self.twist + WING_INCIDENCE + np.degrees(flap_tau(AILERON['chord'])) * \
+        # the air's speed normal to each strip: on a wing bent upward, sideslip adds to it on the windward side
+        cosg = 1.0 / np.sqrt(1.0 + self.dzdy ** 2)
+        wn = (vl[:, 2] - vl[:, 1] * self.dzdy) * cosg
+        vn = np.sqrt(un ** 2 + wn ** 2)
+        ageo = np.degrees(np.arctan2(wn, un)) + self.twist + WING_INCIDENCE + np.degrees(flap_tau(AILERON['chord'])) * \
             np.radians(aileron) * self.ail
         re = rho * vn * self.c / mu
         # downwash matrix: w at strip i per unit circulation of strip j (trailing legs only, the classical lifting line)
@@ -242,10 +257,10 @@ class Aircraft:
         ai = wi / vn
         qs = 0.5 * rho * vn ** 2 * self.c * self.dy
         # lift is normal to the effective flow (tilted back by the induced angle), drag along it
-        th = np.arctan2(vl[:, 2], un) - ai                    # direction of the effective flow above the x axis
+        th = np.arctan2(wn, un) - ai                          # direction of the effective flow above the x axis
         fx = qs * (-cl * np.sin(th) + cd * np.cos(th))
-        fz = qs * (cl * np.cos(th) + cd * np.sin(th))
-        F = np.stack([fx, np.zeros_like(fx), fz], -1)
+        fn = qs * (cl * np.cos(th) + cd * np.sin(th))         # normal to the strip, which leans inward when bent
+        F = np.stack([fx, -fn * self.dzdy * cosg, fn * cosg], -1)
         M = np.cross(np.stack([self.x - cg[0], self.y - cg[1], self.z - cg[2]], -1), F)
         M[:, 1] += qs * self.c * cm                            # section moments: nose up is about +y in these axes
         Ftot, Mtot = F.sum(0), M.sum(0)

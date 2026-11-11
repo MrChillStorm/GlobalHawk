@@ -131,6 +131,7 @@
   <system file="controls"/>
   <system file="engine"/>
   <system file="fuel"/>
+  <system file="flex"/>
   <flight_control name="fcs"/>
   <aerodynamics>
     <axis name="LIFT">
@@ -472,6 +473,25 @@
             </tableData>
           </table>
           <property>ctl/yaw-deg</property>
+        </product>
+      </function>
+      <function name="aero/roll-sideslip-bending">
+        <description>roll due to sideslip from the dihedral of the bent wing, in proportion to its tip deflection</description>
+        <product>
+          <property>aero/qbar-psf</property>
+          <property>metrics/Sw-sqft</property>
+          <property>metrics/bw-ft</property>
+          <table>
+            <independentVar lookup="row">velocities/mach</independentVar>
+            <tableData>
+                     0.2 -0.000409528
+                    0.45 -0.000434151
+                     0.6  -0.00040834
+            </tableData>
+          </table>
+          <property>flex/tip-deflection-ft</property>
+          <property>aero/beta-deg</property>
+          <property>flex/enable</property>
         </product>
       </function>
     </axis>
