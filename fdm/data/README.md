@@ -463,6 +463,51 @@ Known shortcomings: the yaw law reads true sideslip, which the real aircraft can
 factor); phase margin is not measured; no load-factor loop; no sensor or navigator models; energy control above
 45,000 ft is not built (the aircraft cruise-climbs at maximum thrust there, as the real one mostly does).
 
+## Flight laws, part B: a whole mission hands off
+
+Everything that has to act at the model's rate is a law in `laws.xml`: following a leg in the air and on the
+ground, taxi speed, the takeoff rotation, the glide path, the flare, the rollout and the brakes. A mission manager
+hands the laws their next leg, target and mode ten times a second and does nothing else; for these checks it is
+`fdm/missionmgr.py`, in Python, standing in for the one that will run in FlightGear.
+
+- **Approach and landing, after the measured ones and after gliders:** the elevator holds the speed for a lift
+  coefficient of 0.645 at the present weight, thrust is idle, and **the spoilers hold the glide path** (4.45 deg)
+  from a mid setting, so they have room both ways. In the flare the pitch attitude goes to 2.4 deg and the spoilers
+  go on working, on sink rate alone: they come in as far as the sink needs. On the runway: full spoilers, nose
+  down, and brakes held to 0.235 g.
+- **Takeoff:** maximum thrust, nose-wheel steering on the runway's line, pitch to 7 deg from 130 KIAS.
+- **Taxi:** the nose wheel follows the leg, the throttle and brakes hold a commanded ground speed, slower for corners.
+
+`fdm/phase7b_checks.py`, 18 checks, limits written first, all pass:
+
+| | Model | Measured |
+|---|---|---|
+| Approach speed the law picks at 20,800 and 17,100 lb | 132.8, 120.4 KEAS | 133, 120 |
+| Glide path on the approach | within 0.9 and 2.0 ft; spoilers 0.68-0.69 and 0.74-0.76 | |
+| Touchdown sink | 1.08, 1.12 m/s | 0.66, 0.75 |
+| Touchdown pitch attitude | 2.11, 2.13 deg | 2.4, 2.3 |
+| Touchdown speed | 128.6, 117.1 KEAS | 130, 122 |
+| Spoilers at touchdown | 0.38, 0.42 of full | not known |
+| Rollout deceleration | 0.224, 0.221 g | 0.235, 0.26 |
+
+One mission flown from a stand to a stand with nobody touching it, at 25,600 lb from a field at 2,300 ft: taxi 800 ft
+with a 90 deg turn, takeoff, climb to 20,000 ft, three legs of 25 nmi with turns of 90 and 120 deg, descent,
+level flight in the landing configuration until the glide path comes down to the aircraft, landing, rollout, taxi
+off with a 90 deg turn, stop. 39 minutes, 555 lb of fuel.
+
+| | Result |
+|---|---|
+| Taxi | within 8.6 ft of the path, 1 kt of the commanded speed |
+| Takeoff | 130 KIAS in 32.4 s (Pastor: 37.5); liftoff at 144 KEAS and 5.8 deg of pitch; 2.8 ft off the centreline |
+| Enroute | height captured within 147 ft, held within 17 ft; cross-track under 0.25 nmi for 95 % of the route; bank up to 22 deg |
+| Landing | glide path within 0.7 ft; touchdown at 1.06 m/s and 1.9 deg with the spoilers at 0.36; rollout 0.226 g |
+| End | stopped 11 ft from the last point |
+
+Shortcomings: the touchdowns are firmer than the measured ones (1.1 against 0.7 m/s) and 1,100 to 1,400 ft past the
+aiming point; liftoff comes at 144 KEAS where the recorded ones were at 121 to 139 (the nose is 3 s late); no wind,
+no crosswind, no turbulence has been flown; stops at hold points, traffic, and the choice of taxi route are the
+manager's and not built; the manager here is a stand-in.
+
 ## Gear, ground, takeoff and landing
 
 `fdm/phase5_checks.py` (12 checks, all pass). The pilot in these runs is plain Python at the model's rate

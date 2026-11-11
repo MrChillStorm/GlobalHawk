@@ -8,9 +8,9 @@ public data and is not made or endorsed by NASA or Northrop Grumman.
 NASA's flight data from the ATTREX campaigns, the geometry and mass, the engine model,
 the aerodynamic model, and a JSBSim model generated from them that trims and flies in JSBSim under a plain
 attitude hold, calibrated against NASA's measured climb, cruise-climb and lift curve, and takes off and lands in
-JSBSim against the measured takeoffs and landings, flown by a stand-in pilot in Python. The inner flight laws and
-autopilot modes exist and fly the climb hands off; mission, takeoff and landing automation, the ground station and
-the FlightGear aircraft don't yet.
+JSBSim against the measured takeoffs and landings. Its flight laws fly a whole mission hands off in JSBSim, from
+taxi and takeoff to landing and taxi back, with a stand-in mission manager in Python. Contingencies, the ground
+station and the FlightGear aircraft don't exist yet.
 
 - [fdm/data/README.md](fdm/data/README.md): every published number the model is built from, its source, and the
   choices made where sources disagree.
@@ -35,6 +35,8 @@ the FlightGear aircraft don't yet.
   public); it gives the tip deflection for the animation and the roll due to sideslip of the bent wing.
 - [fdm/laws.py](fdm/laws.py): the flight laws (our own design; the real ones aren't public), generated into
   `GlobalHawk/Systems/laws.xml`; `fdm/phase7a_checks.py` checks them.
+- [fdm/missionmgr.py](fdm/missionmgr.py): a stand-in for the mission manager; `fdm/phase7b_checks.py` flies the two
+  recorded landings and one whole mission with it.
 
 ## Licence
 

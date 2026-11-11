@@ -21,7 +21,7 @@
       <function><product><value>20</value><property>fcs/rudder-cmd-norm</property></product></function>
       <clipto><min>-20</min><max>20</max></clipto>
     </fcs_function>
-    <fcs_function name="ctl/spoiler-norm">
+    <fcs_function name="ctl/manual-spoiler-norm">
       <description>spoilers, 0 to 1 (1 is 45 deg), from the speedbrake command; the approach is taken to be flown at 30 deg</description>
       <function><property>fcs/speedbrake-cmd-norm</property></function>
       <clipto><min>0</min><max>1</max></clipto>

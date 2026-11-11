@@ -72,10 +72,11 @@ def state(f, cond, alpha, pitch_cmd, throttle, x=None):
     and return the six accelerations. x overrides the motion:
     [u, v, w, p, q, r, phi, theta] in ft/s, rad/s and rad."""
     set_weight(f, cond['weight'])
-    f['ic/terrain-elevation-ft'] = 0.0
+    f['ic/terrain-elevation-ft'] = cond.get('terrain', 0.0)
     f['ic/h-sl-ft'] = cond['alt']
-    f['ic/psi-true-deg'] = 0
-    f['ic/lat-geod-deg'] = 35.0
+    f['ic/psi-true-deg'] = cond.get('psi', 0.0)
+    f['ic/lat-geod-deg'] = cond.get('lat', 35.0)
+    f['ic/long-gc-deg'] = cond.get('lon', 0.0)
     if 'mach' in cond:
         f['ic/mach'] = cond['mach']
     else:
@@ -90,6 +91,9 @@ def state(f, cond, alpha, pitch_cmd, throttle, x=None):
         for k, v in zip(('ic/u-fps', 'ic/v-fps', 'ic/w-fps', 'ic/p-rad_sec', 'ic/q-rad_sec', 'ic/r-rad_sec', 'ic/phi-rad', 'ic/theta-rad'), x):
             f[k] = v
     f['ap/engaged'] = 0                                   # the laws off: a state is set on the direct commands
+    f['ap/land-mode'] = 0                                 # and any landing over: its rollout latch clears on the next frame
+    f['ap/ground-steer'] = 0
+    f['ap/spoiler-mode'] = 0
     f['fcs/elevator-cmd-norm'] = pitch_cmd
     f['fcs/aileron-cmd-norm'] = 0
     f['fcs/rudder-cmd-norm'] = 0
@@ -181,6 +185,7 @@ def fly(f, t, seconds, hold=True, lag=False):
         f['ctl/instant'] = 0
         for _ in range(int(12 * HZ)):
             f.run()
+        state(f, t['cond'], t['alpha'], t['pitch_cmd'], t['throttle'])      # the position drifts while frozen: see engage()
     freeze(f, False)
     f['ctl/instant'] = 0 if lag else 1
     th0 = f['attitude/theta-rad']
@@ -201,13 +206,15 @@ def fly(f, t, seconds, hold=True, lag=False):
 
 
 # ---- on the ground. The pilot below is plain Python run at the model's rate, standing in for the flight laws.
-def on_ground(f, weight, elevation=2300.0, heading=0.0):
+def on_ground(f, weight, elevation=2300.0, heading=0.0, lat=35.0, lon=0.0):
     """Stand the aircraft on its wheels at rest and let it settle for 5 s."""
     set_weight(f, weight)
     f['ic/terrain-elevation-ft'] = elevation
     f['ic/h-agl-ft'] = 5.5
+    f['ap/engaged'] = 0
     f['ic/psi-true-deg'] = heading
-    f['ic/lat-geod-deg'] = 35.0
+    f['ic/lat-geod-deg'] = lat
+    f['ic/long-gc-deg'] = lon
     # at rest: only the speed and the attitude are set. Setting the body velocities or the flow angles to zero
     # here leaves JSBSim's initial condition pointing backwards for the next flight state set in this session
     f['ic/vc-kts'] = 0
@@ -350,7 +357,11 @@ def landing(f, approach, weight=20800.0, elevation=2300.0, start_agl=600.0, flar
 AP_LOG = (('t', 'simulation/sim-time-sec'), ('alt', 'position/h-sl-ft'), ('kcas', 'velocities/vc-kts'), ('mach', 'velocities/mach'),
           ('theta', 'attitude/theta-deg'), ('phi', 'attitude/phi-deg'), ('psi', 'attitude/psi-deg'), ('beta', 'aero/beta-deg'),
           ('alpha', 'aero/alpha-deg'), ('pitch', 'ctl/pitch-deg'), ('roll', 'ctl/roll-cmd-deg'), ('yaw', 'ctl/yaw-deg'),
-          ('throttle', 'ctl/throttle-norm'), ('target', 'ap/speed-target-kcas'), ('weight', 'inertia/weight-lbs'), ('nz', 'accelerations/Nz'))
+          ('throttle', 'ctl/throttle-norm'), ('target', 'ap/speed-target-kcas'), ('weight', 'inertia/weight-lbs'), ('nz', 'accelerations/Nz'),
+          ('spoiler', 'ctl/spoiler-norm'), ('xt', 'ap/leg-xt-ft'), ('glide', 'ap/glide-error-ft'), ('wh', 'aero/wheel-height-ft'),
+          ('mains', 'ap/on-mains'), ('vg', 'ap/ground-speed-kt'), ('udot', 'accelerations/udot-ft_sec2'), ('hdot', 'velocities/h-dot-fps'),
+          ('keas', 'velocities/ve-kts'), ('togo', 'ap/leg-togo-ft'), ('rollout', 'ap/rollout'), ('flare', 'ap/flare'),
+          ('lat', 'position/lat-geod-deg'), ('lon', 'position/long-gc-deg'), ('brake', 'fcs/left-brake-cmd-norm'), ('nosew', 'gear/unit[0]/WOW'))
 
 
 def engage(f, t, x=None, **ap):
@@ -361,10 +372,11 @@ def engage(f, t, x=None, **ap):
     f['ctl/instant'] = 0
     for _ in range(int(12 * HZ)):
         f.run()
-    if x is not None:
-        state(f, t['cond'], t['alpha'], t['pitch_cmd'], t['throttle'], x=x)
-        f['ctl/instant'] = 0
-        f.run()
+    # set the state again: with the motion frozen the position still drifts west with the earth's rotation
+    # (0.05 deg of longitude in those 12 s). The lags that have settled keep their values through this.
+    state(f, t['cond'], t['alpha'], t['pitch_cmd'], t['throttle'], x=x)
+    f['ctl/instant'] = 0
+    f.run()
     freeze(f, False)
     f['ap/theta-cmd-deg'] = f['attitude/theta-deg']
     f['ap/alt-cmd-ft'] = f['position/h-sl-ft']

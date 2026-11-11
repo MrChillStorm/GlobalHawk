@@ -259,7 +259,7 @@ def controls_file():
       <function><product><value>%g</value><property>%s</property></product></function>
       <clipto><min>-%g</min><max>%g</max></clipto>
     </fcs_function>''' % (nm, desc, SURFACE_LIMIT_DEG, cmd, SURFACE_LIMIT_DEG, SURFACE_LIMIT_DEG)
-    ail = '''    <fcs_function name="ctl/spoiler-norm">
+    ail = '''    <fcs_function name="ctl/manual-spoiler-norm">
       <description>spoilers, 0 to 1 (1 is %g deg), from the speedbrake command; the approach is taken to be flown at %g deg</description>
       <function><property>fcs/speedbrake-cmd-norm</property></function>
       <clipto><min>0</min><max>1</max></clipto>

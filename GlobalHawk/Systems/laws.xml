@@ -20,6 +20,18 @@
   <property value="0">ap/bias-throttle</property>
   <property value="0">ap/theta-latched-deg</property>
   <property value="0">ap/theta-delta-deg</property>
+  <property value="0">ap/land-mode</property>
+  <property value="0">ap/ground-steer</property>
+  <property value="0">ap/taxi-speed-kt</property>
+  <property value="0">ap/spoiler-mode</property>
+  <property value="0">ap/spoiler-cmd</property>
+  <property value="0">ap/rwy-elev-ft</property>
+  <property value="0">ap/leg-lat0-deg</property>
+  <property value="0">ap/leg-lon0-deg</property>
+  <property value="0.01">ap/leg-lat1-deg</property>
+  <property value="0">ap/leg-lon1-deg</property>
+  <property value="0">ap/rollout</property>
+  <property value="0.667">ap/spoiler-base</property>
   <channel name="flight laws">
     <fcs_function name="ap/gain-q">
       <description>gain schedule: control power goes with dynamic pressure</description>
@@ -102,6 +114,7 @@
     <switch name="ap/speed-target-kcas">
       <description>the commanded speed: the schedule less the operator's offset, or a commanded speed</description>
       <default value="ap/speed-cmd-kcas"/>
+      <test value="ap/approach-keas">ap/land-mode == 1</test>
       <test value="ap/schedule-less-offset">ap/speed-schedule == 1</test>
     </switch>
     <fcs_function name="ap/alpha-limit-deg">
@@ -125,6 +138,122 @@
               50000 15
               80000 15
           </tableData></table>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/leg-dn-ft">
+      <function>
+        <product><value>364567</value><difference><property>ap/leg-lat1-deg</property><property>ap/leg-lat0-deg</property></difference></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/leg-de-ft">
+      <function>
+        <product><value>364567</value><cos><toradians><property>ap/leg-lat0-deg</property></toradians></cos><difference><property>ap/leg-lon1-deg</property><property>ap/leg-lon0-deg</property></difference></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/leg-length-ft">
+      <function>
+        <max><value>1</value><pow><sum><product><property>ap/leg-dn-ft</property><property>ap/leg-dn-ft</property></product><product><property>ap/leg-de-ft</property><property>ap/leg-de-ft</property></product></sum><value>0.5</value></pow></max>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/leg-course-deg">
+      <description>the leg's course, east of north</description>
+      <function>
+        <todegrees><atan2><property>ap/leg-de-ft</property><property>ap/leg-dn-ft</property></atan2></todegrees>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/pos-n-ft">
+      <function>
+        <product><value>364567</value><difference><property>position/lat-geod-deg</property><property>ap/leg-lat0-deg</property></difference></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/pos-e-ft">
+      <function>
+        <product><value>364567</value><cos><toradians><property>ap/leg-lat0-deg</property></toradians></cos><difference><property>position/long-gc-deg</property><property>ap/leg-lon0-deg</property></difference></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/leg-togo-ft">
+      <description>distance to the end of the leg</description>
+      <function>
+        <difference><property>ap/leg-length-ft</property><quotient><sum><product><property>ap/pos-n-ft</property><property>ap/leg-dn-ft</property></product><product><property>ap/pos-e-ft</property><property>ap/leg-de-ft</property></product></sum><property>ap/leg-length-ft</property></quotient></difference>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/leg-xt-ft">
+      <description>cross-track error, right of the leg positive</description>
+      <function>
+        <quotient><difference><product><property>ap/pos-e-ft</property><property>ap/leg-dn-ft</property></product><product><property>ap/pos-n-ft</property><property>ap/leg-de-ft</property></product></difference><property>ap/leg-length-ft</property></quotient>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/ground-speed-kt">
+      <function>
+        <product><value>0.592484</value><property>velocities/vg-fps</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/ground-track-deg">
+      <function>
+        <todegrees><atan2><property>velocities/v-east-fps</property><property>velocities/v-north-fps</property></atan2></todegrees>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/track-cmd-deg">
+      <function>
+        <difference>
+          <property>ap/leg-course-deg</property>
+          <max><value>-45</value><min><value>45</value><todegrees><atan><quotient><property>ap/leg-xt-ft</property><max><value>3000</value><product><value>15</value><property>velocities/vg-fps</property></product></max></quotient></atan></todegrees></min></max>
+        </difference>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/track-error-deg">
+      <description>wanted course less ground track</description>
+      <function>
+        <difference>
+          <mod><sum><difference><property>ap/track-cmd-deg</property><property>ap/ground-track-deg</property></difference><value>540</value></sum><value>360</value></mod>
+          <value>180</value>
+        </difference>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/ground-course-cmd-deg">
+      <function>
+        <difference>
+          <property>ap/leg-course-deg</property>
+          <max><value>-45</value><min><value>45</value><todegrees><atan><quotient><property>ap/leg-xt-ft</property><max><value>60</value><product><value>4</value><property>velocities/vg-fps</property></product></max></quotient></atan></todegrees></min></max>
+        </difference>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/ground-error-deg">
+      <description>wanted course less heading, on the ground</description>
+      <function>
+        <difference>
+          <mod><sum><difference><property>ap/ground-course-cmd-deg</property><property>attitude/psi-deg</property></difference><value>540</value></sum><value>360</value></mod>
+          <value>180</value>
+        </difference>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/on-mains">
+      <function>
+        <sum><property>gear/unit[1]/WOW</property><property>gear/unit[2]/WOW</property></sum>
+      </function>
+    </fcs_function>
+    <switch name="ap/latch-rollout">
+      <description>on the runway: set by weight on a main wheel while landing, cleared when landing is switched off</description>
+      <default value="ap/rollout"/>
+      <test value="0">ap/land-mode == 0</test>
+      <test logic="AND" value="1">
+        ap/land-mode == 1
+        ap/on-mains gt 0
+      </test>
+      <output>ap/rollout</output>
+    </switch>
+    <switch name="ap/flare">
+      <default value="0"/>
+      <test logic="AND" value="1">
+        ap/land-mode == 1
+        ap/rollout == 0
+        aero/wheel-height-ft lt 70
+      </test>
+    </switch>
+    <fcs_function name="ap/approach-keas">
+      <description>the speed for a lift coefficient of 0.645 at this weight</description>
+      <function>
+        <quotient><pow><quotient><property>inertia/weight-lbs</property><value>0.413937</value></quotient><value>0.5</value></pow><value>1.68781</value></quotient>
       </function>
     </fcs_function>
     <switch name="ap/latch-bias-pitch-deg">
@@ -203,9 +332,27 @@
         <difference><property>ap/theta-cmd-deg</property><property>ap/theta-latched-deg</property></difference>
       </function>
     </fcs_function>
+    <fcs_function name="ap/theta-flare-deg">
+      <description>the flare's pitch attitude</description>
+      <function>
+        <difference><value>2.4</value><property>ap/theta-latched-deg</property></difference>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/theta-takeoff-deg">
+      <description>takeoff: the attitude on the ground until 130 KIAS, then 7 deg</description>
+      <function>
+        <ifthen>
+          <or><ge><property>velocities/vc-kts</property><value>130</value></ge><gt><property>aero/wheel-height-ft</property><value>3</value></gt></or>
+          <difference><value>7</value><property>ap/theta-latched-deg</property></difference>
+          <value>0</value>
+        </ifthen>
+      </function>
+    </fcs_function>
     <switch name="ap/theta-mode-deg">
       <description>pitch attitude asked for by the mode, from the attitude latched at engagement</description>
       <default value="ap/theta-cmd-less-latched"/>
+      <test value="ap/theta-flare-deg">ap/flare == 1</test>
+      <test value="ap/theta-takeoff-deg">ap/pitch-mode == 3</test>
       <test value="ap/theta-speed-deg">ap/pitch-mode == 1</test>
       <test value="ap/theta-alt-deg">ap/pitch-mode == 2</test>
     </switch>
@@ -216,9 +363,13 @@
       </function>
     </fcs_function>
     <fcs_function name="ap/speed-margin-kt">
-      <description>room above the lowest speed allowed: 15 kt under the commanded speed</description>
+      <description>room above the lowest speed allowed: 15 kt under the commanded speed. Not on the ground: a takeoff starts from rest</description>
       <function>
-        <difference><property>velocities/vc-kts</property><difference><property>ap/speed-target-kcas</property><value>15</value></difference></difference>
+        <ifthen>
+          <gt><property>ap/on-mains</property><value>0</value></gt>
+          <value>50</value>
+          <difference><property>velocities/vc-kts</property><difference><property>ap/speed-target-kcas</property><value>15</value></difference></difference>
+        </ifthen>
       </function>
     </fcs_function>
     <fcs_function name="ap/protect-fast-deg">
@@ -228,12 +379,13 @@
       </function>
     </fcs_function>
     <fcs_function name="ap/theta-rate-deg_sec">
-      <description>how fast the pitch command moves: towards the mode's, or down for angle of attack or speed, whichever is lowest</description>
+      <description>how fast the pitch command moves: towards the mode's, or down for angle of attack or speed, whichever is lowest; and never past -16 or +18 deg (the integrator behind it has no limit of its own)</description>
       <function>
         <max>
-          <value>-6</value>
+          <max><value>-6</value><product><value>10</value><difference><value>-16</value><property>ap/theta-delta-deg</property></difference></product></max>
           <min>
-            <min><value>2</value><max><value>-2</value><product><value>2</value><difference><sum><property>ap/theta-mode-deg</property><property>ap/protect-fast-deg</property></sum><property>ap/theta-delta-deg</property></difference></product></max></min>
+            <product><value>10</value><difference><value>18</value><property>ap/theta-delta-deg</property></difference></product>
+            <min><value>3</value><max><value>-3</value><product><value>2</value><difference><sum><property>ap/theta-mode-deg</property><property>ap/protect-fast-deg</property></sum><property>ap/theta-delta-deg</property></difference></product></max></min>
             <product><value>3</value><property>ap/alpha-margin-deg</property></product>
             <product><value>0.4</value><property>ap/speed-margin-kt</property></product>
           </min>
@@ -270,6 +422,12 @@
       <default value="-1"/>
       <test logic="AND" value="0">
         ap/engaged == 1
+        ap/on-mains == 0
+      </test>
+      <test logic="AND" value="0">
+        ap/engaged == 1
+        velocities/vc-kts ge 125
+        ap/rollout == 0
       </test>
     </switch>
     <pid name="ap/pitch-pi-deg">
@@ -287,6 +445,11 @@
       </function>
       <clipto><min>-20</min><max>20</max></clipto>
     </fcs_function>
+    <switch name="ap/pitch-out-deg">
+      <description>on the runway after landing: 3 deg nose-down</description>
+      <default value="ap/pitch-law-deg"/>
+      <test value="3">ap/rollout == 1</test>
+    </switch>
     <fcs_function name="ap/heading-error-deg">
       <description>right of the nose is positive</description>
       <function>
@@ -301,14 +464,21 @@
         <product><value>1.2</value><property>ap/heading-error-deg</property><quotient><property>velocities/vt-fps</property><value>600</value></quotient></product>
       </function>
     </fcs_function>
+    <fcs_function name="ap/bank-track-deg">
+      <function>
+        <product><value>1.2</value><property>ap/track-error-deg</property><quotient><property>velocities/vt-fps</property><value>600</value></quotient></product>
+      </function>
+    </fcs_function>
     <switch name="ap/bank-mode-deg">
       <default value="ap/bank-cmd-deg"/>
+      <test value="0">ap/on-mains gt 0</test>
       <test value="ap/bank-heading-deg">ap/roll-mode == 1</test>
+      <test value="ap/bank-track-deg">ap/roll-mode == 2</test>
     </switch>
     <fcs_function name="ap/bank-command-limit-deg">
-      <description>the bank command stops 2 deg inside the limit: in a steady turn the bank settles above its command (a proportional law; an integral was tried and overshot)</description>
+      <description>the bank command stops at 0.86 of the limit: turning, the bank overshoots its command and then settles above it (a proportional law; an integral was tried and overshot)</description>
       <function>
-        <difference><property>ap/bank-limit-deg</property><value>2</value></difference>
+        <product><property>ap/bank-limit-deg</property><value>0.86</value></product>
       </function>
     </fcs_function>
     <fcs_function name="ap/bank-clipped-deg">
@@ -370,14 +540,27 @@
         ap/engaged == 1
       </test>
     </switch>
+    <fcs_function name="ap/beta-gated-deg">
+      <description>sideslip, faded out below 60 kt: it means nothing at a walk</description>
+      <function>
+        <product><property>aero/beta-deg</property><max><value>0</value><min><value>1</value><quotient><difference><property>velocities/vc-kts</property><value>40</value></difference><value>20</value></quotient></min></max></product>
+      </function>
+    </fcs_function>
     <pid name="ap/yaw-beta-deg">
-      <input>aero/beta-deg</input>
+      <input>ap/beta-gated-deg</input>
       <kp>ap/k-beta</kp>
       <ki>ap/k-beta-i</ki>
       <kd>0</kd>
       <trigger>ap/trig-beta</trigger>
       <clipto><min>-12</min><max>12</max></clipto>
     </pid>
+    <fcs_function name="ap/yaw-ground-deg">
+      <description>on the ground the ruddervators help the nose wheel</description>
+      <function>
+        <product><property>ap/ground-steer</property><min><value>1</value><property>ap/on-mains</property></min><value>0.5</value><property>ap/ground-error-deg</property></product>
+      </function>
+      <clipto><min>-10</min><max>10</max></clipto>
+    </fcs_function>
     <fcs_function name="ap/yaw-law-deg">
       <description>ruddervators against each other, nose right positive: damper, sideslip to zero (interconnect with the ailerons: gain 0 for now)</description>
       <function>
@@ -386,6 +569,7 @@
           <product><value>-1</value><property>ap/k-r</property><value>57.2958</value><property>ap/yaw-rate-washed</property></product>
           <property>ap/yaw-beta-deg</property>
           <product><value>-0</value><property>ap/roll-law-deg</property></product>
+          <property>ap/yaw-ground-deg</property>
         </sum>
       </function>
       <clipto><min>-20</min><max>20</max></clipto>
@@ -417,8 +601,31 @@
       </function>
       <clipto><min>0</min><max>1</max></clipto>
     </fcs_function>
+    <fcs_function name="ap/taxi-error-kt">
+      <function>
+        <difference><property>ap/taxi-speed-kt</property><property>ap/ground-speed-kt</property></difference>
+      </function>
+    </fcs_function>
+    <switch name="ap/trig-taxi">
+      <default value="-1"/>
+      <test logic="AND" value="0">
+        ap/engaged == 1
+        ap/thrust-mode == 4
+        ap/taxi-speed-kt gt 0.5
+      </test>
+    </switch>
+    <pid name="ap/taxi-throttle">
+      <input>ap/taxi-error-kt</input>
+      <kp>0.03</kp>
+      <ki>0.003</ki>
+      <kd>0</kd>
+      <trigger>ap/trig-taxi</trigger>
+      <clipto><min>0</min><max>0.4</max></clipto>
+    </pid>
     <switch name="ap/thrust-law">
       <default value="ap/throttle-cmd"/>
+      <test value="0">ap/land-mode == 1</test>
+      <test value="ap/taxi-throttle">ap/thrust-mode == 4</test>
       <test value="1">ap/thrust-mode == 1</test>
       <test value="0">ap/thrust-mode == 2</test>
       <test value="ap/thrust-speed">ap/thrust-mode == 3</test>
@@ -428,9 +635,169 @@
       <default value="fcs/throttle-cmd-norm"/>
       <test value="ap/thrust-law">ap/engaged == 1</test>
     </switch>
+    <fcs_function name="ap/glide-height-ft">
+      <description>height of the glide path here: the leg ends at the aiming point</description>
+      <function>
+        <sum><property>ap/rwy-elev-ft</property><value>5.3</value><product><value>0.07782</value><max><value>0</value><property>ap/leg-togo-ft</property></max></product></sum>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/glide-error-ft">
+      <description>high is positive</description>
+      <function>
+        <difference><property>position/h-sl-ft</property><property>ap/glide-height-ft</property></difference>
+      </function>
+      <clipto><min>-300</min><max>300</max></clipto>
+    </fcs_function>
+    <fcs_function name="ap/glide-sink-error-fps">
+      <description>sinking less than the path asks is positive</description>
+      <function>
+        <sum><property>velocities/h-dot-fps</property><product><value>0.07782</value><property>velocities/vg-fps</property></product></sum>
+      </function>
+    </fcs_function>
+    <switch name="ap/trig-glide">
+      <default value="-1"/>
+      <test logic="AND" value="0">
+        ap/engaged == 1
+        ap/land-mode == 1
+        ap/flare == 0
+        ap/rollout == 0
+      </test>
+    </switch>
+    <pid name="ap/glide-i">
+      <input>ap/glide-error-ft</input>
+      <kp>0.0</kp>
+      <ki>0.0004</ki>
+      <kd>0</kd>
+      <trigger>ap/trig-glide</trigger>
+      <clipto><min>-0.25</min><max>0.25</max></clipto>
+    </pid>
+    <fcs_function name="ap/spoiler-glide">
+      <description>spoilers hold the glide path: more when high or sinking too little</description>
+      <function>
+        <sum><value>0.667</value><product><value>0.004</value><property>ap/glide-error-ft</property></product><product><value>0.02</value><property>ap/glide-sink-error-fps</property></product><property>ap/glide-i</property></sum>
+      </function>
+      <clipto><min>0.10</min><max>1</max></clipto>
+    </fcs_function>
+    <switch name="ap/latch-spoiler-base">
+      <description>the spoiler setting at the start of the flare</description>
+      <default value="ap/spoiler-base"/>
+      <test value="ap/spoiler-glide">ap/flare == 0</test>
+      <output>ap/spoiler-base</output>
+    </switch>
+    <fcs_function name="ap/flare-sink-wanted-fps">
+      <description>the sink wanted in the flare: the approach's, falling with height to 2.3 ft/s at the ground</description>
+      <function>
+        <max><value>2.3</value><product><value>0.07782</value><property>velocities/vg-fps</property><quotient><property>aero/wheel-height-ft</property><value>70</value></quotient></product></max>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/spoiler-flare">
+      <description>in the flare the spoilers work on sink rate alone: they come in as far as the sink needs</description>
+      <function>
+        <sum><property>ap/spoiler-base</property><product><value>0.25</value><sum><property>velocities/h-dot-fps</property><property>ap/flare-sink-wanted-fps</property></sum></product></sum>
+      </function>
+      <clipto><min>0.10</min><max>1</max></clipto>
+    </fcs_function>
+    <switch name="ap/spoiler-law">
+      <default value="ctl/manual-spoiler-norm"/>
+      <test value="1">ap/rollout == 1</test>
+      <test value="ap/spoiler-flare">ap/flare == 1</test>
+      <test value="ap/spoiler-glide">ap/land-mode == 1</test>
+      <test value="ap/spoiler-cmd">ap/spoiler-mode == 1</test>
+    </switch>
+    <switch name="ap/sel-spoiler">
+      <default value="ctl/manual-spoiler-norm"/>
+      <test value="ap/spoiler-law">ap/engaged == 1</test>
+    </switch>
+    <actuator name="ap/act-spoiler">
+      <input>ap/sel-spoiler</input>
+      <lag>10</lag>
+      <rate_limit>0.667</rate_limit>
+      <clipto><min>0</min><max>1</max></clipto>
+    </actuator>
+    <switch name="ctl/spoiler-norm">
+      <description>spoilers, 0 to 1 (1 is 45 deg)</description>
+      <default value="ap/act-spoiler"/>
+      <test value="ap/sel-spoiler">ctl/instant == 1</test>
+    </switch>
+    <fcs_function name="ap/decel-error-g">
+      <description>wanted deceleration less the present one</description>
+      <function>
+        <sum><value>0.235</value><quotient><property>accelerations/udot-ft_sec2</property><value>32.174</value></quotient></sum>
+      </function>
+    </fcs_function>
+    <switch name="ap/trig-decel">
+      <default value="-1"/>
+      <test logic="AND" value="0">
+        ap/engaged == 1
+        ap/rollout == 1
+        gear/unit[0]/WOW == 1
+        ap/ground-speed-kt gt 15
+      </test>
+    </switch>
+    <pid name="ap/brake-decel">
+      <input>ap/decel-error-g</input>
+      <kp>0.0</kp>
+      <ki>0.8</ki>
+      <kd>0</kd>
+      <trigger>ap/trig-decel</trigger>
+      <clipto><min>0</min><max>1</max></clipto>
+    </pid>
+    <fcs_function name="ap/brake-taxi">
+      <description>taxi: brakes when over the speed, held on when stopped</description>
+      <function>
+        <ifthen>
+          <and><lt><property>ap/taxi-speed-kt</property><value>0.5</value></lt><lt><property>ap/ground-speed-kt</property><value>1.5</value></lt></and>
+          <value>1</value>
+          <product><value>0.6</value><difference><difference><property>ap/ground-speed-kt</property><property>ap/taxi-speed-kt</property></difference><value>0.2</value></difference></product>
+        </ifthen>
+      </function>
+      <clipto><min>0</min><max>1</max></clipto>
+    </fcs_function>
+    <switch name="ap/brake-law">
+      <default value="0"/>
+      <test value="ap/brake-decel">ap/rollout == 1</test>
+      <test value="ap/brake-taxi">ap/thrust-mode == 4</test>
+    </switch>
+    <fcs_function name="ap/brake-left">
+      <function>
+        <ifthen><eq><property>ap/engaged</property><value>1</value></eq><property>ap/brake-law</property><property>fcs/left-brake-cmd-norm</property></ifthen>
+      </function>
+      <output>fcs/left-brake-cmd-norm</output>
+    </fcs_function>
+    <fcs_function name="ap/brake-right">
+      <function>
+        <ifthen><eq><property>ap/engaged</property><value>1</value></eq><property>ap/brake-law</property><property>fcs/right-brake-cmd-norm</property></ifthen>
+      </function>
+      <output>fcs/right-brake-cmd-norm</output>
+    </fcs_function>
+    <fcs_function name="ap/steer-limit">
+      <description>nose-wheel travel allowed, falling with speed</description>
+      <function>
+        <quotient><value>12</value><max><value>1</value><property>velocities/vg-fps</property></max></quotient>
+      </function>
+      <clipto><min>0.08</min><max>0.6</max></clipto>
+    </fcs_function>
+    <fcs_function name="ap/steer-law">
+      <function>
+        <max>
+          <product><value>-1</value><property>ap/steer-limit</property></product>
+          <min><property>ap/steer-limit</property><difference><product><value>0.02</value><property>ap/ground-error-deg</property></product><product><value>0.8</value><property>velocities/r-rad_sec</property></product></difference></min>
+        </max>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/steer-out-deg">
+      <description>the nose wheel: the law's when steering on the ground, the direct command otherwise</description>
+      <function>
+        <product>
+          <value>60</value>
+          <ifthen><and><eq><property>ap/engaged</property><value>1</value></eq><eq><property>ap/ground-steer</property><value>1</value></eq></and><property>ap/steer-law</property><property>fcs/steer-cmd-norm</property></ifthen>
+        </product>
+      </function>
+      <output>fcs/steer-pos-deg</output>
+    </fcs_function>
     <switch name="ap/sel-pitch-deg">
       <default value="ctl/manual-pitch-deg"/>
-      <test value="ap/pitch-law-deg">ap/engaged == 1</test>
+      <test value="ap/pitch-out-deg">ap/engaged == 1</test>
     </switch>
     <actuator name="ap/act-pitch-deg">
       <input>ap/sel-pitch-deg</input>
