@@ -1,0 +1,191 @@
+{
+ "published": {
+  "gross": 26750.0,
+  "empty": 9100.0,
+  "fuel": 15300.0,
+  "engine": 1644.0
+ },
+ "derived": {
+  "payload_and_fittings": 2350.0,
+  "wing_tank_volume_ft3": 138.4,
+  "wing_fuel": 6588.0,
+  "fuselage_fuel": 8712.0
+ },
+ "empty_weight_split": {
+  "wing": 0.24,
+  "fuselage": 0.22,
+  "vtail": 0.03,
+  "nacelle": 0.05,
+  "gear": 0.055
+ },
+ "items": [
+  {
+   "name": "wing structure",
+   "weight": 2184.0,
+   "x": 23.724,
+   "y": 0,
+   "z": 4.568,
+   "ixx": 44028.7,
+   "iyy": 140.7,
+   "izz": 44028.7,
+   "kind": "empty"
+  },
+  {
+   "name": "fuselage structure",
+   "weight": 2002.0,
+   "x": 20.868,
+   "y": 0,
+   "z": 5.0,
+   "ixx": 198.4,
+   "iyy": 10222.2,
+   "izz": 10222.2,
+   "kind": "empty"
+  },
+  {
+   "name": "V-tail",
+   "weight": 273.0,
+   "x": 41.358,
+   "y": 0,
+   "z": 9.334,
+   "ixx": 211.9,
+   "iyy": 105.9,
+   "izz": 105.9,
+   "kind": "empty"
+  },
+  {
+   "name": "engine",
+   "weight": 1644.0,
+   "x": 32.097,
+   "y": 0,
+   "z": 8.43,
+   "ixx": 65.4,
+   "iyy": 392.4,
+   "izz": 392.4,
+   "kind": "empty"
+  },
+  {
+   "name": "nacelle and engine installation",
+   "weight": 455.0,
+   "x": 31.226,
+   "y": 0,
+   "z": 8.43,
+   "ixx": 0,
+   "iyy": 358.2,
+   "izz": 358.2,
+   "kind": "empty"
+  },
+  {
+   "name": "main gear",
+   "weight": 400.4,
+   "x": 25.289,
+   "y": 0,
+   "z": 2.2,
+   "ixx": 475.2,
+   "iyy": 0,
+   "izz": 475.2,
+   "kind": "empty"
+  },
+  {
+   "name": "nose gear",
+   "weight": 100.1,
+   "x": 10.548,
+   "y": 0,
+   "z": 2.2,
+   "ixx": 0.0,
+   "iyy": 0.0,
+   "izz": 0.0,
+   "kind": "empty"
+  },
+  {
+   "name": "systems, avionics, antennas (the rest of the empty weight)",
+   "weight": 2041.5,
+   "x": 20.756,
+   "y": 0,
+   "z": 5.5,
+   "ixx": 0,
+   "iyy": 3752.6,
+   "izz": 3752.6,
+   "kind": "empty"
+  },
+  {
+   "name": "payload and its fittings",
+   "weight": 2350.0,
+   "x": 15.54,
+   "y": 0,
+   "z": 5.5,
+   "ixx": 0,
+   "iyy": 2999.8,
+   "izz": 2999.8,
+   "kind": "payload"
+  },
+  {
+   "name": "wing fuel",
+   "weight": 6587.6,
+   "x": 23.724,
+   "y": 0,
+   "z": 4.568,
+   "ixx": 128341.0,
+   "iyy": 0,
+   "izz": 128341.0,
+   "kind": "fuel"
+  },
+  {
+   "name": "fuselage fuel",
+   "weight": 8712.4,
+   "x": 22.876,
+   "y": 0,
+   "z": 5.0,
+   "ixx": 0,
+   "iyy": 3249.5,
+   "izz": 3249.5,
+   "kind": "fuel"
+  }
+ ],
+ "states": [
+  {
+   "fuel_fraction": 1.0,
+   "weight": 26750.0,
+   "cg_x": 23.085,
+   "cg_z": 5.201,
+   "cg_percent_mac": 29.2,
+   "ixx": 174421.0,
+   "iyy": 35722.0,
+   "izz": 207326.0,
+   "nose_gear_load_percent": 15.0
+  },
+  {
+   "fuel_fraction": 0.5,
+   "weight": 19100.0,
+   "cg_x": 23.022,
+   "cg_z": 5.357,
+   "cg_percent_mac": 27.9,
+   "ixx": 110189.0,
+   "iyy": 33987.0,
+   "izz": 141481.0,
+   "nose_gear_load_percent": 15.4
+  },
+  {
+   "fuel_fraction": 0.1,
+   "weight": 12980.0,
+   "cg_x": 22.919,
+   "cg_z": 5.612,
+   "cg_percent_mac": 25.9,
+   "ixx": 58762.0,
+   "iyy": 32549.0,
+   "izz": 88798.0,
+   "nose_gear_load_percent": 16.1
+  },
+  {
+   "fuel_fraction": 0.0,
+   "weight": 11450.0,
+   "cg_x": 22.876,
+   "cg_z": 5.719,
+   "cg_percent_mac": 25.0,
+   "ixx": 45891.0,
+   "iyy": 32173.0,
+   "izz": 75625.0,
+   "nose_gear_load_percent": 16.4
+  }
+ ],
+ "note": "Every weight but the four published ones, every position and every inertia is an estimate. Fuel is burned from both tank groups in proportion in these states."
+}

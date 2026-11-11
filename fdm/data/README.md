@@ -22,7 +22,103 @@ The RQ-4B is a different aircraft (span 130.9 ft, length 47.6 ft, height 15.3 ft
 of its numbers are used.
 
 Wing sweep, taper, dihedral, twist, the V-tail's size and angle, the control-surface outlines and the gear positions
-are not published anywhere we found. They are measured from NASA's 3-D model.
+are not published anywhere we found. Where they come from is the next section.
+
+## Geometry: what was built, and from what
+
+`fdm/geometry.py` writes `geometry.json` (feet; x aft from the nose tip, y right, z up from the ground with the
+aircraft on its wheels) and `mass.json`. `fdm/phase1_checks.py` prints the checks below.
+
+**NASA's 3-D model is not to scale.** It is an artist's model (NASA 3D Resources, 37,000 triangles, Draco-compressed;
+`fdm/glb.py` reads it). Scaled to the published span its fuselage is 57.1 ft long, 29 % over; scaled to the published
+length its span is 90.3 ft, 22 % under. Its fuselage and wing root agree with NASA's side-view drawing, so it is the
+wing that was drawn short. No single scale brings it inside the limits set beforehand (span and length 1 %,
+height 3 %), so the model is used only for shapes, and each dimension is anchored on a published number or on
+NASA's drawing:
+
+| What | Source | Scale |
+|---|---|---|
+| Positions along the length and heights: fuselage outline, nacelle, fin, wing root, axles | NASA's side-view drawing of the payload bays (a slide in NASA's Global Hawk briefings), digitised by hand to about 2 pixels, 0.1 ft | published length, 44.4 ft |
+| Wing span stations | 3-D model | published span, 116.2 ft |
+| Wing chords | 3-D model's planform: taper, sweep and the root fillet | **a fit:** scaled so the straight-tapered wing, carried to the centreline, has the published 540 ft² |
+| Widths: fuselage, gear track; V-tail dihedral | 3-D model | published length |
+
+| Wing | Value | |
+|---|---|---|
+| Span, reference area, aspect ratio | 116.2 ft, 540 ft², 25.0 | published |
+| Centreline and tip chords, taper ratio | 6.83 ft, 2.47 ft, 0.361 | model's shape, fitted to the area |
+| Mean aerodynamic chord | 4.99 ft at y = 24.5 ft; leading edge at x = 21.63 ft | derived |
+| Sweep: leading edge, quarter chord, trailing edge | 7.2, 6.2 and 3 deg | model's shape with the scales above |
+| Root fillet | the trailing edge runs aft inboard of y = 11 ft; chord 8.85 ft at the fuselage side; area with it 577 ft² | model |
+| Dihedral | 0 on the ground | model. In flight the wing bends upward: not modelled here |
+| Twist | 4 deg nose-down from the fuselage side to the tip, 2.5 deg of it inboard of y = 14 ft | model, an estimate: an artist's wing |
+| Section | LRN 1015, 15.2 % | published. The model's wing is 10-15 % thick and is not used for the section |
+| Control surfaces | not separate in the model: the wing and tail are single shells. Outlines from photographs, later | |
+
+| V-tail, fuselage, engine, gear | Value | |
+|---|---|---|
+| V-tail | two panels at 47 deg from the horizontal, each 12.2 ft long, chords 4.86 and 2.47 ft, 44.8 ft² | height and chords from the drawing, angle from the model |
+| V-tail projected areas | 41.6 ft² horizontal, 48.0 ft² vertical; arm 17.9 ft; volumes 0.277 and 0.0137 | derived |
+| Fuselage | 44.4 ft long, 5.05 ft wide, 7.3 ft deep at the nose bulge | drawing; width from the model |
+| Nacelle | inlet lip at x = 22.5 ft, exhaust at 39.9 ft, thrust line 8.43 ft above the ground, 3.1 ft above the centre of gravity | drawing |
+| Gear | main axles at x = 25.29 ft, nose at 10.55 ft: wheelbase 14.74 ft; track 12.4 ft; two wheels a leg; wheels 1.85 and 1.59 ft across | drawing; track from the model |
+
+Checks (limits set before measuring):
+
+| Check | Value | Target | Error | Limit | |
+|---|---|---|---|---|---|
+| Model scaled by span: length | 57.11 ft | 44.4 | +28.6 % | 1 % | miss |
+| Model scaled by span: height | 20.78 ft | 15.2 | +36.7 % | 3 % | miss |
+| Model scaled by span: wing area | 598 ft² | 540 | +10.7 % | 3 % | miss |
+| Model scaled by length: span | 90.34 ft | 116.2 | -22.3 % | 1 % | miss |
+| Model scaled by length: height | 16.15 ft | 15.2 | +6.2 % | 3 % | miss |
+| Model, span by span and chords by length: wing area | 465 ft² | 540 | -13.9 % | 3 % | miss |
+| Side view: height against NASA's 15.2 ft | 14.34 ft | 15.2 | -5.6 % | 3 % | miss |
+| Side view: height against Northrop Grumman's 14.6 ft | 14.34 ft | 14.6 | -1.8 % | 3 % | pass |
+| Wing as built: root chord with fillet, against the side view | 8.85 ft | 7.59 | +16.5 % | 5 % | miss |
+
+What the misses mean:
+
+- The first six say one thing: the model can't be scaled as a whole. That is why it is used for shapes only.
+- **Root chord, the open one.** NASA's drawing shows the wing root 7.59 ft long, and the model scaled by length
+  agrees (7.61 ft). The wing built here is 16.5 % longer in chord because its chords are fitted to the published
+  540 ft². With the drawing's chords the area would be 465 ft² (495 ft² with the fillet). Either Jane's area counts
+  something this trapezoid doesn't, or the model's taper is wrong. The published area is kept: lift and drag
+  coefficients in the flight-data calibration are referred to it, and the calibration of drag against the measured
+  climb and cruise-climb takes up what is left. The chord enters only through the Reynolds number and the mean chord.
+- **Height.** The drawing gives 14.3 ft to the fin tips, close to Northrop Grumman's 14.6 ft. NASA's 15.2 ft may be
+  measured with the aircraft light and its struts extended; it isn't explained in the sources.
+- The drawing carries a centre-of-gravity style symbol on the wing root, at x = 24.19 ft. That is 51 % of the mean
+  chord as built here, too far aft to be the centre of gravity with a tail this small; it is recorded and not used.
+
+## Mass, centre of gravity and inertia: estimates
+
+Four weights are published (gross, empty, fuel, engine). Everything else in `mass.json` is an estimate.
+
+| Item | Weight, lb | x, ft | |
+|---|---|---|---|
+| Wing structure | 2,184 | 23.72 | 24 % of the empty weight (estimate) |
+| Fuselage structure | 2,002 | 20.87 | 22 % (estimate) |
+| V-tail | 273 | 41.36 | 3 % (estimate) |
+| Engine | 1,644 | 32.10 | published weight |
+| Nacelle and engine installation | 455 | 31.23 | 5 % (estimate) |
+| Main and nose gear | 400 and 100 | 25.29, 10.55 | 5.5 % (estimate) |
+| Systems, avionics, antennas | 2,042 | 20.76 | the rest of the empty weight; **position chosen** so the aircraft without fuel balances at 25 % of the mean chord |
+| Payload and its fittings | 2,350 | 15.54 | gross less empty less fuel |
+| Wing fuel | 6,588 | 23.72 | what the wing box holds: 138 ft³ between 15 and 60 % chord out to 90 % of the semi-span |
+| Fuselage fuel | 8,712 | 22.88 | the rest: the wing can't hold 15,300 lb |
+
+| Fuel | Weight, lb | Centre of gravity, % mean chord | Ixx | Iyy | Izz, slug ft² | Nose gear load |
+|---|---|---|---|---|---|---|
+| 100 % | 26,750 | 29.2 | 174,400 | 35,700 | 207,300 | 15.0 % |
+| 50 % | 19,100 | 27.9 | 110,200 | 34,000 | 141,500 | 15.4 % |
+| 10 % | 12,980 | 25.9 | 58,800 | 32,500 | 88,800 | 16.1 % |
+| none | 11,450 | 25.0 | 45,900 | 32,200 | 75,600 | 16.4 % |
+
+The centre of gravity is a choice, not a finding: the tail is small (horizontal volume 0.277), so the neutral point
+will be well ahead of mid-chord, and the choice is looked at again when the aerodynamic model gives the neutral
+point. The roll and yaw inertias fall by almost three quarters as the wing fuel burns; that is real for an aircraft
+that carries more than half its weight as fuel, and the flight laws have to cope with it.
 
 ## Weights
 
