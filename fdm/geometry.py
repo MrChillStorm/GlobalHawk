@@ -38,8 +38,8 @@ W_FUEL = 15300.0        # lb
 W_ENGINE = 1644.0       # lb, Rolls-Royce
 FUEL_DENSITY = 50.1     # lb/ft3, JP-8 at 6.7 lb/gal
 TC = 0.152              # LRN 1015
-ZERO_FUEL_CG = 0.20     # of the mean aerodynamic chord: a choice, see mass_model()
-FUSELAGE_FUEL_CG = 0.17 # of the mean aerodynamic chord: where the fuselage tanks' fuel is put, a choice
+CG_TARGET = 0.22        # of the mean aerodynamic chord: where the fuel management holds the centre of gravity. A choice
+FUS_TANK_X = (19.3, 27.5)   # ft: the forward and aft fuselage tanks, ahead of and behind the wing box. Our own layout
 
 # ---- NASA's side view, digitised by hand in pixels (x to the right = forward, y down). The drawing is
 # 1024 x 344; the nose tip is at x = 1010, the tail end at x = 4, the ground under the nose wheel at y = 336.
@@ -323,21 +323,41 @@ def mass_model(g):
     rest = W_EMPTY - sum(i['weight'] for i in items)
     payload = W_GROSS - W_EMPTY - W_FUEL
     x_payload = 0.35 * LENGTH                               # the bays are in the nose, under the belly and in the tail
-    # Where the systems sit isn't known. They are put where the aircraft without fuel balances at ZERO_FUEL_CG of
-    # the mean chord: a choice. It was 25 % at first; the aerodynamic models put the neutral point at 30 to 33 %,
-    # so it was moved forward to keep 5 % of the mean chord between the two with full tanks, the aft-most case.
-    target = w['mac_le_x'] + ZERO_FUEL_CG * w['mac']
+    # Where the systems sit isn't known. They are put where the aircraft without fuel balances at CG_TARGET of the
+    # mean chord: a choice. It was 25 % at first; the aerodynamic models put the neutral point at 30 to 33 %, so
+    # it was moved forward to leave about 8 % of the mean chord between the two.
+    target = w['mac_le_x'] + CG_TARGET * w['mac']
     moment = sum(i['weight'] * i['x'] for i in items) + payload * x_payload
     x_rest = (target * (W_EMPTY + payload) - moment) / rest
     add('systems, avionics, antennas (the rest of the empty weight)', rest, x_rest, 0, 5.5, 0,
         slug(rest) * (0.6 * LENGTH) ** 2 / 12, slug(rest) * (0.6 * LENGTH) ** 2 / 12)
     add('payload and its fittings', payload, x_payload, 0, 5.5, 0, slug(payload) * (0.5 * LENGTH) ** 2 / 12,
         slug(payload) * (0.5 * LENGTH) ** 2 / 12, kind='payload')
+    # Fuel tanks: our own layout, since the real one isn't public. Each wing holds an inboard and an outboard
+    # tank (split at 20 ft); the fuselage a forward and an aft tank, sized so that all the fuel together has its
+    # centre at the target centre of gravity. Drawn from in proportion to their contents, the tanks then keep the
+    # centre of gravity where it is from full to empty: that is the fuel management.
     y0, y1 = f['max_width'] / 2, 0.9 * half
-    ixf = span_inertia(wing_fuel, y0, y1)
-    add('wing fuel', wing_fuel, xw, 0, zc, ixf, 0, ixf, kind='fuel')
-    add('fuselage fuel', fus_fuel, w['mac_le_x'] + FUSELAGE_FUEL_CG * w['mac'], 0, 5.0, 0, slug(fus_fuel) * 12.0 ** 2 / 12,
-        slug(fus_fuel) * 12.0 ** 2 / 12, kind='fuel')
+    target_x = w['mac_le_x'] + CG_TARGET * w['mac']
+    yy = np.linspace(y0, y1, 400)
+    cc = w['root_chord_centreline'] + (w['tip_chord'] - w['root_chord_centreline']) * yy / half
+    dens = cc * cc
+    tanks = []
+    split = np.trapezoid(dens[yy <= 20.0], yy[yy <= 20.0]) / np.trapezoid(dens, yy)
+    for name, lo, hi, share in (('inboard', y0, 20.0, split), ('outboard', 20.0, y1, 1 - split)):
+        k = (yy >= lo) & (yy <= hi)
+        yc = np.trapezoid(dens[k] * yy[k], yy[k]) / np.trapezoid(dens[k], yy[k])
+        xc = w['le_centreline_x'] + yc * np.tan(np.radians(w['sweep_le_deg'])) + 0.42 * (
+            w['root_chord_centreline'] + (w['tip_chord'] - w['root_chord_centreline']) * yc / half)
+        for side, sgn in (('left', -1), ('right', 1)):
+            tanks.append(dict(name='wing %s %s' % (name, side), capacity=round(float(wing_fuel * share / 2), 1), x=round(float(xc), 3),
+                              y=round(float(sgn * yc), 3), z=round(zc, 3)))
+    wing_moment = sum(t['capacity'] * t['x'] for t in tanks)
+    fwd = (wing_moment + fus_fuel * FUS_TANK_X[1] - target_x * W_FUEL) / (FUS_TANK_X[1] - FUS_TANK_X[0])
+    tanks.append(dict(name='fuselage forward', capacity=round(float(fwd), 1), x=FUS_TANK_X[0], y=0.0, z=5.0))
+    tanks.append(dict(name='fuselage aft', capacity=round(float(fus_fuel - fwd), 1), x=FUS_TANK_X[1], y=0.0, z=5.0))
+    for tk in tanks:
+        add('fuel: ' + tk['name'], tk['capacity'], tk['x'], tk['y'], tk['z'], kind='fuel')
 
     def totals(fuel_fraction):
         tot = np.zeros(4)
@@ -358,13 +378,26 @@ def mass_model(g):
                     cg_z=round(float(cg[2]), 3), cg_percent_mac=round(float(100 * (cg[0] - w['mac_le_x']) / w['mac']), 1),
                     ixx=round(float(I[0]), 0), iyy=round(float(I[1]), 0), izz=round(float(I[2]), 0),
                     nose_gear_load_percent=round(float(100 * (gear['main_x'] - cg[0]) / gear['wheelbase']), 1))
+    def lump(kind):
+        sel = [i for i in items if i['kind'] == kind]
+        wsum = sum(i['weight'] for i in sel)
+        cg = np.array([sum(i['weight'] * i[k] for i in sel) / wsum for k in ('x', 'y', 'z')])
+        I = np.zeros(3)
+        for i in sel:
+            d = np.array([i['x'], i['y'], i['z']]) - cg
+            I += np.array([i['ixx'], i['iyy'], i['izz']]) + slug(i['weight']) * np.array(
+                [d[1] ** 2 + d[2] ** 2, d[0] ** 2 + d[2] ** 2, d[0] ** 2 + d[1] ** 2])
+        return dict(weight=round(float(wsum), 1), x=round(float(cg[0]), 3), y=0.0, z=round(float(cg[2]), 3),
+                    ixx=round(float(I[0]), 0), iyy=round(float(I[1]), 0), izz=round(float(I[2]), 0))
     return dict(published=dict(gross=W_GROSS, empty=W_EMPTY, fuel=W_FUEL, engine=W_ENGINE),
+                empty=lump('empty'), payload=lump('payload'), tanks=tanks,
+                cg_target=dict(percent_mac=100 * CG_TARGET, x=round(float(target_x), 3)),
                 derived=dict(payload_and_fittings=payload, wing_tank_volume_ft3=round(vol, 1),
                              wing_fuel=round(wing_fuel, 0), fuselage_fuel=round(fus_fuel, 0)),
                 empty_weight_split=empty_split, items=items,
                 states=[totals(1.0), totals(0.5), totals(0.1), totals(0.0)],
                 note='Every weight but the four published ones, every position and every inertia is an estimate. '
-                     'Fuel is burned from both tank groups in proportion in these states.')
+                     'Fuel is drawn from all tanks in proportion to their contents in these states.')
 
 
 def plot(g, m, path):

@@ -327,34 +327,33 @@ def global_hawk(e):
 
 
 def tables(e):
+    """The engine as tables for the flight model.
+
+    max_thrust_lbf[dT][altitude][mach]     maximum thrust, at temperature offsets from standard
+    idle_thrust_lbf[altitude][mach]        idle, standard day
+    fuel_lbh[altitude][mach][fraction]     fuel flow at a fraction of the standard-day maximum thrust, standard day;
+                                           off standard the flight model scales it with the square root of temperature
+    """
     alts = list(range(0, 70001, 5000))
     machs = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
-    fracs = [0.2, 0.4, 0.6, 0.8, 1.0]
-    t = dict(altitude_ft=alts, mach=machs, thrust_fraction=fracs, max_thrust_lbf=[], max_fuel_lbh=[], limit=[],
-             idle_thrust_lbf=[], idle_fuel_lbh=[], tsfc=[], opr_at_max=[])
+    fracs = [0.0, 0.07, 0.2, 0.4, 0.6, 0.8, 1.0]
+    dts = [-20.0, 0.0, 20.0]
+    t = dict(altitude_ft=alts, mach=machs, thrust_fraction=fracs, delta_T_K=dts, max_thrust_lbf=[], limit=[],
+             idle_thrust_lbf=[], fuel_lbh=[], opr_at_max=[])
+    for dt in dts:
+        t['max_thrust_lbf'].append([[round(e.maximum(a, m, dt)['thrust'] / LBF, 1) for m in machs] for a in alts])
     for a in alts:
-        rows = dict(mt=[], mf=[], lim=[], it=[], if_=[], ts=[], opr=[])
+        lim, opr, idle, fuel = [], [], [], []
         for m in machs:
             o = e.maximum(a, m)
-            i = e.idle(a, m)
-            rows['mt'].append(round(o['thrust'] / LBF, 1))
-            rows['mf'].append(round(o['fuel'] / LBH, 1))
-            rows['lim'].append(o['limit'])
-            rows['opr'].append(round(o['opr'], 2))
-            rows['it'].append(round(i['thrust'] / LBF, 1))
-            rows['if_'].append(round(i['fuel'] / LBH, 1))
-            ts = []
-            for fr in fracs:
-                p = e.at_thrust(a, m, fr * o['thrust'])
-                ts.append(round(p['fuel'] / LBH / (p['thrust'] / LBF), 4))
-            rows['ts'].append(ts)
-        t['max_thrust_lbf'].append(rows['mt'])
-        t['max_fuel_lbh'].append(rows['mf'])
-        t['limit'].append(rows['lim'])
-        t['idle_thrust_lbf'].append(rows['it'])
-        t['idle_fuel_lbh'].append(rows['if_'])
-        t['tsfc'].append(rows['ts'])
-        t['opr_at_max'].append(rows['opr'])
+            lim.append(o['limit'])
+            opr.append(round(o['opr'], 2))
+            idle.append(round(e.idle(a, m)['thrust'] / LBF, 1))
+            fuel.append([round(e.at_thrust(a, m, fr * o['thrust'])['fuel'] / LBH, 1) for fr in fracs])
+        t['limit'].append(lim)
+        t['opr_at_max'].append(opr)
+        t['idle_thrust_lbf'].append(idle)
+        t['fuel_lbh'].append(fuel)
     return t
 
 

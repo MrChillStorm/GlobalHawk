@@ -103,23 +103,33 @@ Four weights are published (gross, empty, fuel, engine). Everything else in `mas
 | Engine | 1,644 | 32.10 | published weight |
 | Nacelle and engine installation | 455 | 31.23 | 5 % (estimate) |
 | Main and nose gear | 400 and 100 | 25.29, 10.55 | 5.5 % (estimate) |
-| Systems, avionics, antennas | 2,042 | 19.36 | the rest of the empty weight; **position chosen** so the aircraft without fuel balances at 20 % of the mean chord |
+| Systems, avionics, antennas | 2,042 | 19.92 | the rest of the empty weight; **position chosen** so the aircraft without fuel balances at 22 % of the mean chord |
 | Payload and its fittings | 2,350 | 15.54 | gross less empty less fuel |
-| Wing fuel | 6,588 | 23.72 | what the wing box holds: 138 ft³ between 15 and 60 % chord out to 90 % of the semi-span |
-| Fuselage fuel | 8,712 | 22.48 | the rest: the wing can't hold 15,300 lb. Put at 17 % of the mean chord, **a choice** |
+| Fuel: wing inboard left | 1,736 | 22.40 | our own layout: the real tanks are not public |
+| Fuel: wing inboard right | 1,736 | 22.40 | our own layout |
+| Fuel: wing outboard left | 1,557 | 24.54 | our own layout |
+| Fuel: wing outboard right | 1,557 | 24.54 | our own layout |
+| Fuel: fuselage forward | 5,624 | 19.30 | our own layout |
+| Fuel: fuselage aft | 3,088 | 27.50 | our own layout |
+
+The wing box (between 15 and 60 % chord, out to 90 % of the semi-span) holds 138 ft³, 6,588 lb: the wing can't
+hold 15,300 lb, so the rest is in the fuselage. The forward and aft fuselage tanks are sized so that all the fuel
+together has its centre at 22 % of the mean chord.
 
 | Fuel | Weight, lb | Centre of gravity, % mean chord | Ixx | Iyy | Izz, slug ft² | Nose gear load |
 |---|---|---|---|---|---|---|
-| 100 % | 26,750 | 24.4 | 174,400 | 36,300 | 207,900 | 16.6 % |
-| 50 % | 19,100 | 23.1 | 110,200 | 34,500 | 142,000 | 17.0 % |
-| 10 % | 12,980 | 20.9 | 58,800 | 33,000 | 89,300 | 17.8 % |
-| none | 11,450 | 20.0 | 45,900 | 32,700 | 76,100 | 18.1 % |
+| 100 % | 26,750 | 22.0 | 164,600 | 37,200 | 198,900 | 17.4 % |
+| 50 % | 19,100 | 22.0 | 105,300 | 34,800 | 137,400 | 17.4 % |
+| 10 % | 12,980 | 22.0 | 57,800 | 32,900 | 88,200 | 17.4 % |
+| none | 11,450 | 22.0 | 45,900 | 32,400 | 75,900 | 17.4 % |
 
-The centre of gravity is a choice, not a finding. It was first put at 25 to 29 % of the mean chord; the aerodynamic
-models then put the neutral point at 30 to 33 % (next section), so it was moved forward until 5 % of the mean chord
-lies between the two with full tanks, the aft-most case. The roll and yaw inertias fall by almost three quarters as
-the wing fuel burns; that is real for an aircraft that carries more than half its weight as fuel, and the flight
-laws have to cope with it.
+The centre of gravity is a choice, not a finding, and the fuel management holds it: every tank gives up fuel in
+proportion to its contents. It was first put at 25 to 29 % of the mean chord; the aerodynamic models then put the
+neutral point at 30 to 33 % (next section), so it was moved forward to 22 %, which leaves about 8 % between the
+two. The Air Force's flight-test paper refers the real aircraft's performance to 31 %: see the open question
+under "Against the Air Force's flight test". The roll and yaw inertias fall by almost three quarters as the wing
+fuel burns; that is real for an aircraft that carries more than half its weight as fuel, and the flight laws have
+to cope with it.
 
 ## Aerodynamics
 
@@ -172,6 +182,46 @@ of wall correction. Limits were written first.
   on angle of attack applies, but lift does grow faster than the simple correction says once the flow over the
   section turns supersonic. The flight data's lift curve will tell.
 
+### Against the Air Force's flight test of the Block 20
+
+Eaton and Woolf (U.S. Air Force Flight Test Center, 2009) compare the RQ-4 Block 20's wind-tunnel model with 40
+envelope-expansion flights. The Block 20 is the RQ-4B: a longer wing than the aircraft modelled here, the same
+engine, the same layout. Their figures have axes without numbers, only scales, so slopes can be read and absolute
+values can't. `fdm/digitise_sfte.py` reads the slope of each Mach number's cloud of flight-test points from their
+lift-curve figure (untrimmed, standardised to a rigid airframe). No limit was set: the paper arrived after the
+model was built.
+
+| Mach | Flight test, Block 20, per deg | Our strips, RQ-4A, per deg | Difference |
+|---|---|---|---|
+| 0.27 | 0.102 | 0.118 | +16 % |
+| 0.40 | 0.114 | 0.124 | +8 % |
+| 0.50 | 0.116 | 0.129 | +12 % |
+| 0.55 | 0.125 | 0.132 | +6 % |
+| 0.575 | 0.138 | 0.134 | -3 % |
+| 0.60 | 0.140 | 0.138 | -1 % |
+
+- **At the cruise Mach numbers the lift-curve slope is within 3 % of flight test.** Below Mach 0.55 ours is 6 to 16 %
+  steeper: in flight the slope grows faster with Mach number than the compressibility correction gives. The
+  low-Mach clouds are short (a lift-coefficient range of 0.34 at Mach 0.27), so their slopes are the least certain.
+- **The drag polars can't be used the same way.** The paper puts the scatter of its drag points at plus or minus
+  10 %, and a curve fitted to each cloud isn't stable. What the figure does show is the shape: at every Mach number
+  the flight points sit in a bucket where drag changes by less than about 0.003 over 0.4 to 0.6 of lift
+  coefficient, and above a "break" lift coefficient the drag rises quickly. The paper says the break came about
+  0.1 lower in flight than in the tunnel.
+- What else the paper says that bears on this model:
+  - the performance analysis is referred to a centre of gravity at **31 % of the mean chord**, the aerodynamic
+    analysis to 25 %. The real aircraft, then, flies with its centre of gravity well aft of where this model's
+    neutral point (30 to 33 %) would allow. Either the real neutral point is further aft than both our models say,
+    or the real aircraft flies with little or no static margin and leaves stability to its flight control
+    system. Our centre of gravity stays at 22 % until the flight data says more; it is the largest open question
+    of the aerodynamic model;
+  - directional stability in flight was 20 to 40 % below the wind-tunnel prediction, ruddervator power in yaw
+    slightly above, and less nose-up elevator was needed to trim than predicted;
+  - the Rolls-Royce cycle deck, with Northrop Grumman's installation effects, predicted installed thrust and fuel
+    flow within 5 % at high thrust on the ground and fuel flow within 5 % in flight; power extraction for the
+    payload was large enough to be a named condition of the endurance requirement;
+  - the aircraft spends most of a mission in climb or cruise-climb at maximum thrust.
+
 ### The two models against each other
 
 At Mach 0.6 and 60,000 ft, 2.5 deg, moments about 27 % of the mean chord (`fdm/out/aero_compare.txt`,
@@ -214,6 +264,67 @@ Trimmed with the ruddervators (strips): lift-to-drag ratio 29.8 at a lift coeffi
   which therefore have to be robust to it.
 - **The reference gives no ruddervator derivatives** (its control surfaces on the two tail panels had no effect in
   either of its methods as set up here). The strips' value agrees with the textbook V-tail formula within 5 %.
+
+## The JSBSim model
+
+`fdm/genghawk.py` writes `GlobalHawk/GlobalHawk.xml` and `GlobalHawk/Systems/` from the data files in this folder;
+`fdm/harness.py` loads, trims and flies it; `fdm/phase3_checks.py` checks it (32 checks, all pass).
+
+- **Aerodynamics:** tables over angle of attack and Mach number, sampled from the strip model by
+  `fdm/aerotables.py`. Each Mach number is sampled at one altitude, the one where the aircraft flies that Mach
+  number on its climb schedule (Mach 0.15 at sea level, 0.30 at 10,000 ft, 0.45 at 30,000 ft, 0.55 at 45,000 ft,
+  0.60 and 0.65 at 60,000 ft), so the Reynolds number is right along the schedule and approximate off it. Past the
+  tables' ends (-6 and 12 deg) they run on to a flat plate, plainly.
+- **Engine:** not JSBSim's turbine but system channels, generated from `engine.json`: maximum thrust over pressure
+  altitude, Mach number and the temperature's offset from standard, idle thrust, fuel flow against thrust, a 2 s
+  lag for the spool (a class estimate), thrust applied on the nacelle's axis.
+- **Fuel: our own design**, since the real system isn't public. Six tanks: an inboard and an outboard tank in each
+  wing, and a forward and an aft tank in the fuselage, sized so that all the fuel together has its centre at the
+  centre-of-gravity target, 22 % of the mean chord. The management draws from every tank in proportion to its
+  contents, which keeps the centre of gravity there from full to empty and the wings balanced. Holding the centre
+  of gravity comes before relieving wing bending (burning wing fuel last would move it).
+- **Controls:** the surfaces follow the commands directly, 20 deg at full command (an estimate). No actuators and
+  no flight laws yet.
+- **Gear:** three contact points with estimated springs, enough to stand on.
+- **A second build** (`python3 fdm/genghawk.py DIR --ref`) takes its tables from AeroSandbox's build-up instead,
+  with the strips' tail-control tables.
+
+| Check | Result | Limit |
+|---|---|---|
+| Weight, centre of gravity and inertias against `mass.json`, full and without fuel | within 0.01 % | 0.1 to 5 % |
+| Maximum thrust and its fuel flow at four conditions against `engine.py` | within 0.31 % | 1 % |
+| Lift and drag coefficients at the two trims against a direct strip solve | within 0.57 % | 2 % |
+| Fuel leaving the tanks in 10 minutes of cruise against the fuel flow integrated | equal | 0.5 % |
+| Centre of gravity moved in those 10 minutes | 0.00002 % of the mean chord | 0.2 % |
+| Both builds trim at cruise and at the climb point | yes | throttle 5 to 95 %, ruddervators inside 10 deg |
+| Both builds fly 120 s from each trim under a plain attitude hold | height within 4 ft, speed within 0.1 kt | 100 ft, 3 kt |
+
+These check the generator against what it was generated from, and that the result flies. They say nothing new
+about the real aircraft.
+
+| Trim | Angle of attack | Ruddervators | Thrust, of maximum | Fuel flow | Lift coefficient | L/D |
+|---|---|---|---|---|---|---|
+| Cruise, Mach 0.6, 60,000 ft, 15,000 lb: strips | 2.83 deg | -6.0 deg | 455 lbf, 71 % | 290 lb/h | 0.724 | 32.7 |
+| The same: reference build | 2.47 deg | -7.7 deg | 455 lbf, 70 % | 290 lb/h | 0.724 | 32.8 |
+| Climb point, 150 KIAS, 10,000 ft, 26,750 lb: strips | 3.05 deg | -6.0 deg | 741 lbf, 12 % | 481 lb/h | 0.652 | 36.0 |
+| The same: reference build | 2.70 deg | -7.2 deg | 749 lbf, 12 % | 484 lb/h | 0.652 | 35.6 |
+
+Modes of the bare airframe with the controls fixed (strips build): at cruise a short period of 4.7 s with damping
+0.30, a phugoid of 176 s with damping 0.04, a roll time constant of 0.4 s, a Dutch roll of 5.9 s with damping 0.06
+and a spiral that doubles in 76 s. At the climb point the phugoid is neutral and the spiral doubles in 39 s. The
+reference build has an unstable aperiodic longitudinal root at cruise (doubling in 11.5 s) where the strips have
+the phugoid: its pitching-moment table bends the other way with speed there. The flight laws have to hold all of
+these; none is checked against the real aircraft.
+
+What already disagrees with flight data, before any calibration:
+
+- **Low-altitude climb is too good.** At 150 KIAS and 10,000 ft at full weight the model's maximum thrust gives
+  3,560 ft/min by the energy balance; Pastor measured 2,357 and 2,538 ft/min between 10,000 and 20,000 ft. Thrust
+  less drag is about 45 % too large there. The drag would have to nearly triple to explain it, so most of it is
+  the engine's low-altitude thrust: about 4,200 lbf is what the measured climb needs at 15,000 ft, against 5,200 in
+  the model. The flat rating or the temperature limit binds harder than Phase 2 has it.
+- **Six degrees of ruddervator in trim** is a lot, and it comes from the wing section's nose-down moment and the
+  forward centre of gravity. The real tail will have an incidence that carries this; ours has none yet.
 
 ## ATTREX flight data
 
@@ -466,6 +577,7 @@ NASA reports are on the NASA Technical Reports Server (ntrs.nasa.gov) under thes
 | USAF accident report, 2017 | Accident Investigation Board report, RQ-4B T/N 07-2029, near Lone Pine, California, 21 June 2017 |
 | DOT&E annual report, FY 2009 | Director, Operational Test and Evaluation, *Global Hawk*, FY 2009 |
 | Rolls-Royce data sheet | *AE 3007 turbofan*, rolls-royce.com |
+| Eaton and Woolf | C. M. Eaton, R. K. Woolf, *Flight Test Validation of the RQ-4 Block 20 Global Hawk Aerodynamic and Propulsive Models*, Society of Flight Test Engineers, 2009 (AFFTC-PA-09254) |
 | ICAO | ICAO Aircraft Engine Emissions Databank, rows for the AE 3007 variants, through TU Delft's OpenAP (`engines.csv`) |
 | Ghazi | G. Ghazi, doctoral thesis on a Cessna Citation X performance model, ETS Montréal (LARCASE): table 2.1, one AE 3007C1 at maximum climb, from a Level D simulator's model |
 | Mattingly | J. D. Mattingly, *Elements of Propulsion: Gas Turbines and Rockets*, AIAA, chapter 8 |

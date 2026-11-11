@@ -201,7 +201,7 @@ class Aircraft:
         # Newton's method on the circulation: residual gamma - V c cl(alpha_eff(gamma)) / 2, with each section's
         # own lift slope in the Jacobian
         gamma = np.zeros_like(self.y)
-        for it in range(60):
+        for it in range(200):
             wi = D @ gamma                                    # downward
             aeff = ageo - np.degrees(wi / vn)
             cl, cd, cm = sec_w(aeff, re)
@@ -209,8 +209,12 @@ class Aircraft:
             res = gamma - 0.5 * vn * self.c * cl
             if np.max(np.abs(res)) < 1e-7 * V * self.cbar:
                 break
-            J = np.eye(len(gamma)) + (0.5 * self.c * slope)[:, None] * D
-            gamma -= 0.8 * np.linalg.solve(J, res)
+            # Past a section's stall its slope is negative and plain Newton runs away. The Jacobian keeps a
+            # floor on the slope, and no strip's angle of attack may move more than 2 deg in one step.
+            J = np.eye(len(gamma)) + (0.5 * self.c * np.maximum(slope, 2.0))[:, None] * D
+            step = np.linalg.solve(J, res)
+            dalpha = np.max(np.abs(np.degrees((D @ step) / vn)))
+            gamma -= step * min(0.8, 2.0 / max(dalpha, 1e-9))
         ai = wi / vn
         qs = 0.5 * rho * vn ** 2 * self.c * self.dy
         # lift is normal to the effective flow (tilted back by the induced angle), drag along it

@@ -1,0 +1,41 @@
+{
+ "source": "Eaton and Woolf, SFTE 2009, figure 3: RQ-4 Block 20, untrimmed, standardised to a rigid airframe and 25 % MAC; slopes of the flight-test point clouds, read from a figure whose axes carry scales only",
+ "slopes": [
+  {
+   "mach": 0.27,
+   "slope_per_deg": 0.1017,
+   "cl_range": 0.34,
+   "pixels": 714
+  },
+  {
+   "mach": 0.4,
+   "slope_per_deg": 0.1143,
+   "cl_range": 0.45,
+   "pixels": 1033
+  },
+  {
+   "mach": 0.5,
+   "slope_per_deg": 0.1156,
+   "cl_range": 0.68,
+   "pixels": 1615
+  },
+  {
+   "mach": 0.55,
+   "slope_per_deg": 0.1248,
+   "cl_range": 0.66,
+   "pixels": 1060
+  },
+  {
+   "mach": 0.575,
+   "slope_per_deg": 0.1375,
+   "cl_range": 0.44,
+   "pixels": 1176
+  },
+  {
+   "mach": 0.6,
+   "slope_per_deg": 0.1396,
+   "cl_range": 0.38,
+   "pixels": 213
+  }
+ ]
+}

@@ -1,0 +1,419 @@
+#!/usr/bin/env python3
+"""Generate the JSBSim model of the Global Hawk: GlobalHawk.xml and Systems/*.xml.
+
+    python3 fdm/genghawk.py                  the model that ships, into GlobalHawk/
+    python3 fdm/genghawk.py DIR --ref        the reference build (AeroSandbox's tables), into DIR
+
+Everything comes from fdm/data: geometry.json, mass.json, engine.json and aero_tables.json (aerotables.py).
+
+  aerodynamics   coefficient tables over angle of attack and Mach number, about the reference point
+  engine         not JSBSim's turbine: system channels. Maximum and idle thrust and fuel flow from the cycle model's
+                 tables over pressure altitude, Mach number and the temperature's offset from standard; a lag for the
+                 spool; thrust applied as an external force on the nacelle's axis
+  fuel           six tanks; the fuel-management channel draws from all of them in proportion to their contents,
+                 which keeps the centre of gravity where the tank layout puts it. The engine stops when they are dry
+  controls       surface angles straight from the commands for now: the flight laws come later
+  gear           three contact points with estimated springs, enough to stand on
+
+Properties of ours live under ctl/ (surfaces), engine/ and fuel/.
+"""
+import json
+import os
+import sys
+
+import numpy as np
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+D = os.path.join(HERE, 'data')
+G = json.load(open(os.path.join(D, 'geometry.json')))
+M = json.load(open(os.path.join(D, 'mass.json')))
+ENG = json.load(open(os.path.join(D, 'engine.json')))
+IN = 12.0
+SURFACE_LIMIT_DEG = 20.0          # ailerons and ruddervators: an estimate
+SPOOL_SECONDS = 2.0               # thrust lag: a class estimate, no data
+# past the stall the tables go on as a flat plate, plainly: the autopilot stays far from it
+FLAT = dict(alpha=[-90.0, -30.0, -15.0], CL=[0.0, -0.95, -0.55], CD=[1.3, 0.55, 0.20], Cm=[0.3, 0.15, 0.05])
+FLAT_HI = dict(alpha=[20.0, 30.0, 90.0], CL=[0.75, 0.95, 0.0], CD=[0.35, 0.60, 1.3], Cm=[-0.15, -0.20, -0.35])
+
+
+def table2(rows, cols, data, row_prop, col_prop, indent='          '):
+    """A JSBSim table: data[row][col]."""
+    s = ['<table>', '  <independentVar lookup="row">%s</independentVar>' % row_prop,
+         '  <independentVar lookup="column">%s</independentVar>' % col_prop, '  <tableData>',
+         '          ' + ' '.join('%10.4g' % c for c in cols)]
+    for r, line in zip(rows, data):
+        s.append('  %8.4g ' % r + ' '.join('%10.6g' % v for v in line))
+    s += ['  </tableData>', '</table>']
+    return '\n'.join(indent + x for x in s)
+
+
+def table1(xs, ys, prop, indent='          '):
+    s = ['<table>', '  <independentVar lookup="row">%s</independentVar>' % prop, '  <tableData>']
+    s += ['    %10.6g %12.6g' % (x, y) for x, y in zip(xs, ys)]
+    s += ['  </tableData>', '</table>']
+    return '\n'.join(indent + x for x in s)
+
+
+def table3(rows, cols, tabs, data, row_prop, col_prop, tab_prop, indent='          '):
+    """data[tab][row][col]."""
+    s = ['<table>', '  <independentVar lookup="row">%s</independentVar>' % row_prop,
+         '  <independentVar lookup="column">%s</independentVar>' % col_prop,
+         '  <independentVar lookup="table">%s</independentVar>' % tab_prop]
+    for tb, block in zip(tabs, data):
+        s.append('  <tableData breakPoint="%g">' % tb)
+        s.append('          ' + ' '.join('%10.4g' % c for c in cols))
+        for r, line in zip(rows, block):
+            s.append('  %8.4g ' % r + ' '.join('%10.6g' % v for v in line))
+        s.append('  </tableData>')
+    s.append('</table>')
+    return '\n'.join(indent + x for x in s)
+
+
+def by_alpha(t, name, full=False):
+    """Table data [alpha][mach] from the sampled [mach][alpha]; full adds the flat-plate rows at both ends."""
+    a = np.array(t[name]).T
+    if not full:
+        return t['alpha_d'], a.tolist()
+    lo = np.repeat(np.array(FLAT[name])[:, None], a.shape[1], 1)
+    hi = np.repeat(np.array(FLAT_HI[name])[:, None], a.shape[1], 1)
+    return FLAT['alpha'] + t['alpha'] + FLAT_HI['alpha'], np.vstack([lo, a, hi]).tolist()
+
+
+def fn(name, body, desc=''):
+    return '      <function name="%s">\n%s%s\n      </function>' % (
+        name, ('        <description>%s</description>\n' % desc) if desc else '', body)
+
+
+def product(*terms, indent='        '):
+    return indent + '<product>\n' + '\n'.join(terms) + '\n' + indent + '</product>'
+
+
+def prop(p, indent='          '):
+    return indent + '<property>%s</property>' % p
+
+
+def aerodynamics(t):
+    A, MACH = 'aero/alpha-deg', 'velocities/mach'
+    qs = [prop('aero/qbar-psf'), prop('metrics/Sw-sqft')]
+    qsb = qs + [prop('metrics/bw-ft')]
+    qsc = qs + [prop('metrics/cbarw-ft')]
+
+    def tab(name, full=False):
+        rows, data = by_alpha(t, name, full)
+        return table2(rows, t['mach'], data, A, MACH)
+
+    def term(axis_name, desc, scale, name, *factors, full=False):
+        return fn('aero/%s' % axis_name, product(*(scale + [tab(name, full)] + [prop(f) for f in factors])), desc)
+    dcd = table2(t['pitch_d'], t['mach'], np.array(t['dCD_de']).T.tolist(), 'ctl/pitch-deg', MACH)
+    axes = [
+        ('LIFT', [term('lift-basic', 'lift against angle of attack and Mach', qs, 'CL', full=True),
+                  term('lift-pitch-rate', 'lift due to pitch rate', qs, 'CLq', 'aero/ci2vel', 'velocities/q-aero-rad_sec'),
+                  term('lift-ruddervators', 'lift due to the ruddervators together', qs, 'CL_de', 'ctl/pitch-deg')]),
+        ('DRAG', [term('drag-basic', 'drag against angle of attack and Mach, controls neutral', qs, 'CD', full=True),
+                  fn('aero/drag-ruddervators', product(*(qs + [dcd])), 'drag change with the ruddervators together (trim drag)')]),
+        ('SIDE', [term('side-sideslip', 'side force due to sideslip', qs, 'CYb', 'aero/beta-deg'),
+                  term('side-ruddervators', 'side force due to the ruddervators against each other', qs, 'CY_dr', 'ctl/yaw-deg')]),
+        ('ROLL', [term('roll-sideslip', 'roll due to sideslip', qsb, 'Clb', 'aero/beta-deg'),
+                  term('roll-damping', 'roll due to roll rate', qsb, 'Clp', 'aero/bi2vel', 'velocities/p-aero-rad_sec'),
+                  term('roll-yaw-rate', 'roll due to yaw rate', qsb, 'Clr', 'aero/bi2vel', 'velocities/r-aero-rad_sec'),
+                  term('roll-ailerons', 'roll due to the ailerons (ctl/aileron-deg: right trailing edge down)', qsb, 'Cl_da', 'ctl/aileron-deg'),
+                  term('roll-ruddervators', 'roll due to the ruddervators against each other', qsb, 'Cl_dr', 'ctl/yaw-deg')]),
+        ('PITCH', [term('pitch-basic', 'pitching moment against angle of attack and Mach', qsc, 'Cm', full=True),
+                   term('pitch-damping', 'pitch due to pitch rate', qsc, 'Cmq', 'aero/ci2vel', 'velocities/q-aero-rad_sec'),
+                   term('pitch-ruddervators', 'pitch due to the ruddervators together', qsc, 'Cm_de', 'ctl/pitch-deg')]),
+        ('YAW', [term('yaw-sideslip', 'yaw due to sideslip', qsb, 'Cnb', 'aero/beta-deg'),
+                 term('yaw-roll-rate', 'yaw due to roll rate', qsb, 'Cnp', 'aero/bi2vel', 'velocities/p-aero-rad_sec'),
+                 term('yaw-damping', 'yaw due to yaw rate', qsb, 'Cnr', 'aero/bi2vel', 'velocities/r-aero-rad_sec'),
+                 term('yaw-ailerons', 'yaw due to the ailerons', qsb, 'Cn_da', 'ctl/aileron-deg'),
+                 term('yaw-ruddervators', 'yaw due to the ruddervators against each other', qsb, 'Cn_dr', 'ctl/yaw-deg')]),
+    ]
+    out = ['  <aerodynamics>']
+    for axis, fns in axes:
+        out.append('    <axis name="%s">' % axis)
+        out += fns
+        out.append('    </axis>')
+    out.append('  </aerodynamics>')
+    return '\n'.join(out)
+
+
+def loc(tag, x, y, z, indent='      '):
+    return '%s<%s unit="IN"><x>%.2f</x><y>%.2f</y><z>%.2f</z></%s>' % (indent, tag, x * IN, y * IN, z * IN, tag)
+
+
+def main_file(t, name):
+    w, gear, nac = G['wing'], G['gear'], G['nacelle']
+    e, pay = M['empty'], M['payload']
+    ref = t['reference_point_ft']
+    tanks = '\n'.join('''    <tank type="FUEL">   <!-- %s -->
+%s
+      <capacity unit="LBS">%.1f</capacity>
+      <contents unit="LBS">%.1f</contents>
+      <density unit="LBS/GAL">6.7</density>
+    </tank>''' % (tk['name'], loc('location', tk['x'], tk['y'], tk['z']), tk['capacity'], tk['capacity']) for tk in M['tanks'])
+    w_main = 0.826 * 26750 / 2
+    w_nose = 0.174 * 26750
+
+    def contact(nm, x, y, load, defl, steer, group):
+        k = load / defl
+        c = 2 * 0.5 * np.sqrt(k * load / 32.174)
+        return '''    <contact type="BOGEY" name="%s">
+%s
+      <static_friction>0.8</static_friction><dynamic_friction>0.5</dynamic_friction><rolling_friction>0.015</rolling_friction>
+      <spring_coeff unit="LBS/FT">%.0f</spring_coeff>
+      <damping_coeff unit="LBS/FT/SEC">%.0f</damping_coeff>
+      <max_steer unit="DEG">%g</max_steer>
+      <brake_group>%s</brake_group>
+      <retractable>1</retractable>
+    </contact>''' % (nm, loc('location', x, y, -defl), k, c, steer, group)
+    return '''<?xml version="1.0"?>
+<!-- Generated by fdm/genghawk.py (%s). Do not edit: change the generator or its data.
+     NASA Global Hawk (RQ-4A), modelled from public data. Not made or endorsed by NASA or Northrop Grumman. -->
+<fdm_config name="GlobalHawk" version="2.0" release="ALPHA">
+  <fileheader>
+    <author>fdm/genghawk.py</author>
+    <description>NASA Global Hawk N872NA (RQ-4A), from public data; sources and choices in fdm/data/README.md</description>
+  </fileheader>
+  <metrics>
+    <wingarea unit="FT2">%.1f</wingarea>
+    <wingspan unit="FT">%.2f</wingspan>
+    <chord unit="FT">%.3f</chord>
+%s
+%s
+%s
+  </metrics>
+  <mass_balance>
+    <ixx unit="SLUG*FT2">%.0f</ixx>
+    <iyy unit="SLUG*FT2">%.0f</iyy>
+    <izz unit="SLUG*FT2">%.0f</izz>
+    <emptywt unit="LBS">%.1f</emptywt>
+%s
+    <pointmass name="payload">
+      <weight unit="LBS">%.1f</weight>
+%s
+    </pointmass>
+  </mass_balance>
+  <ground_reactions>
+%s
+%s
+%s
+  </ground_reactions>
+  <propulsion>
+%s
+  </propulsion>
+  <external_reactions>
+    <force name="thrust" frame="BODY">
+%s
+      <direction><x>1</x><y>0</y><z>0</z></direction>
+    </force>
+  </external_reactions>
+  <system file="controls"/>
+  <system file="engine"/>
+  <system file="fuel"/>
+  <flight_control name="fcs"/>
+%s
+</fdm_config>
+''' % (name, w['area_reference'], w['span'], w['mac'], loc('location name="AERORP"', *ref, indent='    ').replace('</location name="AERORP">', '</location>'),
+       loc('location name="EYEPOINT"', 3.0, 0, 6.0, indent='    ').replace('</location name="EYEPOINT">', '</location>'),
+       loc('location name="VRP"', 0, 0, 0, indent='    ').replace('</location name="VRP">', '</location>'),
+       e['ixx'] + pay['ixx'], e['iyy'] + pay['iyy'], e['izz'] + pay['izz'], e['weight'],   # the payload's own inertia rides with the airframe's
+       loc('location name="CG"', e['x'], 0, e['z'], indent='    ').replace('</location name="CG">', '</location>'),
+       pay['weight'], loc('location', pay['x'], 0, pay['z']),
+       contact('nose', gear['nose_x'], 0, w_nose, 0.4, 60, 'NONE'),
+       contact('left main', gear['main_x'], -gear['main_track'] / 2, w_main, 0.5, 0, 'LEFT'),
+       contact('right main', gear['main_x'], gear['main_track'] / 2, w_main, 0.5, 0, 'RIGHT'),
+       tanks, loc('location', nac['inlet_x'] + 0.5 * nac['length'], 0, nac['thrust_line_z']), aerodynamics(t))
+
+
+def controls_file():
+    def surf(nm, cmd, desc):
+        return '''    <fcs_function name="ctl/%s">
+      <description>%s</description>
+      <function><product><value>%g</value><property>%s</property></product></function>
+      <clipto><min>-%g</min><max>%g</max></clipto>
+    </fcs_function>''' % (nm, desc, SURFACE_LIMIT_DEG, cmd, SURFACE_LIMIT_DEG, SURFACE_LIMIT_DEG)
+    ail = '''    <fcs_function name="ctl/aileron-deg">
+      <description>ailerons as the aerodynamic tables take them: right trailing edge down positive, which rolls left</description>
+      <function><product><value>-1</value><property>ctl/roll-cmd-deg</property></product></function>
+    </fcs_function>'''
+    return '''<?xml version="1.0"?>
+<!-- Generated by fdm/genghawk.py. Surfaces follow the commands directly: no actuators, no flight laws yet. -->
+<system name="controls">
+  <channel name="surfaces">
+%s
+%s
+%s
+%s
+  </channel>
+</system>
+''' % (surf('pitch-deg', 'fcs/elevator-cmd-norm', 'both ruddervators, trailing edge down positive: nose down'),
+       surf('roll-cmd-deg', 'fcs/aileron-cmd-norm', 'roll command, right wing down positive'),
+       surf('yaw-deg', 'fcs/rudder-cmd-norm', 'ruddervators against each other, nose right positive'), ail)
+
+
+def engine_file():
+    T = ENG['tables']
+    alts, machs, dts, fr = T['altitude_ft'], T['mach'], T['delta_T_K'], T['thrust_fraction']
+    HP, MACH = 'engine/pressure-altitude-ft', 'velocities/mach'
+    import engine as E
+    isa = [E.isa(a)[0] * 1.8 for a in alts]
+    isa_p = [E.isa(a)[1] / 47.880259 for a in alts]
+    fuel = [[[T['fuel_lbh'][i][j][k] for j in range(len(machs))] for i in range(len(alts))] for k in range(len(fr))]
+    return '''<?xml version="1.0"?>
+<!-- Generated by fdm/genghawk.py from fdm/data/engine.json: the AE 3007H as tables from the cycle model. -->
+<system name="engine">
+  <property value="1">engine/running</property>
+  <property value="0">ctl/instant</property>
+  <channel name="engine">
+    <fcs_function name="engine/pressure-altitude-ft">
+      <description>pressure altitude from the static pressure, standard atmosphere</description>
+      <function>
+%s
+      </function>
+    </fcs_function>
+    <fcs_function name="engine/isa-T-R">
+      <function>
+%s
+      </function>
+    </fcs_function>
+    <fcs_function name="engine/delta-T-K">
+      <description>air temperature above standard at this pressure altitude</description>
+      <function><quotient><difference><property>atmosphere/T-R</property><property>engine/isa-T-R</property></difference><value>1.8</value></quotient></function>
+    </fcs_function>
+    <fcs_function name="engine/max-thrust-lbf">
+      <description>maximum thrust: the lowest of fan speed, turbine temperature and the flat rating</description>
+      <function>
+%s
+      </function>
+    </fcs_function>
+    <fcs_function name="engine/max-thrust-standard-lbf">
+      <function>
+%s
+      </function>
+    </fcs_function>
+    <fcs_function name="engine/idle-thrust-lbf">
+      <function>
+%s
+      </function>
+    </fcs_function>
+    <fcs_function name="engine/thrust-cmd-lbf">
+      <description>idle to maximum with the throttle; nothing when the engine is stopped</description>
+      <function>
+        <product>
+          <property>engine/running</property>
+          <sum>
+            <property>engine/idle-thrust-lbf</property>
+            <product>
+              <property>fcs/throttle-cmd-norm</property>
+              <difference><property>engine/max-thrust-lbf</property><property>engine/idle-thrust-lbf</property></difference>
+            </product>
+          </sum>
+        </product>
+      </function>
+    </fcs_function>
+    <lag_filter name="engine/thrust-lagged-lbf">
+      <input>engine/thrust-cmd-lbf</input>
+      <c1>%.4f</c1>
+    </lag_filter>
+    <switch name="engine/thrust-lbf">
+      <description>the spool lag, or none when ctl/instant is set (trims)</description>
+      <default value="engine/thrust-lagged-lbf"/>
+      <test value="engine/thrust-cmd-lbf">ctl/instant == 1</test>
+      <output>external_reactions/thrust/magnitude</output>
+    </switch>
+    <fcs_function name="engine/thrust-fraction">
+      <description>thrust over the standard-day maximum here</description>
+      <function><quotient><property>engine/thrust-lbf</property><max><property>engine/max-thrust-standard-lbf</property><value>1</value></max></quotient></function>
+    </fcs_function>
+    <fcs_function name="engine/fuel-flow-pph">
+      <description>fuel flow: the standard-day table, scaled with the square root of the temperature ratio</description>
+      <function>
+        <product>
+          <property>engine/running</property>
+          <pow><quotient><property>atmosphere/T-R</property><property>engine/isa-T-R</property></quotient><value>0.5</value></pow>
+%s
+        </product>
+      </function>
+    </fcs_function>
+  </channel>
+</system>
+''' % (table1(isa_p[::-1], alts[::-1], 'atmosphere/P-psf'), table1(alts, isa, HP),
+       table3(alts, machs, dts, T['max_thrust_lbf'], HP, MACH, 'engine/delta-T-K'),
+       table2(alts, machs, T['max_thrust_lbf'][dts.index(0.0)], HP, MACH),
+       table2(alts, machs, T['idle_thrust_lbf'], HP, MACH), 1.0 / SPOOL_SECONDS,
+       table3(alts, machs, fr, fuel, HP, MACH, 'engine/thrust-fraction'))
+
+
+def fuel_file():
+    n = len(M['tanks'])
+    total = '\n'.join('          <property>propulsion/tank[%d]/contents-lbs</property>' % i for i in range(n))
+    tanks = '\n'.join('''    <fcs_function name="fuel/tank-%d-lbs">
+      <description>%s: its share of this frame's fuel, in proportion to what it holds</description>
+      <function>
+        <max>
+          <value>0</value>
+          <difference>
+            <property>propulsion/tank[%d]/contents-lbs</property>
+            <product>
+              <property>fuel/burn-lbs</property>
+              <quotient><property>propulsion/tank[%d]/contents-lbs</property><max><property>fuel/total-lbs</property><value>0.001</value></max></quotient>
+            </product>
+          </difference>
+        </max>
+      </function>
+      <output>propulsion/tank[%d]/contents-lbs</output>
+    </fcs_function>''' % (i, tk['name'], i, i, i) for i, tk in enumerate(M['tanks']))
+    return '''<?xml version="1.0"?>
+<!-- Generated by fdm/genghawk.py. The real aircraft's fuel system isn't public: this layout and its management are ours.
+     Every tank gives up fuel in proportion to its contents, so the fuel's centre stays where it is: at the
+     centre-of-gravity target, by the tank sizes in fdm/data/mass.json. -->
+<system name="fuel">
+  <property value="0">fuel/freeze</property>
+  <channel name="fuel management">
+    <fcs_function name="fuel/total-lbs">
+      <function>
+        <sum>
+%s
+        </sum>
+      </function>
+    </fcs_function>
+    <fcs_function name="fuel/burn-lbs">
+      <description>fuel used this frame</description>
+      <function>
+        <product>
+          <difference><value>1</value><property>fuel/freeze</property></difference>
+          <property>engine/fuel-flow-pph</property>
+          <property>simulation/dt</property>
+          <value>%.9f</value>
+        </product>
+      </function>
+    </fcs_function>
+%s
+    <switch name="fuel/engine-fed">
+      <description>the engine stops when the tanks are dry</description>
+      <default value="1"/>
+      <test value="0">fuel/total-lbs lt 1</test>
+      <output>engine/running</output>
+    </switch>
+  </channel>
+</system>
+''' % (total, 1 / 3600.0, tanks)
+
+
+def write(out_dir, ref=False):
+    t = json.load(open(os.path.join(D, 'aero_tables_ref.json' if ref else 'aero_tables.json')))
+    os.makedirs(os.path.join(out_dir, 'Systems'), exist_ok=True)
+    name = 'reference build: %s' % t['model'] if ref else 'the strip model'
+    files = {'GlobalHawk.xml': main_file(t, name), 'Systems/controls.xml': controls_file(), 'Systems/engine.xml': engine_file(),
+             'Systems/fuel.xml': fuel_file()}
+    for f, text in files.items():
+        open(os.path.join(out_dir, f), 'w').write(text)
+    return out_dir
+
+
+if __name__ == '__main__':
+    sys.path.insert(0, HERE)
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    ref = '--ref' in sys.argv
+    out = args[0] if args else os.path.join(HERE, '..', 'GlobalHawk')
+    write(out, ref)
+    print('wrote', os.path.relpath(out))

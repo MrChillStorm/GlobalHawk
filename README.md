@@ -4,9 +4,11 @@ A JSBSim flight model of NASA's Global Hawk N872NA, the high-altitude, long-endu
 Grumman RQ-4A) that NASA flew on science missions, and a ground control station to fly it from. It is modelled from
 public data and is not made or endorsed by NASA or Northrop Grumman.
 
-**Status: in development. Nothing flies yet.** So far: the published numbers with their sources, a reader for
+**Status: in development.** So far: the published numbers with their sources, a reader for
 NASA's flight data from the ATTREX campaigns, the geometry and mass, the engine model,
-and the aerodynamic model (not yet in JSBSim).
+the aerodynamic model, and a JSBSim model generated from them that trims and flies in JSBSim under a plain
+attitude hold. No flight laws, no ground station, no FlightGear aircraft yet, and nothing is calibrated against the
+flight data.
 
 - [fdm/data/README.md](fdm/data/README.md): every published number the model is built from, its source, and the
   choices made where sources disagree.
@@ -20,6 +22,9 @@ and the aerodynamic model (not yet in JSBSim).
 - [fdm/strips.py](fdm/strips.py): the aerodynamic model, strips with section data on a lifting line; compared with
   [fdm/aero_ref.py](fdm/aero_ref.py), the same aircraft in AeroSandbox. [fdm/digitise_lrn1015.py](fdm/digitise_lrn1015.py)
   reads NASA's tunnel test of the wing section, which the section data is checked against.
+- [fdm/genghawk.py](fdm/genghawk.py): writes the JSBSim model in [GlobalHawk/](GlobalHawk) from the data files
+  ([fdm/aerotables.py](fdm/aerotables.py) samples the aerodynamic tables). [fdm/harness.py](fdm/harness.py) loads, trims
+  and flies it; `fdm/phase3_checks.py` checks it.
 
 ## Licence
 
