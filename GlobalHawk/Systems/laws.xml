@@ -32,7 +32,269 @@
   <property value="0">ap/leg-lon1-deg</property>
   <property value="0">ap/rollout</property>
   <property value="0.667">ap/spoiler-base</property>
+  <property value="0">ap/link-last-sec</property>
+  <property value="30">ap/link-timeout-sec</property>
+  <property value="0">ap/link-monitor</property>
+  <property value="0">ap/link-lost</property>
+  <property value="1">nav/kna-on</property>
+  <property value="1">nav/knb-on</property>
+  <property value="1">nav/lna-on</property>
+  <property value="1">nav/lnb-on</property>
+  <property value="0">nav/kna-roll-error-deg</property>
+  <property value="0">nav/kna-pitch-error-deg</property>
+  <property value="0">nav/knb-roll-error-deg</property>
+  <property value="0">nav/knb-pitch-error-deg</property>
+  <property value="0">nav/lna-roll-error-deg</property>
+  <property value="0">nav/lna-pitch-error-deg</property>
+  <property value="0">nav/lnb-roll-error-deg</property>
+  <property value="0">nav/lnb-pitch-error-deg</property>
+  <property value="0">nav/roll-deg</property>
+  <property value="0">nav/pitch-deg</property>
+  <property value="0">nav/miscompare</property>
+  <property value="0">nav/miscompare-reset</property>
   <channel name="flight laws">
+    <fcs_function name="nav/count">
+      <description>navigators switched on</description>
+      <function>
+        <sum><property>nav/kna-on</property><property>nav/knb-on</property><property>nav/lna-on</property><property>nav/lnb-on</property></sum>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/roll-kinematic-raw-deg">
+      <function>
+        <todegrees><atan><quotient><product><property>velocities/vt-fps</property><property>velocities/r-rad_sec</property></product><value>32.174</value></quotient></atan></todegrees>
+      </function>
+    </fcs_function>
+    <lag_filter name="nav/roll-kinematic-deg">
+      <description>the bank the turn rate implies, from the flight control system's own yaw-rate gyro: a reference no navigator supplies</description>
+      <input>nav/roll-kinematic-raw-deg</input>
+      <c1>1</c1>
+    </lag_filter>
+    <fcs_function name="nav/pitch-kinematic-deg">
+      <description>the pitch attitude that air data and vertical speed imply</description>
+      <function>
+        <sum><property>aero/alpha-deg</property><property>flight-path/gamma-deg</property></sum>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/kna-roll-deg">
+      <function>
+        <sum><property>attitude/phi-deg</property><property>nav/kna-roll-error-deg</property></sum>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/knb-roll-deg">
+      <function>
+        <sum><property>attitude/phi-deg</property><property>nav/knb-roll-error-deg</property></sum>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/lna-roll-deg">
+      <function>
+        <sum><property>attitude/phi-deg</property><property>nav/lna-roll-error-deg</property></sum>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/lnb-roll-deg">
+      <function>
+        <sum><property>attitude/phi-deg</property><property>nav/lnb-roll-error-deg</property></sum>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/roll-mean-deg">
+      <description>mean of those switched on</description>
+      <function>
+        <quotient><sum><product><property>nav/kna-on</property><property>nav/kna-roll-deg</property></product><product><property>nav/knb-on</property><property>nav/knb-roll-deg</property></product><product><property>nav/lna-on</property><property>nav/lna-roll-deg</property></product><product><property>nav/lnb-on</property><property>nav/lnb-roll-deg</property></product></sum><max><value>1</value><property>nav/count</property></max></quotient>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/kna-roll-filled-deg">
+      <function>
+        <ifthen><gt><property>nav/kna-on</property><value>0.5</value></gt><property>nav/kna-roll-deg</property><property>nav/roll-mean-deg</property></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/knb-roll-filled-deg">
+      <function>
+        <ifthen><gt><property>nav/knb-on</property><value>0.5</value></gt><property>nav/knb-roll-deg</property><property>nav/roll-mean-deg</property></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/lna-roll-filled-deg">
+      <function>
+        <ifthen><gt><property>nav/lna-on</property><value>0.5</value></gt><property>nav/lna-roll-deg</property><property>nav/roll-mean-deg</property></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/lnb-roll-filled-deg">
+      <function>
+        <ifthen><gt><property>nav/lnb-on</property><value>0.5</value></gt><property>nav/lnb-roll-deg</property><property>nav/roll-mean-deg</property></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/roll-high-deg">
+      <function>
+        <max><property>nav/kna-roll-filled-deg</property><property>nav/knb-roll-filled-deg</property><property>nav/lna-roll-filled-deg</property><property>nav/lnb-roll-filled-deg</property></max>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/roll-low-deg">
+      <function>
+        <min><property>nav/kna-roll-filled-deg</property><property>nav/knb-roll-filled-deg</property><property>nav/lna-roll-filled-deg</property><property>nav/lnb-roll-filled-deg</property></min>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/roll-spread-deg">
+      <function>
+        <difference><property>nav/roll-high-deg</property><property>nav/roll-low-deg</property></difference>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/roll-mid4-deg">
+      <description>of four, the mean of the middle two</description>
+      <function>
+        <quotient><difference><difference><sum><property>nav/kna-roll-filled-deg</property><property>nav/knb-roll-filled-deg</property><property>nav/lna-roll-filled-deg</property><property>nav/lnb-roll-filled-deg</property></sum><property>nav/roll-high-deg</property></difference><property>nav/roll-low-deg</property></difference><value>2</value></quotient>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/roll-mid3-deg">
+      <description>of three, the middle one</description>
+      <function>
+        <difference><difference><sum><product><property>nav/kna-on</property><property>nav/kna-roll-deg</property></product><product><property>nav/knb-on</property><property>nav/knb-roll-deg</property></product><product><property>nav/lna-on</property><property>nav/lna-roll-deg</property></product><product><property>nav/lnb-on</property><property>nav/lnb-roll-deg</property></product></sum><property>nav/roll-high-deg</property></difference><property>nav/roll-low-deg</property></difference>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/roll-nearer-deg">
+      <description>of two that disagree, the one nearer the reference</description>
+      <function>
+        <ifthen>
+          <lt><abs><difference><property>nav/roll-low-deg</property><property>nav/roll-kinematic-deg</property></difference></abs><abs><difference><property>nav/roll-high-deg</property><property>nav/roll-kinematic-deg</property></difference></abs></lt>
+          <property>nav/roll-low-deg</property>
+          <property>nav/roll-high-deg</property>
+        </ifthen>
+      </function>
+    </fcs_function>
+    <switch name="nav/select-roll">
+      <description>roll: the middle value of three or four; of two, their mean while they agree and the one nearer the reference when they don't; the last value with none</description>
+      <default value="nav/roll-deg"/>
+      <test value="nav/roll-mid4-deg">nav/count == 4</test>
+      <test value="nav/roll-mid3-deg">nav/count == 3</test>
+      <test logic="AND" value="nav/roll-nearer-deg">
+        nav/count == 2
+        nav/roll-spread-deg gt 3
+      </test>
+      <test value="nav/roll-mean-deg">nav/count ge 1</test>
+      <output>nav/roll-deg</output>
+    </switch>
+    <fcs_function name="nav/kna-pitch-deg">
+      <function>
+        <sum><property>attitude/theta-deg</property><property>nav/kna-pitch-error-deg</property></sum>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/knb-pitch-deg">
+      <function>
+        <sum><property>attitude/theta-deg</property><property>nav/knb-pitch-error-deg</property></sum>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/lna-pitch-deg">
+      <function>
+        <sum><property>attitude/theta-deg</property><property>nav/lna-pitch-error-deg</property></sum>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/lnb-pitch-deg">
+      <function>
+        <sum><property>attitude/theta-deg</property><property>nav/lnb-pitch-error-deg</property></sum>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/pitch-mean-deg">
+      <description>mean of those switched on</description>
+      <function>
+        <quotient><sum><product><property>nav/kna-on</property><property>nav/kna-pitch-deg</property></product><product><property>nav/knb-on</property><property>nav/knb-pitch-deg</property></product><product><property>nav/lna-on</property><property>nav/lna-pitch-deg</property></product><product><property>nav/lnb-on</property><property>nav/lnb-pitch-deg</property></product></sum><max><value>1</value><property>nav/count</property></max></quotient>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/kna-pitch-filled-deg">
+      <function>
+        <ifthen><gt><property>nav/kna-on</property><value>0.5</value></gt><property>nav/kna-pitch-deg</property><property>nav/pitch-mean-deg</property></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/knb-pitch-filled-deg">
+      <function>
+        <ifthen><gt><property>nav/knb-on</property><value>0.5</value></gt><property>nav/knb-pitch-deg</property><property>nav/pitch-mean-deg</property></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/lna-pitch-filled-deg">
+      <function>
+        <ifthen><gt><property>nav/lna-on</property><value>0.5</value></gt><property>nav/lna-pitch-deg</property><property>nav/pitch-mean-deg</property></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/lnb-pitch-filled-deg">
+      <function>
+        <ifthen><gt><property>nav/lnb-on</property><value>0.5</value></gt><property>nav/lnb-pitch-deg</property><property>nav/pitch-mean-deg</property></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/pitch-high-deg">
+      <function>
+        <max><property>nav/kna-pitch-filled-deg</property><property>nav/knb-pitch-filled-deg</property><property>nav/lna-pitch-filled-deg</property><property>nav/lnb-pitch-filled-deg</property></max>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/pitch-low-deg">
+      <function>
+        <min><property>nav/kna-pitch-filled-deg</property><property>nav/knb-pitch-filled-deg</property><property>nav/lna-pitch-filled-deg</property><property>nav/lnb-pitch-filled-deg</property></min>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/pitch-spread-deg">
+      <function>
+        <difference><property>nav/pitch-high-deg</property><property>nav/pitch-low-deg</property></difference>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/pitch-mid4-deg">
+      <description>of four, the mean of the middle two</description>
+      <function>
+        <quotient><difference><difference><sum><property>nav/kna-pitch-filled-deg</property><property>nav/knb-pitch-filled-deg</property><property>nav/lna-pitch-filled-deg</property><property>nav/lnb-pitch-filled-deg</property></sum><property>nav/pitch-high-deg</property></difference><property>nav/pitch-low-deg</property></difference><value>2</value></quotient>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/pitch-mid3-deg">
+      <description>of three, the middle one</description>
+      <function>
+        <difference><difference><sum><product><property>nav/kna-on</property><property>nav/kna-pitch-deg</property></product><product><property>nav/knb-on</property><property>nav/knb-pitch-deg</property></product><product><property>nav/lna-on</property><property>nav/lna-pitch-deg</property></product><product><property>nav/lnb-on</property><property>nav/lnb-pitch-deg</property></product></sum><property>nav/pitch-high-deg</property></difference><property>nav/pitch-low-deg</property></difference>
+      </function>
+    </fcs_function>
+    <fcs_function name="nav/pitch-nearer-deg">
+      <description>of two that disagree, the one nearer the reference</description>
+      <function>
+        <ifthen>
+          <lt><abs><difference><property>nav/pitch-low-deg</property><property>nav/pitch-kinematic-deg</property></difference></abs><abs><difference><property>nav/pitch-high-deg</property><property>nav/pitch-kinematic-deg</property></difference></abs></lt>
+          <property>nav/pitch-low-deg</property>
+          <property>nav/pitch-high-deg</property>
+        </ifthen>
+      </function>
+    </fcs_function>
+    <switch name="nav/select-pitch">
+      <description>pitch: the middle value of three or four; of two, their mean while they agree and the one nearer the reference when they don't; the last value with none</description>
+      <default value="nav/pitch-deg"/>
+      <test value="nav/pitch-mid4-deg">nav/count == 4</test>
+      <test value="nav/pitch-mid3-deg">nav/count == 3</test>
+      <test logic="AND" value="nav/pitch-nearer-deg">
+        nav/count == 2
+        nav/pitch-spread-deg gt 3
+      </test>
+      <test value="nav/pitch-mean-deg">nav/count ge 1</test>
+      <output>nav/pitch-deg</output>
+    </switch>
+    <switch name="nav/latch-miscompare">
+      <description>two navigators disagree: for the operator. Stays set until nav/miscompare-reset</description>
+      <default value="nav/miscompare"/>
+      <test value="0">nav/miscompare-reset == 1</test>
+      <test logic="AND" value="1">
+        nav/count == 2
+        nav/roll-spread-deg gt 3
+      </test>
+      <test logic="AND" value="1">
+        nav/count == 2
+        nav/pitch-spread-deg gt 3
+      </test>
+      <output>nav/miscompare</output>
+    </switch>
+    <fcs_function name="ap/link-age-sec">
+      <description>time since the last uplink</description>
+      <function>
+        <difference><property>simulation/sim-time-sec</property><property>ap/link-last-sec</property></difference>
+      </function>
+    </fcs_function>
+    <switch name="ap/latch-link-lost">
+      <description>the link is lost: set after the timeout while it is being watched, cleared only by switching the watch off</description>
+      <default value="ap/link-lost"/>
+      <test value="0">ap/link-monitor == 0</test>
+      <test logic="AND" value="1">
+        ap/link-monitor == 1
+        ap/link-age-sec gt ap/link-timeout-sec
+      </test>
+      <output>ap/link-lost</output>
+    </switch>
     <fcs_function name="ap/gain-q">
       <description>gain schedule: control power goes with dynamic pressure</description>
       <function>
@@ -277,7 +539,7 @@
     <switch name="ap/latch-theta-latched-deg">
       <description>pitch attitude at engagement</description>
       <default value="ap/theta-latched-deg"/>
-      <test value="attitude/theta-deg">ap/engaged == 0</test>
+      <test value="nav/pitch-deg">ap/engaged == 0</test>
       <output>ap/theta-latched-deg</output>
     </switch>
     <fcs_function name="ap/speed-error-kt">
@@ -293,14 +555,29 @@
         ap/pitch-mode == 1
       </test>
     </switch>
-    <pid name="ap/theta-speed-deg">
-      <input>ap/speed-error-kt</input>
-      <kp>0.5</kp>
+    <fcs_function name="ap/speed-error-i-kt">
+      <function>
+        <ifthen>
+          <and><gt><property>ap/speed-error-kt</property><value>0</value></gt><lt><difference><property>ap/alpha-limit-deg</property><property>aero/alpha-deg</property></difference><value>0.3</value></lt></and>
+          <value>0</value>
+          <property>ap/speed-error-kt</property>
+        </ifthen>
+      </function>
+    </fcs_function>
+    <pid name="ap/theta-speed-i-deg">
+      <input>ap/speed-error-i-kt</input>
+      <kp>0.0</kp>
       <ki>0.03</ki>
       <kd>0</kd>
       <trigger>ap/trig-speed</trigger>
       <clipto><min>-20</min><max>20</max></clipto>
     </pid>
+    <fcs_function name="ap/theta-speed-deg">
+      <function>
+        <sum><product><value>0.5</value><property>ap/speed-error-kt</property></product><property>ap/theta-speed-i-deg</property></sum>
+      </function>
+      <clipto><min>-20</min><max>20</max></clipto>
+    </fcs_function>
     <fcs_function name="ap/alt-error-ft">
       <function>
         <difference><property>ap/alt-cmd-ft</property><property>position/h-sl-ft</property></difference>
@@ -415,7 +692,7 @@
     <fcs_function name="ap/theta-error-deg">
       <description>nose high is positive</description>
       <function>
-        <difference><property>attitude/theta-deg</property><sum><property>ap/theta-latched-deg</property><property>ap/theta-delta-deg</property><property>ap/protect-alpha-deg</property></sum></difference>
+        <difference><property>nav/pitch-deg</property><sum><property>ap/theta-latched-deg</property><property>ap/theta-delta-deg</property><property>ap/protect-alpha-deg</property></sum></difference>
       </function>
     </fcs_function>
     <switch name="ap/trig-pitch">
@@ -501,7 +778,7 @@
     </actuator>
     <fcs_function name="ap/bank-error-deg">
       <function>
-        <difference><property>ap/bank-target-deg</property><property>attitude/phi-deg</property></difference>
+        <difference><property>ap/bank-target-deg</property><property>nav/roll-deg</property></difference>
       </function>
     </fcs_function>
     <switch name="ap/trig-roll">

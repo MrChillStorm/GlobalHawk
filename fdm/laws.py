@@ -127,6 +127,78 @@ def _final(name, law, manual, desc, out=None):
                     'ctl/%s' % name, desc, name, name, ('\n      <output>%s</output>' % out) if out else '')
 
 
+NAVS = ('kna', 'knb', 'lna', 'lnb')        # two Kearfott KN-4074E, two Litton LN-100G
+NAV_DISAGREE_DEG = 3.0
+
+
+def _navigators():
+    """Four navigators, each the truth plus an error a test can set, and the selection between them
+    (docs/FLIGHT-LAWS.md 6.1). Output: nav/roll-deg, nav/pitch-deg, nav/miscompare."""
+    ch = []
+    ch.append(_fn('nav/count', _op('sum', *[_p('nav/%s-on' % n) for n in NAVS]), 'navigators switched on'))
+    ch.append('''    <lag_filter name="nav/roll-kinematic-deg">
+      <description>the bank the turn rate implies, from the flight control system's own yaw-rate gyro: a reference no navigator supplies</description>
+      <input>nav/roll-kinematic-raw-deg</input>
+      <c1>1</c1>
+    </lag_filter>''')
+    ch.insert(len(ch) - 1, _fn('nav/roll-kinematic-raw-deg', '        <todegrees><atan><quotient><product>%s%s</product>%s</quotient></atan></todegrees>' % (
+        _p('velocities/vt-fps'), _p('velocities/r-rad_sec'), _v(32.174))))
+    ch.append(_fn('nav/pitch-kinematic-deg', _op('sum', _p('aero/alpha-deg'), _p('flight-path/gamma-deg')),
+                  'the pitch attitude that air data and vertical speed imply'))
+    for axis, truth, ref in (('roll', 'attitude/phi-deg', 'nav/roll-kinematic-deg'), ('pitch', 'attitude/theta-deg', 'nav/pitch-kinematic-deg')):
+        vals = []
+        for n in NAVS:
+            ch.append(_fn('nav/%s-%s-deg' % (n, axis), _op('sum', _p(truth), _p('nav/%s-%s-error-deg' % (n, axis)))))
+            vals.append('nav/%s-%s-deg' % (n, axis))
+        sum_on = '<sum>%s</sum>' % ''.join('<product>%s%s</product>' % (_p('nav/%s-on' % n), _p(v)) for n, v in zip(NAVS, vals))
+        ch.append(_fn('nav/%s-mean-deg' % axis, '        <quotient>%s<max>%s%s</max></quotient>' % (sum_on, _v(1), _p('nav/count')), 'mean of those switched on'))
+        filled = []
+        for n, v in zip(NAVS, vals):
+            # one that is off takes the mean of the others' place, so it can be neither the highest nor the lowest
+            ch.append(_fn('nav/%s-%s-filled-deg' % (n, axis), '        <ifthen><gt>%s%s</gt>%s%s</ifthen>' % (_p('nav/%s-on' % n), _v(0.5), _p(v), _p('nav/%s-mean-deg' % axis))))
+            filled.append(_p('nav/%s-%s-filled-deg' % (n, axis)))
+        ch.append(_fn('nav/%s-high-deg' % axis, '        <max>%s</max>' % ''.join(filled)))
+        ch.append(_fn('nav/%s-low-deg' % axis, '        <min>%s</min>' % ''.join(filled)))
+        ch.append(_fn('nav/%s-spread-deg' % axis, _op('difference', _p('nav/%s-high-deg' % axis), _p('nav/%s-low-deg' % axis))))
+        ch.append(_fn('nav/%s-mid4-deg' % axis, '        <quotient><difference><difference><sum>%s</sum>%s</difference>%s</difference>%s</quotient>' % (
+            ''.join(filled), _p('nav/%s-high-deg' % axis), _p('nav/%s-low-deg' % axis), _v(2)), 'of four, the mean of the middle two'))
+        ch.append(_fn('nav/%s-mid3-deg' % axis, '        <difference><difference>%s%s</difference>%s</difference>' % (
+            sum_on, _p('nav/%s-high-deg' % axis), _p('nav/%s-low-deg' % axis)), 'of three, the middle one'))
+        ch.append(_fn('nav/%s-nearer-deg' % axis, '''        <ifthen>
+          <lt><abs><difference>%s%s</difference></abs><abs><difference>%s%s</difference></abs></lt>
+          %s
+          %s
+        </ifthen>''' % (_p('nav/%s-low-deg' % axis), _p(ref), _p('nav/%s-high-deg' % axis), _p(ref), _p('nav/%s-low-deg' % axis), _p('nav/%s-high-deg' % axis)),
+                      'of two that disagree, the one nearer the reference'))
+        ch.append('''    <switch name="nav/select-%(a)s">
+      <description>%(a)s: the middle value of three or four; of two, their mean while they agree and the one nearer the reference when they don't; the last value with none</description>
+      <default value="nav/%(a)s-deg"/>
+      <test value="nav/%(a)s-mid4-deg">nav/count == 4</test>
+      <test value="nav/%(a)s-mid3-deg">nav/count == 3</test>
+      <test logic="AND" value="nav/%(a)s-nearer-deg">
+        nav/count == 2
+        nav/%(a)s-spread-deg gt %(d)g
+      </test>
+      <test value="nav/%(a)s-mean-deg">nav/count ge 1</test>
+      <output>nav/%(a)s-deg</output>
+    </switch>''' % dict(a=axis, d=NAV_DISAGREE_DEG))
+    ch.append('''    <switch name="nav/latch-miscompare">
+      <description>two navigators disagree: for the operator. Stays set until nav/miscompare-reset</description>
+      <default value="nav/miscompare"/>
+      <test value="0">nav/miscompare-reset == 1</test>
+      <test logic="AND" value="1">
+        nav/count == 2
+        nav/roll-spread-deg gt %g
+      </test>
+      <test logic="AND" value="1">
+        nav/count == 2
+        nav/pitch-spread-deg gt %g
+      </test>
+      <output>nav/miscompare</output>
+    </switch>''' % (NAV_DISAGREE_DEG, NAV_DISAGREE_DEG))
+    return ch
+
+
 def laws_file():
     props = ''.join('  <property value="%g">ap/%s</property>\n' % (v, k) for k, v in (
         ('engaged', 0), ('pitch-mode', 0), ('roll-mode', 0), ('thrust-mode', 0), ('theta-cmd-deg', 0), ('speed-cmd-kcas', 150),
@@ -134,8 +206,22 @@ def laws_file():
         ('throttle-cmd', 0.5), ('gain-scale', 1), ('bias-pitch-deg', 0), ('bias-yaw-deg', 0), ('bias-throttle', 0),
         ('theta-latched-deg', 0), ('theta-delta-deg', 0), ('land-mode', 0), ('ground-steer', 0), ('taxi-speed-kt', 0),
         ('spoiler-mode', 0), ('spoiler-cmd', 0), ('rwy-elev-ft', 0), ('leg-lat0-deg', 0), ('leg-lon0-deg', 0), ('leg-lat1-deg', 0.01),
-        ('leg-lon1-deg', 0), ('rollout', 0), ('spoiler-base', 0.667)))
+        ('leg-lon1-deg', 0), ('rollout', 0), ('spoiler-base', 0.667), ('link-last-sec', 0), ('link-timeout-sec', 30), ('link-monitor', 0),
+        ('link-lost', 0)))
     ch = []
+    # ---- part C: navigators and the link, ahead of everything that uses them
+    ch += _navigators()
+    ch.append(_fn('ap/link-age-sec', _op('difference', _p('simulation/sim-time-sec'), _p('ap/link-last-sec')), 'time since the last uplink'))
+    ch.append('''    <switch name="ap/latch-link-lost">
+      <description>the link is lost: set after the timeout while it is being watched, cleared only by switching the watch off</description>
+      <default value="ap/link-lost"/>
+      <test value="0">ap/link-monitor == 0</test>
+      <test logic="AND" value="1">
+        ap/link-monitor == 1
+        ap/link-age-sec gt ap/link-timeout-sec
+      </test>
+      <output>ap/link-lost</output>
+    </switch>''')
     # ---- schedules
     ch.append(_fn('ap/gain-q', _op('quotient', _v(50), '<max>%s%s</max>' % (_p('aero/qbar-psf'), _v(1))),
                   'gain schedule: control power goes with dynamic pressure', clip=('0.4', '2.5')))
@@ -218,11 +304,21 @@ def laws_file():
     ch.append(_latch('bias-pitch-deg', 'ctl/manual-pitch-deg', 'ruddervator angle at engagement'))
     ch.append(_latch('bias-yaw-deg', 'ctl/manual-yaw-deg', 'yaw command at engagement'))
     ch.append(_latch('bias-throttle', 'fcs/throttle-cmd-norm', 'throttle at engagement'))
-    ch.append(_latch('theta-latched-deg', 'attitude/theta-deg', 'pitch attitude at engagement'))
+    ch.append(_latch('theta-latched-deg', 'nav/pitch-deg', 'pitch attitude at engagement'))
     # ---- autopilot: the pitch attitude command
     ch.append(_fn('ap/speed-error-kt', _op('difference', _p('velocities/vc-kts'), _p('ap/speed-target-kcas')), 'fast is positive'))
     ch.append(_trigger('speed', 'ap/pitch-mode == 1'))
-    ch.append(_pid('ap/theta-speed-deg', 'ap/speed-error-kt', G['K_v'], G['K_v_i'], 'speed', clip=('-20', '20')))
+    # the integral holds still while the angle-of-attack limit is what keeps the speed up: the governor won't let
+    # the nose rise, and an integral that went on asking would be wound up when the limit lets go (it was: the
+    # first glide without the engine came down final 15 kt slow, on the speed floor)
+    ch.append(_fn('ap/speed-error-i-kt', '''        <ifthen>
+          <and><gt>%s%s</gt><lt><difference>%s%s</difference>%s</lt></and>
+          %s
+          %s
+        </ifthen>''' % (_p('ap/speed-error-kt'), _v(0), _p('ap/alpha-limit-deg'), _p('aero/alpha-deg'), _v(0.3), _v(0), _p('ap/speed-error-kt'))))
+    ch.append(_pid('ap/theta-speed-i-deg', 'ap/speed-error-i-kt', 0.0, G['K_v_i'], 'speed', clip=('-20', '20')))
+    ch.append(_fn('ap/theta-speed-deg', '        <sum><product>%s%s</product>%s</sum>' % (_v(G['K_v']), _p('ap/speed-error-kt'), _p('ap/theta-speed-i-deg')),
+                  clip=('-20', '20')))
     ch.append(_fn('ap/alt-error-ft', _op('difference', _p('ap/alt-cmd-ft'), _p('position/h-sl-ft')), clip=('-1500', '1500')))
     ch.append(_trigger('alt', 'ap/pitch-mode == 2'))
     ch.append(_pid('ap/theta-alt-pi-deg', 'ap/alt-error-ft', G['K_h'], G['K_h_i'], 'alt', clip=('-12', '12')))
@@ -280,7 +376,7 @@ def laws_file():
                   'a direct push down in proportion to the angle of attack over its limit, ahead of the governor'))
     # ---- basic law: pitch
     ch.append(_fn('ap/theta-error-deg', '        <difference>%s<sum>%s%s%s</sum></difference>' % (
-        _p('attitude/theta-deg'), _p('ap/theta-latched-deg'), _p('ap/theta-delta-deg'), _p('ap/protect-alpha-deg')), 'nose high is positive'))
+        _p('nav/pitch-deg'), _p('ap/theta-latched-deg'), _p('ap/theta-delta-deg'), _p('ap/protect-alpha-deg')), 'nose high is positive'))
     # the pitch integral runs in the air, and on the ground only from 5 kt under the rotation speed: left running
     # through a taxi it winds up against the nose wheel and then holds the nose down at rotation (it did: the first
     # mission left the ground at 249 kt)
@@ -334,7 +430,7 @@ def laws_file():
       <input>ap/bank-gated-deg</input>
       <rate_limit>5</rate_limit>
     </actuator>''')
-    ch.append(_fn('ap/bank-error-deg', _op('difference', _p('ap/bank-target-deg'), _p('attitude/phi-deg'))))
+    ch.append(_fn('ap/bank-error-deg', _op('difference', _p('ap/bank-target-deg'), _p('nav/roll-deg'))))
     # the integral trims the ailerons in a steady turn; it runs only close to the target, so it can't wind up
     # while the bank command is still ramping
     ch.append(_trigger('roll', 'ap/bank-error-deg lt 3', 'ap/bank-error-deg gt -3'))
@@ -465,6 +561,9 @@ def laws_file():
     ch.append(_final('yaw-deg', 'ap/yaw-law-deg', 'ctl/manual-yaw-deg', 'ruddervators against each other, nose right positive'))
     ch.append(_fn('ctl/aileron-deg', _op('product', _v(-1), _p('ctl/roll-cmd-deg')),
                   'ailerons as the aerodynamic tables take them: right trailing edge down positive, which rolls left'))
+    props += ''.join('  <property value="%g">nav/%s</property>\n' % (v, k) for k, v in (
+        [('%s-on' % n, 1) for n in NAVS] + [('%s-%s-error-deg' % (n, a), 0) for n in NAVS for a in ('roll', 'pitch')] +
+        [('roll-deg', 0), ('pitch-deg', 0), ('miscompare', 0), ('miscompare-reset', 0)]))
     return '''<?xml version="1.0"?>
 <!-- Generated by fdm/genghawk.py (fdm/laws.py). The flight laws: our own design, the real ones are not public.
      ap/engaged = 0 leaves the surfaces on the direct commands. -->

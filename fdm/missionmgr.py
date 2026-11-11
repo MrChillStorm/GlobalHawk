@@ -7,6 +7,10 @@ A plan is a list of items:
     dict(kind='takeoff', start=(lat, lon), end=(lat, lon), elev=2300)
     dict(kind='route', points=[(lat, lon, alt_ft), ...])
     dict(kind='land', fix=(lat, lon), aim=(lat, lon), elev=2300)
+
+Contingencies (docs/FLIGHT-LAWS.md, section 6):
+    lost_link=[items]       what the aircraft flies instead of the rest of the plan once ap/link-lost is set
+    sites=[dict(aim=(lat, lon), course=deg, elev=ft, name=...)]     runways for a landing without the engine
 """
 import math
 
@@ -15,6 +19,16 @@ import numpy as np
 FT_PER_DEG = 364567.2
 KT = 1.6878099
 RATE = 12                      # frames between the manager's looks: 10 a second
+NM = 6076.1
+GLIDE_TAN = 0.07782            # the approach path, 4.45 deg (fdm/laws.py)
+GLIDE_CL = 0.8                 # the lift coefficient of the glide without the engine
+GLIDE_RATIO = 20.0             # what the planner counts on: the model's 26 less a margin for wind and turns
+ENTRY_HEIGHT = 2500.0          # ft above the runway on the glide path: where the entry point is
+TURN_COST = 300.0              # ft per 90 deg of turn
+IN_HAND = 1000.0               # ft kept over at the entry point when choosing a site
+CIRCLE_BANK = 15.0             # deg
+FINAL_SURPLUS = 300.0          # ft above the glide path the circle aims to leave for the final
+WING_AREA = 540.0
 
 
 class Field:
@@ -41,8 +55,10 @@ def turn(c0, c1):
 
 
 class Manager:
-    def __init__(self, f, plan):
+    def __init__(self, f, plan, lost_link=None, sites=()):
         self.f, self.plan = f, list(plan)
+        self.lost_link, self.sites = lost_link, list(sites)
+        self.contingency, self.alert = None, None
         self.i, self.k, self.frame, self.done = 0, 0, 0, False
         self.events = []
         self.begin()
@@ -100,6 +116,122 @@ class Manager:
             f['ap/spoiler-mode'], f['ap/spoiler-cmd'] = 1, 0.667
             f['gear/gear-cmd-norm'] = 1
             it['_on_path'] = False
+        elif kind == 'engine_out':
+            self.choose_site(it)
+            f['ap/land-mode'] = 0
+            f['ap/roll-mode'], f['ap/ground-steer'] = 2, 0
+            f['ap/pitch-mode'], f['ap/thrust-mode'], f['ap/speed-schedule'] = 1, 2, 0
+            f['ap/spoiler-mode'], f['ap/spoiler-cmd'] = 1, 0.0
+            f['gear/gear-cmd-norm'] = 0
+            f['ap/speed-cmd-kcas'] = self.glide_kcas()
+            self.leg(self.here(), it['entry'])
+            it['task'] = 'glide'
+            self.note('glide to %s' % it['site'].get('name', 'the runway'))
+
+    # ---- without the engine (section 6.3)
+    def glide_kcas(self):
+        """The calibrated airspeed for the glide's lift coefficient at this weight and height."""
+        f = self.f
+        q = f['inertia/weight-lbs'] / (GLIDE_CL * WING_AREA)
+        p = f['atmosphere/P-psf']
+        mach = math.sqrt(q / (0.7 * p))
+        qc = p * ((1 + 0.2 * mach * mach) ** 3.5 - 1)
+        return 661.4786 * math.sqrt(5 * ((qc / 2116.2166 + 1) ** (2 / 7.0) - 1))
+
+    def entry(self, site):
+        """The entry point: on the extended centreline where the glide path is ENTRY_HEIGHT above the runway."""
+        d = ENTRY_HEIGHT / GLIDE_TAN
+        c = math.radians(site['course'])
+        return (site['aim'][0] - d * math.cos(c) / FT_PER_DEG, site['aim'][1] - d * math.sin(c) / (FT_PER_DEG * math.cos(math.radians(site['aim'][0]))))
+
+    def reach(self, site):
+        """Height left over at a site's entry point, by the planner's book: what there is less what is needed."""
+        f = self.f
+        brg, dist = course(self.here(), self.entry(site))
+        trk = math.degrees(math.atan2(f['velocities/v-east-fps'], f['velocities/v-north-fps']))
+        need = dist / GLIDE_RATIO + TURN_COST * abs(turn(trk, brg)) / 90.0 + site['elev'] + ENTRY_HEIGHT + IN_HAND
+        return f['position/h-sl-ft'] - need
+
+    def choose_site(self, it):
+        ranked = sorted(self.sites, key=self.reach, reverse=True)
+        best = ranked[0]
+        it['site'], it['entry'], it['expected'] = best, self.entry(best), self.reach(best) + IN_HAND
+        if self.reach(best) < 0:
+            # nothing in reach: towards the nearest all the same, and say so. A landing off a runway is not built.
+            best = min(self.sites, key=lambda s: course(self.here(), self.entry(s))[1])
+            it['site'], it['entry'], it['expected'] = best, self.entry(best), self.reach(best) + IN_HAND
+            self.alert = 'no runway in reach'
+            self.note('ALERT: no runway in reach')
+        self.note('site %s: %.0f ft expected in hand at the entry point (%s)' % (
+            best.get('name', '?'), it['expected'], ', '.join('%s %+.0f' % (s.get('name', '?'), self.reach(s) + IN_HAND) for s in ranked)))
+
+    def engine_out(self, it):
+        f = self.f
+        site, ent = it['site'], it['entry']
+        if it['task'] == 'glide':
+            f['ap/speed-cmd-kcas'] = self.glide_kcas()
+        elif it['task'] == 'circle':
+            f['ap/speed-cmd-kcas'] = f['ap/approach-keas']
+        vg = max(f['velocities/vg-fps'], 100.0)
+        radius = vg * vg / (32.174 * math.tan(math.radians(CIRCLE_BANK)))
+        brg, dist = course(self.here(), ent)
+        above = f['position/h-sl-ft'] - site['elev'] - ENTRY_HEIGHT
+        if it['task'] == 'glide':
+            it['surplus'] = above - dist / GLIDE_RATIO
+            if dist < radius:
+                # circle on the side the aircraft is on, so that the circle touches the centreline at the entry point
+                side = 1.0 if turn(site['course'], course(ent, self.here())[0]) >= 0 else -1.0
+                it['side'], it['task'], it['arrived'] = side, 'circle', above
+                f['ap/roll-mode'] = 1
+                f['ap/speed-cmd-kcas'] = f['ap/approach-keas']       # with spoilers out the glide speed is too near the limit
+                self.note('circle %s over the entry point, %.0f ft above the glide path there (planner expected %.0f)' % (
+                    'right' if side > 0 else 'left', above, it['expected']))
+        if it['task'] == 'circle':
+            side = it['side']
+            c = math.radians(site['course'] + 90.0 * side)
+            centre = (ent[0] + radius * math.cos(c) / FT_PER_DEG, ent[1] + radius * math.sin(c) / (FT_PER_DEG * math.cos(math.radians(ent[0]))))
+            out, d = course(centre, self.here())                    # bearing from the centre to the aircraft
+            tangent = out + 90.0 * side
+            f['ap/heading-cmd-deg'] = (tangent + side * float(np.clip(60.0 * (d - radius) / radius, -45.0, 80.0))) % 360.0
+            # the way round to the entry point, which is where the circle touches the centreline
+            at_entry = (site['course'] - 90.0 * side) % 360.0       # bearing from the centre to the entry point
+            arc = ((at_entry - out) * side) % 360.0
+            if arc > 340.0:
+                arc -= 360.0                                        # just past it
+            surplus = above - math.radians(arc) * radius / GLIDE_RATIO
+            it['surplus'] = surplus
+            f['ap/spoiler-cmd'] = float(np.clip((surplus - FINAL_SURPLUS) / 1000.0, 0.0, 1.0))
+            trk = math.degrees(math.atan2(f['velocities/v-east-fps'], f['velocities/v-north-fps']))
+            aligned = abs(turn(trk, site['course'])) < 20.0 and abs(arc) < 30.0
+            if (aligned and surplus < 2.0 * FINAL_SURPLUS) or surplus < -500.0:
+                it['task'], it['final'] = 'final', surplus
+                self.leg(ent, site['aim'])
+                f['ap/rwy-elev-ft'] = site['elev']
+                f['ap/roll-mode'], f['ap/ground-steer'] = 2, 1
+                f['ap/land-mode'] = 1
+                f['gear/gear-cmd-norm'] = 1
+                self.note('final, %.0f ft above the glide path' % surplus)
+        elif it['task'] == 'final':
+            if f['ap/rollout'] == 1 and f['ap/ground-speed-kt'] < 15.0:
+                self.note('rollout over')
+                f['ap/taxi-speed-kt'] = 0.0
+                f['ap/thrust-mode'] = 4
+                self.next()
+
+    def contingencies(self):
+        """Leave the plan when the link is lost or the engine stops. Only in the air, and only once each."""
+        f = self.f
+        kind = self.plan[self.i]['kind']
+        if f['engine/failed'] == 1 and self.contingency != 'engine' and kind in ('route', 'land') and self.sites and f['ap/rollout'] == 0:
+            self.contingency = 'engine'
+            self.note('ENGINE FAILED')
+            self.plan = self.plan[:self.i + 1] + [dict(kind='engine_out')]
+            self.next()
+        elif f['ap/link-lost'] == 1 and self.contingency is None and kind == 'route' and self.lost_link:
+            self.contingency = 'link'
+            self.note('LINK LOST: the contingency route')
+            self.plan = self.plan[:self.i + 1] + [dict(d) for d in self.lost_link]
+            self.next()
 
     def vertical(self, alt):
         """Climb, descend or hold towards a height."""
@@ -127,9 +259,15 @@ class Manager:
         if self.done or self.frame % RATE:
             return
         f = self.f
+        self.contingencies()
+        if self.done:
+            return
         it = self.plan[self.i]
         kind = it['kind']
         togo = f['ap/leg-togo-ft']
+        if kind == 'engine_out':
+            self.engine_out(it)
+            return
         if kind == 'taxi':
             pts = it['_pts']
             last = self.k == len(pts) - 2

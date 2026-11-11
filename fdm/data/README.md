@@ -508,6 +508,38 @@ aiming point; liftoff comes at 144 KEAS where the recorded ones were at 121 to 1
 no crosswind, no turbulence has been flown; stops at hold points, traffic, and the choice of taxi route are the
 manager's and not built; the manager here is a stand-in.
 
+## Flight laws, part C: navigators, lost link, landing without the engine
+
+All of this is our own design and every result is predicted: nothing public says how the real aircraft does it,
+only that it has two pairs of navigators, flies a contingency route when the link is lost, and that one was lost
+in 2017 when it flew on one bad navigator of two.
+
+- **Navigators:** four (two Kearfott, two Litton), each the true attitude plus an error a test can set. With three
+  or four on the laws take the middle value; with two, their mean while they agree within 3 deg, and otherwise the
+  one nearer a reference no navigator supplies: the bank that the turn rate implies, the pitch that angle of attack
+  and flight-path angle imply. A disagreement raises `nav/miscompare`.
+- **Lost link:** 30 s without an uplink and the aircraft leaves its plan for the contingency route the plan carries.
+- **Engine failure** (the tasks borrowed from the MV-22B's engine-out laws): glide at a lift coefficient of 0.8 to
+  the runway with the most height to spare by the planner's book (glide ratio 20, 300 ft per 90 deg of turn,
+  1,000 ft in hand); circle over a point 5.3 nmi out on the centreline, spoilers burning the surplus; then the
+  normal approach, met from above, with the spoilers holding the glide path as always.
+
+`fdm/phase7c_checks.py`, 11 checks, limits written first, all pass:
+
+| | Result |
+|---|---|
+| The 2017 case: two navigators, one drifts 30 deg in roll | the voted roll is out by 1.5 deg at most, for 0.3 s; bank stays within 0.93 deg (which is settling, there without the failure); flagged at once; height within 0.1 ft (the real aircraft reached 152 deg) |
+| One of four jumps 60 deg | the vote doesn't move |
+| Both of two wrong the same way | not caught: flies banked 25.9 deg. No vote survives a common error |
+| Link cut on a leg at 20,000 ft | leaves the plan 30.1 s later, lands 24 min after: 1.08 m/s, 5.9 ft off the centreline |
+| Engine stopped at 20,000 ft, 30 nmi out, flying away | on the runway 1,615 ft past the aiming point, 0.89 m/s, stopped 21 min later |
+| Engine stopped at 50,000 ft, 100 nmi out | the same touchdown, 47 min later |
+| Height in hand at the entry point: planner against flown | 4,658 against 8,878 ft; 13,174 against 21,368 ft |
+| No runway in reach | alert raised; a landing off a runway is not built |
+
+The model glides at 31-33 to 1 at that speed; the planner counts on 20 until wind is modelled. Not modelled: the
+windmilling engine's drag, and emergency electrical and hydraulic power.
+
 ## Gear, ground, takeoff and landing
 
 `fdm/phase5_checks.py` (12 checks, all pass). The pilot in these runs is plain Python at the model's rate
