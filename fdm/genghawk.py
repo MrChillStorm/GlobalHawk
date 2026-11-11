@@ -31,6 +31,9 @@ ENG = json.load(open(os.path.join(D, 'engine.json')))
 _cal = os.path.join(D, 'calibration.json')
 # what the calibration against flight data adds: fdm/data/README.md, "Calibration"
 CAL = json.load(open(_cal)) if os.path.exists(_cal) else dict(drag_increment=0.0, fuel_factor=1.0)
+GEAR_DRAG = 0.0065                # gear down: a drag area of 3.5 ft2 on the wing area. An estimate
+SPOILER_MAX_DEG = 45.0            # the real aero model's largest spoiler angle (Eaton and Woolf)
+SPOILER_APPROACH_DEG = 30.0       # the setting the approach is taken to be flown at: an assumption
 IN = 12.0
 SURFACE_LIMIT_DEG = 20.0          # ailerons and ruddervators: an estimate
 SPOOL_SECONDS = 2.0               # thrust lag: a class estimate, no data
@@ -108,14 +111,21 @@ def aerodynamics(t):
     def term(axis_name, desc, scale, name, *factors, full=False):
         return fn('aero/%s' % axis_name, product(*(scale + [tab(name, full)] + [prop(f) for f in factors])), desc)
     dcd = table2(t['pitch_d'], t['mach'], np.array(t['dCD_de']).T.tolist(), 'ctl/pitch-deg', MACH)
+    ge = lambda n: table2(t['ge_alpha'], t['ge_agl'], t[n], A, 'aero/wheel-height-ft')
+    spoil = lambda cal: product(*(qs + [prop(cal), prop('ctl/spoiler-norm')]))
     axes = [
         ('LIFT', [term('lift-basic', 'lift against angle of attack and Mach', qs, 'CL', full=True),
                   term('lift-pitch-rate', 'lift due to pitch rate', qs, 'CLq', 'aero/ci2vel', 'velocities/q-aero-rad_sec'),
-                  term('lift-ruddervators', 'lift due to the ruddervators together', qs, 'CL_de', 'ctl/pitch-deg')]),
+                  term('lift-ruddervators', 'lift due to the ruddervators together', qs, 'CL_de', 'ctl/pitch-deg'),
+                  fn('aero/lift-ground-effect', product(*(qs + [ge('dCL_ge')])), 'lift gained near the ground'),
+                  fn('aero/lift-spoilers', spoil('cal/spoiler-lift'), 'lift dumped by the spoilers (cal/spoiler-lift is negative)')]),
         ('DRAG', [term('drag-basic', 'drag against angle of attack and Mach, controls neutral', qs, 'CD', full=True),
                   fn('aero/drag-ruddervators', product(*(qs + [dcd])), 'drag change with the ruddervators together (trim drag)'),
                   fn('aero/drag-calibration', product(*(qs + [prop('cal/drag-increment')])),
-                     'a constant drag coefficient added by the calibration against measured climb and cruise-climb')]),
+                     'a constant drag coefficient added by the calibration against measured climb and cruise-climb'),
+                  fn('aero/drag-ground-effect', product(*(qs + [ge('dCD_ge')])), 'induced drag lost near the ground'),
+                  fn('aero/drag-gear', product(*(qs + [prop('ctl/gear-norm'), '          <value>%g</value>' % GEAR_DRAG])), 'gear down'),
+                  fn('aero/drag-spoilers', spoil('cal/spoiler-drag'), 'drag of the spoilers')]),
         ('SIDE', [term('side-sideslip', 'side force due to sideslip', qs, 'CYb', 'aero/beta-deg'),
                   term('side-ruddervators', 'side force due to the ruddervators against each other', qs, 'CY_dr', 'ctl/yaw-deg')]),
         ('ROLL', [term('roll-sideslip', 'roll due to sideslip', qsb, 'Clb', 'aero/beta-deg'),
@@ -125,7 +135,8 @@ def aerodynamics(t):
                   term('roll-ruddervators', 'roll due to the ruddervators against each other', qsb, 'Cl_dr', 'ctl/yaw-deg')]),
         ('PITCH', [term('pitch-basic', 'pitching moment against angle of attack and Mach', qsc, 'Cm', full=True),
                    term('pitch-damping', 'pitch due to pitch rate', qsc, 'Cmq', 'aero/ci2vel', 'velocities/q-aero-rad_sec'),
-                   term('pitch-ruddervators', 'pitch due to the ruddervators together', qsc, 'Cm_de', 'ctl/pitch-deg')]),
+                   term('pitch-ruddervators', 'pitch due to the ruddervators together', qsc, 'Cm_de', 'ctl/pitch-deg'),
+                   fn('aero/pitch-ground-effect', product(*(qsc + [ge('dCm_ge')])), 'pitching moment near the ground')]),
         ('YAW', [term('yaw-sideslip', 'yaw due to sideslip', qsb, 'Cnb', 'aero/beta-deg'),
                  term('yaw-roll-rate', 'yaw due to roll rate', qsb, 'Cnp', 'aero/bi2vel', 'velocities/p-aero-rad_sec'),
                  term('yaw-damping', 'yaw due to yaw rate', qsb, 'Cnr', 'aero/bi2vel', 'velocities/r-aero-rad_sec'),
@@ -170,6 +181,10 @@ def main_file(t, name):
       <brake_group>%s</brake_group>
       <retractable>1</retractable>
     </contact>''' % (nm, loc('location', x, y, -defl), k, c, steer, group)
+    def structure():
+        pts = [('left wing tip', w['mac_le_x'] + 6.0, -w['span'] / 2, w['z']), ('right wing tip', w['mac_le_x'] + 6.0, w['span'] / 2, w['z']),
+               ('nose', 1.0, 0, 3.0), ('tail', G['fuselage']['length'] - 0.5, 0, 5.3), ('belly', 15.0, 0, 1.7)]
+        return ''.join('''\n    <contact type="STRUCTURE" name="%s">\n%s\n      <static_friction>0.6</static_friction><dynamic_friction>0.5</dynamic_friction>\n      <spring_coeff unit="LBS/FT">20000</spring_coeff>\n      <damping_coeff unit="LBS/FT/SEC">3000</damping_coeff>\n    </contact>''' % (nm, loc('location', x, y, z)) for nm, x, y, z in pts)
     return '''<?xml version="1.0"?>
 <!-- Generated by fdm/genghawk.py (%s). Do not edit: change the generator or its data.
      NASA Global Hawk (RQ-4A), modelled from public data. Not made or endorsed by NASA or Northrop Grumman. -->
@@ -225,7 +240,7 @@ def main_file(t, name):
        pay['weight'], loc('location', pay['x'], 0, pay['z']),
        contact('nose', gear['nose_x'], 0, w_nose, 0.4, 60, 'NONE'),
        contact('left main', gear['main_x'], -gear['main_track'] / 2, w_main, 0.5, 0, 'LEFT'),
-       contact('right main', gear['main_x'], gear['main_track'] / 2, w_main, 0.5, 0, 'RIGHT'),
+       contact('right main', gear['main_x'], gear['main_track'] / 2, w_main, 0.5, 0, 'RIGHT') + structure(),
        tanks, loc('location', nac['inlet_x'] + 0.5 * nac['length'], 0, nac['thrust_line_z']), aerodynamics(t))
 
 
@@ -239,10 +254,39 @@ def controls_file():
     ail = '''    <fcs_function name="ctl/aileron-deg">
       <description>ailerons as the aerodynamic tables take them: right trailing edge down positive, which rolls left</description>
       <function><product><value>-1</value><property>ctl/roll-cmd-deg</property></product></function>
-    </fcs_function>'''
+    </fcs_function>
+    <fcs_function name="ctl/spoiler-norm">
+      <description>spoilers, 0 to 1 (1 is %g deg), from the speedbrake command; the approach is taken to be flown at %g deg</description>
+      <function><property>fcs/speedbrake-cmd-norm</property></function>
+      <clipto><min>0</min><max>1</max></clipto>
+    </fcs_function>
+    <fcs_function name="aero/wheel-height-ft">
+      <description>height of the wheels above the ground, for ground effect</description>
+      <function><difference><property>position/h-agl-ft</property><value>%.2f</value></difference></function>
+      <clipto><min>0</min><max>1000</max></clipto>
+    </fcs_function>
+    <kinematic name="gear/position">
+      <description>gear travel: %g s (an estimate)</description>
+      <input>gear/gear-cmd-norm</input>
+      <traverse><setting><position>0</position><time>0</time></setting><setting><position>1</position><time>%g</time></setting></traverse>
+      <output>gear/gear-pos-norm</output>
+    </kinematic>
+    <switch name="ctl/gear-norm">
+      <description>gear position as the drag sees it: the command itself when ctl/instant is set (trims)</description>
+      <default value="gear/gear-pos-norm"/>
+      <test value="gear/gear-cmd-norm">ctl/instant == 1</test>
+    </switch>
+    <fcs_function name="ctl/steer-deg">
+      <description>nose-wheel steering, %g deg at full command</description>
+      <function><product><value>%g</value><property>fcs/steer-cmd-norm</property></product></function>
+      <output>fcs/steer-pos-deg</output>
+    </fcs_function>''' % (SPOILER_MAX_DEG, SPOILER_APPROACH_DEG, 5.3, 8.0, 8.0, 60.0, 60.0)
     return '''<?xml version="1.0"?>
 <!-- Generated by fdm/genghawk.py. Surfaces follow the commands directly: no actuators, no flight laws yet. -->
 <system name="controls">
+  <property value="0">ctl/instant</property>
+  <property value="%g">cal/spoiler-lift</property>
+  <property value="%g">cal/spoiler-drag</property>
   <channel name="surfaces">
 %s
 %s
@@ -250,7 +294,8 @@ def controls_file():
 %s
   </channel>
 </system>
-''' % (surf('pitch-deg', 'fcs/elevator-cmd-norm', 'both ruddervators, trailing edge down positive: nose down'),
+''' % (CAL.get('spoiler_lift', 0.0), CAL.get('spoiler_drag', 0.0),
+       surf('pitch-deg', 'fcs/elevator-cmd-norm', 'both ruddervators, trailing edge down positive: nose down'),
        surf('roll-cmd-deg', 'fcs/aileron-cmd-norm', 'roll command, right wing down positive'),
        surf('yaw-deg', 'fcs/rudder-cmd-norm', 'ruddervators against each other, nose right positive'), ail)
 
@@ -269,7 +314,6 @@ def engine_file():
   <property value="1">engine/running</property>
   <property value="%g">cal/fuel-factor</property>
   <property value="%g">cal/drag-increment</property>
-  <property value="0">ctl/instant</property>
   <channel name="engine">
     <fcs_function name="engine/pressure-altitude-ft">
       <description>pressure altitude from the static pressure, standard atmosphere</description>

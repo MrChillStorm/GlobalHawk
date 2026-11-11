@@ -68,9 +68,11 @@ def set_weight(f, weight):
 
 
 def state(f, cond, alpha, pitch_cmd, throttle, x=None):
-    """Put the aircraft at a condition and return the six accelerations. x overrides the motion:
+    """Put the aircraft at a condition (alt, mach or kcas, weight; gamma in deg, gear 0-1, spoiler 0-1 optional)
+    and return the six accelerations. x overrides the motion:
     [u, v, w, p, q, r, phi, theta] in ft/s, rad/s and rad."""
     set_weight(f, cond['weight'])
+    f['ic/terrain-elevation-ft'] = 0.0
     f['ic/h-sl-ft'] = cond['alt']
     f['ic/psi-true-deg'] = 0
     f['ic/lat-geod-deg'] = 35.0
@@ -91,6 +93,8 @@ def state(f, cond, alpha, pitch_cmd, throttle, x=None):
     f['fcs/aileron-cmd-norm'] = 0
     f['fcs/rudder-cmd-norm'] = 0
     f['fcs/throttle-cmd-norm'] = throttle
+    f['gear/gear-cmd-norm'] = cond.get('gear', 0.0)
+    f['fcs/speedbrake-cmd-norm'] = cond.get('spoiler', 0.0)
     f['ctl/instant'] = 1
     f['engine/running'] = 1
     freeze(f, True)
@@ -188,3 +192,147 @@ def fly(f, t, seconds, hold=True, lag=False):
                          ('cg', 'inertia/cg-x-in'), ('flow', 'engine/fuel-flow-pph')):
                 log[k].append(f[p])
     return {k: np.array(v) for k, v in log.items()}
+
+
+# ---- on the ground. The pilot below is plain Python run at the model's rate, standing in for the flight laws.
+def on_ground(f, weight, elevation=2300.0, heading=0.0):
+    """Stand the aircraft on its wheels at rest and let it settle for 5 s."""
+    set_weight(f, weight)
+    f['ic/terrain-elevation-ft'] = elevation
+    f['ic/h-agl-ft'] = 5.5
+    f['ic/psi-true-deg'] = heading
+    f['ic/lat-geod-deg'] = 35.0
+    for k in ('ic/u-fps', 'ic/v-fps', 'ic/w-fps', 'ic/p-rad_sec', 'ic/q-rad_sec', 'ic/r-rad_sec', 'ic/phi-deg', 'ic/theta-deg',
+              'ic/alpha-deg', 'ic/beta-deg'):
+        f[k] = 0
+    f['ic/vc-kts'] = 0
+    for k in ('fcs/elevator-cmd-norm', 'fcs/aileron-cmd-norm', 'fcs/rudder-cmd-norm', 'fcs/throttle-cmd-norm', 'fcs/steer-cmd-norm',
+              'fcs/speedbrake-cmd-norm'):
+        f[k] = 0
+    f['gear/gear-cmd-norm'] = 1
+    f['fcs/left-brake-cmd-norm'] = f['fcs/right-brake-cmd-norm'] = 1
+    f['ctl/instant'] = 0
+    f['engine/running'] = 1
+    freeze(f, False)
+    f.run_ic()
+    for _ in range(int(5 * HZ)):
+        f.run()
+
+
+def brakes(f, level):
+    f['fcs/left-brake-cmd-norm'] = f['fcs/right-brake-cmd-norm'] = float(np.clip(level, 0, 1))
+
+
+def snapshot(f, log):
+    for k, p in (('t', 'simulation/sim-time-sec'), ('agl', 'position/h-agl-ft'), ('alt', 'position/h-sl-ft'), ('kcas', 'velocities/vc-kts'),
+                 ('keas', 'velocities/ve-kts'), ('gs', 'velocities/vg-fps'), ('theta', 'attitude/theta-deg'), ('phi', 'attitude/phi-deg'),
+                 ('psi', 'attitude/psi-deg'), ('alpha', 'aero/alpha-deg'), ('vs', 'velocities/h-dot-fps'), ('x', 'position/distance-from-start-mag-mt'),
+                 ('wow', 'gear/unit[1]/WOW'), ('nose', 'forces/fbz-gear-lbs'), ('thrust', 'engine/thrust-lbf')):
+        log.setdefault(k, []).append(f[p])
+
+
+def heading_error(f, target):
+    return (f['attitude/psi-deg'] - target + 180.0) % 360.0 - 180.0
+
+
+def takeoff(f, weight=25600.0, elevation=2300.0, rotate_kias=130.0, pitch_deg=6.0, climb_keas=150.0, seconds=150.0):
+    """From rest: full throttle, hold the heading with the nose wheel, raise the nose at the rotation speed, then
+    hold the climb speed with pitch attitude. Returns a log of arrays."""
+    on_ground(f, weight, elevation)
+    brakes(f, 0)
+    f['fcs/throttle-cmd-norm'] = 1.0
+    log, t0, airborne = {}, f['simulation/sim-time-sec'], False
+    for i in range(int(seconds * HZ)):
+        v = f['velocities/vc-kts']
+        e = heading_error(f, 0.0)
+        r = f['velocities/r-rad_sec']
+        if f['gear/unit[1]/WOW'] or f['gear/unit[2]/WOW']:
+            f['fcs/steer-cmd-norm'] = float(np.clip(-0.012 * e - 0.8 * r, -0.1, 0.1))
+            f['fcs/rudder-cmd-norm'] = float(np.clip(-0.2 * e - 1.0 * r, -1, 1))
+        else:
+            airborne = True
+            f['fcs/steer-cmd-norm'] = 0
+            f['fcs/rudder-cmd-norm'] = float(np.clip(-1.0 * r, -0.3, 0.3))
+        if v < rotate_kias and not airborne:
+            target = None
+        elif not airborne or f['position/h-agl-ft'] < 40:
+            target = pitch_deg
+        else:
+            target = float(np.clip(11.0 + 0.6 * (f['velocities/ve-kts'] - climb_keas), 3.0, 16.0))
+            f['gear/gear-cmd-norm'] = 0
+        if target is None:
+            f['fcs/elevator-cmd-norm'] = 0.0
+        else:
+            gain = 0.30 if not airborne else 0.08            # on the ground the nose is heavy: the tail has to work hard
+            f['fcs/elevator-cmd-norm'] = float(np.clip(-gain * (target - f['attitude/theta-deg']) + 1.5 * f['velocities/q-rad_sec'], -1, 1))
+        f['fcs/aileron-cmd-norm'] = float(np.clip(-1.5 * f['attitude/phi-rad'] - 0.5 * f['velocities/p-rad_sec'], -1, 1))
+        if not f.run():
+            break
+        if i % 12 == 0:
+            snapshot(f, log)
+    out = {k: np.array(v) for k, v in log.items()}
+    out['t'] = out['t'] - t0
+    return out
+
+
+def landing(f, approach, weight=20800.0, elevation=2300.0, start_agl=600.0, flare_agl=110.0, flare_pitch=2.4, decel_g=0.235, seconds=200.0):
+    """From a trimmed approach (a trim from trim(), with gear and spoilers) down to a stop: hold the approach's pitch
+    attitude, flare to a pitch attitude, idle, then full spoilers, nose down, and brakes held to a deceleration."""
+    c = dict(approach['cond'], alt=elevation + start_agl + 5.3)
+    state(f, c, approach['alpha'], approach['pitch_cmd'], approach['throttle'])
+    f['ic/terrain-elevation-ft'] = elevation
+    f.run_ic()
+    freeze(f, False)
+    f['ctl/instant'] = 0
+    brakes(f, 0)
+    th0, hdg = approach['alpha'] + c['gamma'], f['attitude/psi-deg']
+    sink0 = approach['ktas'] * KT * np.sin(np.radians(-c['gamma'])) * 0.3048       # m/s on the approach
+    log, t0, down, brake, td = {}, f['simulation/sim-time-sec'], False, 0.0, None
+    for i in range(int(seconds * HZ)):
+        agl = f['aero/wheel-height-ft']
+        wow = f['gear/unit[1]/WOW'] or f['gear/unit[2]/WOW']
+        if wow and not down:
+            down, td = True, dict(t=f['simulation/sim-time-sec'] - t0, keas=f['velocities/ve-kts'], sink=-f['velocities/h-dot-fps'] * 0.3048,
+                                  theta=f['attitude/theta-deg'], x=f['position/distance-from-start-mag-mt'])
+        if not down:
+            if agl > flare_agl:
+                f['fcs/elevator-cmd-norm'] = float(np.clip(approach['pitch_cmd'] - 0.10 * (th0 - f['attitude/theta-deg']) +
+                                                           1.5 * f['velocities/q-rad_sec'], -1, 1))
+            else:
+                # the flare: the sink rate is led down in proportion to the height left, to 0.6 m/s at the ground;
+                # pitch attitude follows the sink error, up to the flare attitude and a little over
+                f['fcs/throttle-cmd-norm'] = 0.0
+                # the spoilers close as the ground comes up: at the measured touchdown attitude (2.4 deg) the model
+                # can't hold its sink with them open, so the real flare is taken to be flown this way. A guess
+                f['fcs/speedbrake-cmd-norm'] = c.get('spoiler', 0.0) * float(np.clip(agl / flare_agl, 0, 1))
+                sink = -f['velocities/h-dot-fps'] * 0.3048
+                want = max(0.6, sink0 * agl / flare_agl)
+                target = float(np.clip(th0 + 1.2 * (sink - want), th0, flare_pitch + 2.0))
+                f['fcs/elevator-cmd-norm'] = float(np.clip(approach['pitch_cmd'] - 0.25 * (target - f['attitude/theta-deg']) +
+                                                           2.0 * f['velocities/q-rad_sec'], -1, 1))
+            f['fcs/rudder-cmd-norm'] = float(np.clip(-1.0 * f['velocities/r-rad_sec'], -0.3, 0.3))
+        else:
+            f['fcs/throttle-cmd-norm'] = 0.0
+            f['fcs/speedbrake-cmd-norm'] = 1.0
+            f['fcs/elevator-cmd-norm'] = 0.1
+            e, r = heading_error(f, hdg), f['velocities/r-rad_sec']
+            f['fcs/steer-cmd-norm'] = float(np.clip(-0.012 * e - 0.8 * r, -0.1, 0.1))
+            f['fcs/rudder-cmd-norm'] = float(np.clip(-0.2 * e - 1.0 * r, -1, 1))
+            # brakes: an integrator on the deceleration error, once the nose wheel is down
+            if f['gear/unit[0]/WOW']:
+                dec = -f['accelerations/udot-ft_sec2'] / 32.174
+                brake = float(np.clip(brake + 0.8 * (decel_g - dec) / HZ, 0, 1))
+                brakes(f, brake)
+            if f['velocities/vg-fps'] < 1.0:
+                brakes(f, 1)
+                snapshot(f, log)
+                break
+        f['fcs/aileron-cmd-norm'] = float(np.clip(-1.5 * f['attitude/phi-rad'] - 0.5 * f['velocities/p-rad_sec'], -1, 1))
+        if not f.run():
+            break
+        if i % 12 == 0:
+            snapshot(f, log)
+    out = {k: np.array(v) for k, v in log.items()}
+    out['t'] = out['t'] - t0
+    out['touchdown'] = td
+    return out

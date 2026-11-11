@@ -421,6 +421,67 @@ within 3 % of Pastor's. Above about 27,000 ft the fan-speed limit is the lower o
   laws will hold speed with the elevator, as the real aircraft does, but it is a property to look at again.
 - Off-standard temperatures, the two ATTREX landings, sideslip in turns, and the Air Force paper's figures 5 to 13.
 
+## Gear, ground, takeoff and landing
+
+`fdm/phase5_checks.py` (12 checks, all pass). The pilot in these runs is plain Python at the model's rate
+(`fdm/harness.py`: `takeoff`, `landing`), standing in for the flight laws, which don't exist yet.
+
+**What the flight data shows** (ATTREX, 20 Hz; read before the limits were written):
+
+| | 2013-12-20, Edwards | 2014-03-06, Guam |
+|---|---|---|
+| Approach speed | 133 KEAS | 120 KEAS |
+| Sink rate, glide angle | 1,079 ft/min, 4.46 deg | 844 ft/min, 4.44 deg |
+| Angle of attack, pitch attitude | 4.66 deg, 0.05 deg | 4.29 deg, -0.17 deg |
+| Touchdown | 130 KEAS, pitch 2.4 deg, sink 0.66 m/s | 122 KEAS, pitch 2.3 deg, 0.75 m/s |
+| Rollout | a steady 0.235 g from 120 to 50 kt; 3,485 ft to 43 kt | 12 s at 0.055 g, then 0.26 g |
+| Landing weight, from our fuel model | 20,800 lb (a 6 h flight) | 17,100 lb (a 17 h flight) |
+
+- **The approach is flown at one lift coefficient, 0.645:** the two approach speeds are in the ratio of the square
+  roots of the two landing weights within half a percent. (A single assumed landing weight, tried first, could
+  not explain them.) That also supports the fuel model's weights.
+- **It is flown on spoilers.** Clean, the wing would give a lift coefficient near 1.0 at 4.5 deg; the aircraft has
+  0.645. A glide of 4.45 deg needs a lift-to-drag ratio of 13 where the clean aircraft has 28.
+- **The brakes hold a deceleration,** 0.235 to 0.26 g, steady from 120 to 50 kt while the air drag falls away.
+- The 19 records that start just after liftoff: 121 to 139 KEAS at 4.5 to 7 deg of pitch and 3.3 to 5.8 deg angle of
+  attack; half a minute later 147 to 151 KEAS, 10 to 14 deg of pitch, climbing 2,250 to 3,650 ft/min.
+- Pastor: 130 KIAS reached 37 and 38 s after the start of the roll; 2,500 to 5,000 ft in 59 to 63 s.
+
+**What was added to the model**
+
+| | | |
+|---|---|---|
+| Ground effect | lift, drag and moment against height and angle of attack | from the strip model's own vortices mirrored in the ground: at the wheels' height it adds 0.05 of lift coefficient and takes away 60 % of the induced drag |
+| Gear drag | 0.0065 | an estimate: 3.5 ft² of drag area |
+| Spoilers | lift -0.354 and drag +0.0263 at the approach setting | **a fit** to the 2013 approach (speed, glide and angle of attack at idle thrust). The setting is taken as 30 of 45 deg: an assumption, as is the straight line to 45 deg |
+| Brakes, steering, retraction | JSBSim's wheel brakes; 60 deg of nose-wheel steering; 8 s gear travel | estimates |
+| Structure | contact points at the wing tips, nose, tail and belly | so a bad landing shows |
+
+**Checks**
+
+| Check | Model | Measured | Limit | |
+|---|---|---|---|---|
+| Stands 60 s at 26,750 and 11,450 lb | doesn't move | | 0.5 ft | pass |
+| Taxi to 15 kt, turn 90 deg on the nose wheel, stop | bank up to 1.5 deg | | 3 deg | pass |
+| Brake release to 130 KIAS | 32.8 s | 37 and 38 s [Pastor] | 15 % | pass, predicted (-12.5 %) |
+| Liftoff | 133 KEAS, pitch 5.9 deg, angle of attack 4.4 deg | 121-139 KEAS, 4.5-7 deg, 3.3-5.8 deg [ATTREX] | inside | pass, predicted |
+| Climb half a minute after liftoff | 2,765 ft/min at 152 KEAS, pitch 10.6 deg | 2,250-3,650 ft/min, 10-14 deg [ATTREX] | inside | pass, predicted |
+| 2,500 to 5,000 ft | 54.4 s | 59 to 63 s [Pastor] | 15 % | pass, predicted (-10.9 %) |
+| 2014 approach with the spoilers fitted on 2013: angle of attack | 4.79 deg | 4.29 deg | 1 deg | pass, predicted |
+| The same: thrust | idle, 0.008 g left over | | idle to 30 % | pass, predicted |
+| Touchdown | 131 KEAS, sink 0.63 m/s | 130 KEAS, 0.66 m/s | sink under 1.5 m/s | pass |
+| Rollout from touchdown to 43 kt at 0.235 g | 3,557 ft | 3,485 ft | 15 % | pass |
+| Rest to rest without NaN | yes | | | pass |
+
+- **The takeoff is 12 % quick and the first climb 11 % quick,** both inside their limits and both the same way:
+  the model has a little too much thrust less drag at low speed and low height, at Pastor's assumed weight.
+- **The flare is not right yet.** With the spoilers held open the model can't arrest its sink at the measured
+  touchdown attitude, so the stand-in pilot closes them through the flare. It then touches down at the measured
+  speed and sink but at 0.4 deg of pitch where the aircraft had 2.4 deg. The real flare lies between: a guess until
+  the flight laws design the landing.
+- The thrust on the approach is idle with a little to spare (the model wants 130 lbf less than idle on the 2014
+  approach): the spoilers' drag carries whatever the real idle thrust is, which isn't known.
+
 ## ATTREX flight data
 
 The Meteorological Measurement System (NASA Ames) flew on N872NA through the ATTREX campaigns, 2011 to 2015. Its

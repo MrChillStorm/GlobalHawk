@@ -30,6 +30,8 @@ ALT = [0.0, 10000.0, 30000.0, 45000.0, 60000.0, 60000.0]
 ALPHA = [-6.0, -4.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0, 12.0]
 ALPHA_D = [0.0, 3.0, 6.0]                        # where the derivatives are taken
 PITCH_D = [-10.0, -5.0, 0.0, 5.0, 10.0]          # ruddervator angles for the drag increment
+GE_AGL = [0.0, 3.0, 8.0, 15.0, 30.0, 60.0, 120.0, 300.0]   # ft, wheels above the ground; no effect at the last
+GE_ALPHA = [-2.0, 0.0, 2.0, 4.0, 6.0, 8.0]
 MASS = json.load(open(os.path.join(HERE, 'data', 'mass.json')))
 REF = [MASS['cg_target']['x'], 0.0, 5.3]
 
@@ -92,6 +94,21 @@ def sample(ref=False):
         t['dCD_de'].append([round(tail(alt, mach, 3.0, pitch=d)['CD'] - b3['CD'], 6) for d in PITCH_D])
         print('Mach %.2f at %5.0f ft done: CL %.3f..%.3f, best L/D %.1f' % (
             mach, alt, t['CL'][-1][0], max(t['CL'][-1]), max(l / d for l, d in zip(t['CL'][-1], t['CD'][-1]))), flush=True)
+    # ground effect: the change in lift, drag and moment with the wheels' height, from the strips' image vortices,
+    # at takeoff and landing speed (the reference build takes the strips' too)
+    t['ge_agl'] = GE_AGL
+    t['ge_alpha'] = GE_ALPHA
+    free = [tail(0.0, 0.18, a) for a in GE_ALPHA]
+    for n in ('CL', 'CD', 'Cm'):
+        t['d%s_ge' % n] = []
+    for a, fr in zip(GE_ALPHA, free):
+        row = {n: [] for n in ('CL', 'CD', 'Cm')}
+        for h in GE_AGL[:-1]:
+            g = tail(0.0, 0.18, a, agl=h)
+            for n in row:
+                row[n].append(round(g[n] - fr[n], 6))
+        for n in row:
+            t['d%s_ge' % n].append(row[n] + [0.0])
     return t
 
 

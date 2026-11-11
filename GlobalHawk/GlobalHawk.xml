@@ -53,6 +53,36 @@
       <brake_group>RIGHT</brake_group>
       <retractable>1</retractable>
     </contact>
+    <contact type="STRUCTURE" name="left wing tip">
+      <location unit="IN"><x>331.55</x><y>-697.20</y><z>54.82</z></location>
+      <static_friction>0.6</static_friction><dynamic_friction>0.5</dynamic_friction>
+      <spring_coeff unit="LBS/FT">20000</spring_coeff>
+      <damping_coeff unit="LBS/FT/SEC">3000</damping_coeff>
+    </contact>
+    <contact type="STRUCTURE" name="right wing tip">
+      <location unit="IN"><x>331.55</x><y>697.20</y><z>54.82</z></location>
+      <static_friction>0.6</static_friction><dynamic_friction>0.5</dynamic_friction>
+      <spring_coeff unit="LBS/FT">20000</spring_coeff>
+      <damping_coeff unit="LBS/FT/SEC">3000</damping_coeff>
+    </contact>
+    <contact type="STRUCTURE" name="nose">
+      <location unit="IN"><x>12.00</x><y>0.00</y><z>36.00</z></location>
+      <static_friction>0.6</static_friction><dynamic_friction>0.5</dynamic_friction>
+      <spring_coeff unit="LBS/FT">20000</spring_coeff>
+      <damping_coeff unit="LBS/FT/SEC">3000</damping_coeff>
+    </contact>
+    <contact type="STRUCTURE" name="tail">
+      <location unit="IN"><x>526.80</x><y>0.00</y><z>63.60</z></location>
+      <static_friction>0.6</static_friction><dynamic_friction>0.5</dynamic_friction>
+      <spring_coeff unit="LBS/FT">20000</spring_coeff>
+      <damping_coeff unit="LBS/FT/SEC">3000</damping_coeff>
+    </contact>
+    <contact type="STRUCTURE" name="belly">
+      <location unit="IN"><x>180.00</x><y>0.00</y><z>20.40</z></location>
+      <static_friction>0.6</static_friction><dynamic_friction>0.5</dynamic_friction>
+      <spring_coeff unit="LBS/FT">20000</spring_coeff>
+      <damping_coeff unit="LBS/FT/SEC">3000</damping_coeff>
+    </contact>
   </ground_reactions>
   <propulsion>
     <tank type="FUEL">   <!-- wing inboard left -->
@@ -176,6 +206,35 @@
           <property>ctl/pitch-deg</property>
         </product>
       </function>
+      <function name="aero/lift-ground-effect">
+        <description>lift gained near the ground</description>
+        <product>
+          <property>aero/qbar-psf</property>
+          <property>metrics/Sw-sqft</property>
+          <table>
+            <independentVar lookup="row">aero/alpha-deg</independentVar>
+            <independentVar lookup="column">aero/wheel-height-ft</independentVar>
+            <tableData>
+                             0          3          8         15         30         60        120        300
+                  -2   0.028957   0.023302   0.016976   0.011613   0.006008   0.002321   0.000709          0
+                   0   0.048497   0.038714   0.027969   0.019031   0.009848   0.003809   0.001172          0
+                   2   0.050934   0.040993   0.030127   0.021011   0.011255    0.00451   0.001402          0
+                   4   0.055589   0.045657   0.034448   0.024525   0.013387   0.005406   0.001687          0
+                   6   0.056983   0.045506   0.032992   0.022555   0.011741     0.0046   0.001426          0
+                   8   0.055758   0.045199   0.033271   0.023042   0.012212   0.004856   0.001504          0
+            </tableData>
+          </table>
+        </product>
+      </function>
+      <function name="aero/lift-spoilers">
+        <description>lift dumped by the spoilers (cal/spoiler-lift is negative)</description>
+        <product>
+          <property>aero/qbar-psf</property>
+          <property>metrics/Sw-sqft</property>
+          <property>cal/spoiler-lift</property>
+          <property>ctl/spoiler-norm</property>
+        </product>
+      </function>
     </axis>
     <axis name="DRAG">
       <function name="aero/drag-basic">
@@ -238,6 +297,44 @@
           <property>aero/qbar-psf</property>
           <property>metrics/Sw-sqft</property>
           <property>cal/drag-increment</property>
+        </product>
+      </function>
+      <function name="aero/drag-ground-effect">
+        <description>induced drag lost near the ground</description>
+        <product>
+          <property>aero/qbar-psf</property>
+          <property>metrics/Sw-sqft</property>
+          <table>
+            <independentVar lookup="row">aero/alpha-deg</independentVar>
+            <independentVar lookup="column">aero/wheel-height-ft</independentVar>
+            <tableData>
+                             0          3          8         15         30         60        120        300
+                  -2  -0.000719  -0.000639  -0.000538  -0.000414  -0.000238   -9.7e-05   -3.1e-05          0
+                   0  -0.002145  -0.001808  -0.001427  -0.001052  -0.000587  -0.000239   -7.5e-05          0
+                   2  -0.004972  -0.004187  -0.003267  -0.002376  -0.001314  -0.000533  -0.000168          0
+                   4  -0.007142  -0.005896   -0.00451  -0.003247  -0.001784  -0.000723  -0.000226          0
+                   6  -0.009829  -0.008078  -0.006132  -0.004389  -0.002402  -0.000972  -0.000304          0
+                   8  -0.012543  -0.010296  -0.007803  -0.005583  -0.003054  -0.001234  -0.000387          0
+            </tableData>
+          </table>
+        </product>
+      </function>
+      <function name="aero/drag-gear">
+        <description>gear down</description>
+        <product>
+          <property>aero/qbar-psf</property>
+          <property>metrics/Sw-sqft</property>
+          <property>ctl/gear-norm</property>
+          <value>0.0065</value>
+        </product>
+      </function>
+      <function name="aero/drag-spoilers">
+        <description>drag of the spoilers</description>
+        <product>
+          <property>aero/qbar-psf</property>
+          <property>metrics/Sw-sqft</property>
+          <property>cal/spoiler-drag</property>
+          <property>ctl/spoiler-norm</property>
         </product>
       </function>
     </axis>
@@ -452,6 +549,27 @@
             </tableData>
           </table>
           <property>ctl/pitch-deg</property>
+        </product>
+      </function>
+      <function name="aero/pitch-ground-effect">
+        <description>pitching moment near the ground</description>
+        <product>
+          <property>aero/qbar-psf</property>
+          <property>metrics/Sw-sqft</property>
+          <property>metrics/cbarw-ft</property>
+          <table>
+            <independentVar lookup="row">aero/alpha-deg</independentVar>
+            <independentVar lookup="column">aero/wheel-height-ft</independentVar>
+            <tableData>
+                             0          3          8         15         30         60        120        300
+                  -2  -0.008666  -0.006789  -0.004407  -0.002642   -0.00121  -0.000444  -0.000133          0
+                   0   -0.01339   -0.01055   -0.00685   -0.00412  -0.001884  -0.000702  -0.000211          0
+                   2  -0.020833  -0.015979  -0.010221  -0.006049  -0.002743  -0.001019  -0.000309          0
+                   4  -0.025453  -0.019215  -0.012032  -0.006972  -0.003069  -0.001101  -0.000328          0
+                   6  -0.026922   -0.01982  -0.011781  -0.006265  -0.002398  -0.000771  -0.000213          0
+                   8  -0.031934  -0.023384  -0.013846  -0.007394  -0.002779  -0.000826   -0.00022          0
+            </tableData>
+          </table>
         </product>
       </function>
     </axis>

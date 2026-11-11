@@ -164,18 +164,35 @@ class Aircraft:
     def cg_at(self, percent_mac):
         return np.array([G['wing']['mac_le_x'] + percent_mac / 100.0 * G['wing']['mac'], 0.0, 5.3])
 
-    def induced(self, gamma, pts):
+    def image_downwash(self, agl):
+        """Downwash at each wing strip per unit circulation of each strip's mirror image below the ground
+        (negative: the images push the air up). The ground is taken as level with the aircraft's x axis."""
+        pts = np.stack([self.x, self.y, self.z], -1)
+        Dg = np.zeros((len(self.y), len(self.y)))
+        for j in range(len(self.y)):
+            g = np.zeros(len(self.y))
+            g[j] = -1.0
+            Dg[:, j] = -self.induced(g, pts, mirror=agl, only=j)[:, 2]
+        return Dg
+
+    def induced(self, gamma, pts, mirror=None, only=None):
         """Velocity (ft/s per unit, in body axes) induced at points by the wing's horseshoe vortices: straight bound
-        segments along y at each strip's quarter chord, trailing legs straight aft to infinity."""
+        segments along y at each strip's quarter chord, trailing legs straight aft to infinity. mirror: the same
+        vortices reflected in the ground, the wheels being that many feet above it (z is measured from the wheels)."""
         v = np.zeros_like(pts)
-        for a, b, x, z, g in zip(self.ya, self.yb, self.x, self.z, gamma):
+        zs = self.z if mirror is None else -self.z - 2.0 * mirror
+        for j, (a, b, x, z, g) in enumerate(zip(self.ya, self.yb, self.x, zs, gamma)):
+            if only is not None and j != only:
+                continue
             A, B = np.array([x, a, z]), np.array([x, b, z])
             v += g * (_segment(pts, A, B) + _semi(pts, B, +1.0) - _semi(pts, A, +1.0))
         return v
 
-    def solve(self, alt_ft, mach, alpha, beta=0.0, p=0.0, q=0.0, r=0.0, aileron=0.0, pitch=0.0, yaw=0.0, cg=None):
+    def solve(self, alt_ft, mach, alpha, beta=0.0, p=0.0, q=0.0, r=0.0, aileron=0.0, pitch=0.0, yaw=0.0, cg=None, agl=None):
         """Coefficients at a flight condition. Angles and deflections in degrees, rates in rad/s.
-        aileron: right trailing edge down; pitch: both ruddervators trailing edge down; yaw: against each other."""
+        aileron: right trailing edge down; pitch: both ruddervators trailing edge down; yaw: against each other.
+        agl: height of the wheels above the ground, ft, for ground effect: the wing's vortices get mirror images
+        below the ground, which hold back the downwash at the wing and at the tail."""
         T, P = E.isa(alt_ft)
         rho = P / (287.05287 * T) / 515.378818              # slug/ft3
         a = np.sqrt(1.4 * 287.05287 * T) / FT
@@ -203,6 +220,8 @@ class Aircraft:
         # downwash matrix: w at strip i per unit circulation of strip j (trailing legs only, the classical lifting line)
         yi = self.y[:, None]
         D = (1.0 / (yi - self.ya[None, :]) - 1.0 / (yi - self.yb[None, :])) / (4 * np.pi)
+        if agl is not None:
+            D = D + self.image_downwash(agl)
         # Newton's method on the circulation: residual gamma - V c cl(alpha_eff(gamma)) / 2, with each section's
         # own lift slope in the Jacobian
         gamma = np.zeros_like(self.y)
@@ -237,7 +256,9 @@ class Aircraft:
         Ft, Mt = np.zeros(3), np.zeros(3)
         for pan in self.tail:
             pts = np.stack([pan['x'], pan['y'], pan['z']], -1)
-            vt = local(pan['x'], pan['y'], pan['z']) + self.induced(gamma, pts) * np.array([1, 1, 1])
+            vt = local(pan['x'], pan['y'], pan['z']) + self.induced(gamma, pts)
+            if agl is not None:
+                vt = vt + self.induced(-gamma, pts, mirror=agl)
             chordwise = vt[:, 0]
             normal = vt @ pan['n']
             vmag = np.sqrt(chordwise ** 2 + normal ** 2)
