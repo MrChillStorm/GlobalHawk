@@ -21,14 +21,15 @@
 
     /**
      * Take the aircraft's list and the link's state. `lastHeard`: when anything last came down (ms, or null);
-     * `expected`: whether a link is expected at all (a station that has never connected does not alarm).
+     * `expected`: whether a link is expected at all (a station that has never connected does not alarm);
+     * `own`: alerts the station raises itself.
      */
-    update(fromAircraft, lastHeard, expected) {
+    update(fromAircraft, lastHeard, expected, own) {
       const t = this.now();
       const silent = expected && (lastHeard === null || t - lastHeard > SILENT_MS);
       let list = silent
         ? [{ id: 'no-link', level: 'warning', text: 'NO LINK TO THE AIRCRAFT', action: 'It flies its lost-link route by itself. Check the connection' }]
-        : (fromAircraft || []).slice();
+        : (fromAircraft || []).concat(own || []); // `own`: what the station itself sees, such as traffic
       const ids = new Set(list.map((a) => a.id));
       for (const root of Object.keys(HELD_BY)) if (ids.has(root)) list = list.filter((a) => !HELD_BY[root].includes(a.id));
       const next = [];

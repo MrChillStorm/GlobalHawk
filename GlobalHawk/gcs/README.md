@@ -6,7 +6,14 @@ aircraft notices the silence and flies its lost-link route home.**
 
 So far: the command link, a map, a flight display, engine, fuel and navigator status, one alert list, a plan
 editor with a forecast of time, fuel and height, several stations with a handover between them, and flying by hand
-with a gamepad or the keyboard. Traffic and a demo that needs no server come next.
+with a gamepad or the keyboard, other aircraft on the map, and a demo that needs nothing but this folder.
+
+## Try it with nothing else: the demo
+
+Open `index.html?demo=1` (add `&speed=10` to run it ten times as fast). The aircraft is then a stand-in inside
+the page: it takes the same commands and answers in the same words, but it is **not the flight model**, only a
+point that follows the plan with the real aircraft's climb, descent and turn rates. Good for learning the station;
+the demo strip can fail the engine or cut the link. It has no flying by hand and one station only.
 
 ## Run it
 
@@ -51,6 +58,11 @@ whole scenario through the link; `fdm/phase8c_checks.py` holds the forecast and 
 - **Navigators**: the four attitude sources; a button switches one off or on (confirmed, like any command).
 - **Glide reach**, in flight: a dotted green ring is how far the aircraft's own planner would count on gliding
   without the engine, and each landing site says what height it would have in hand there, or OUT OF REACH.
+- **Other aircraft** (FlightGear's AI and multiplayer traffic): an arrowhead with its callsign and its height
+  against ours in hundreds of feet. One that will come inside 0.75 nmi and 450 ft raises TRAFFIC, AVOID (within
+  55 s) or TRAFFIC, MANEUVER NOW (within 25 s); a pass inside 1 nmi and 700 ft, TRAFFIC, MONITOR. The levels are
+  those of NASA's detect-and-avoid studies; the prediction here is a simple straight-line one, and no avoiding
+  manoeuvre is suggested.
 - **The height profile** under the map: the heights the plan asks for (dashed) and the height forecast.
 
 ## Several stations, and handing over
@@ -137,7 +149,9 @@ without the engine. The aircraft refuses a plan with an unknown item, a point of
 
 - `js/link.js`: the station's end of the link (commands and their fates, heartbeat, delay), and the websocket.
 - `js/geo.js`: small-area geometry, as the aircraft does it.
-- `js/controls.js`: gamepad and keys to the stick message.
+- `js/controls.js`: gamepad and keys to the stick message. `js/traffic.js`: other aircraft and their alert levels.
+- `js/demo.js`, `js/demoplan.js`: the demo's stand-in aircraft and its plan.
+- `USER-TEST.md`: how the station is to be tested with people, and the pass mark. Not run yet.
 - `js/alerts.js`: the alert list's order, tones and acknowledging. `js/pfdmath.js`, `js/pfd.js`: the flight display.
 - `js/predict.js` with `js/perfdata.js`: the forecast. `js/editor.js`: the plan editor's logic. `js/plancheck.js`,
   `js/reach.js`: the aircraft's plan check and glide planner, ported so the station can show them at once.
@@ -145,4 +159,5 @@ without the engine. The aircraft refuses a plan with an unknown item, a point of
 - The aircraft's end: `fdm/onboard.py` and `fdm/missionmgr.py` (Python, for the checks and the simulator server;
   the same logic goes into the aircraft's Nasal for FlightGear).
 
-The demo field is made up. There is no background map yet, only a grid and a scale.
+The demo field is made up, and so are the two aircraft the simulator server shows as traffic. There is no
+background map yet, only a grid and a scale.

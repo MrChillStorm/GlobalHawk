@@ -22,6 +22,7 @@ import asyncio
 import base64
 import hashlib
 import json
+import math
 import mimetypes
 import os
 import struct
@@ -89,6 +90,28 @@ class Sim:
                 self.f[name] = float(value)
         elif path not in FG and not path.startswith('/gcs/down/'):
             self.extra[path] = value
+
+
+def traffic(t, lat0=34.9, lon0=-117.88):
+    """Two aircraft made up for the station's traffic display, as FlightGear's /ai/models tree gives them.
+    One flies up and down a line that crosses the demo plan's first leg at 20,000 ft; one passes high and far."""
+    def leafs(d):
+        return [dict(name=k, children=leafs(v)) if isinstance(v, dict) else dict(name=k, value=v, type='double') for k, v in d.items()]
+
+    def model(i, callsign, lat, lon, alt, hdg, kt, vs=0.0):
+        return dict(path='/ai/models/aircraft[%d]' % i, name='aircraft', index=i, type='none', children=leafs({
+            'callsign': callsign, 'valid': True, 'position': {'latitude-deg': lat, 'longitude-deg': lon, 'altitude-ft': alt},
+            'orientation': {'true-heading-deg': hdg}, 'velocities': {'true-airspeed-kt': kt, 'vertical-speed-fps': vs}}))
+    # a shuttle: 40 nmi each way at 240 kt along 130/310 deg through a point 18 nmi up the first leg
+    leg, period = 40.0, 2 * 40.0 / 240.0 * 3600.0
+    ph = (t % period) / period
+    s, hdg = (ph * 2 * leg - leg / 2, 130.0) if ph < 0.5 else ((1 - ph) * 2 * leg - leg / 2, 310.0)
+    cx, cy = lat0 + 18 / 60.0 * math.cos(math.radians(40)), lon0 + 18 / 60.0 * math.sin(math.radians(40)) / math.cos(math.radians(lat0))
+    a = (cx + s / 60.0 * math.cos(math.radians(130)), cy + s / 60.0 * math.sin(math.radians(130)) / math.cos(math.radians(lat0)))
+    b = (lat0 + 0.9, lon0 - 1.2 + (t * 420.0 / 3600.0) / 60.0 / math.cos(math.radians(lat0)))
+    return dict(path='/ai/models', name='models', index=0, type='none', children=[
+        model(0, 'SHUTTLE1', a[0], a[1], 20000.0, hdg, 240.0), model(1, 'HIGH22', b[0], b[1], 36000.0, 90.0, 420.0),
+        dict(name='count', value=2, type='int')])
 
 
 def node(path, value):
@@ -189,6 +212,8 @@ class Server:
     def http(self, method, path, body):
         if method == 'OPTIONS':
             return '204 No Content', 'text/plain', b''
+        if path.startswith('/json/ai/models'):
+            return '200 OK', 'application/json', json.dumps(traffic(self.sim.f['simulation/sim-time-sec'])).encode()
         if path.startswith('/json/'):
             prop = path[5:]
             if method == 'POST':

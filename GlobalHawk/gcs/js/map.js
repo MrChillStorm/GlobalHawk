@@ -49,7 +49,21 @@
       });
       canvas.addEventListener('wheel', (e) => {
         e.preventDefault();
-        this.ftPerPx = Math.min(20000, Math.max(2, this.ftPerPx * (e.deltaY > 0 ? 1.25 : 0.8)));
+        // Zoom by how far the wheel moved, not once per event: a trackpad sends dozens of small events for one
+        // gesture, a mouse wheel one large one per notch (about 100, or 3 when it counts in lines). One notch is
+        // about 12 %; a pinch (which arrives as a wheel event with ctrl) is finer-grained and gets more per unit.
+        const dy = e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 300 : 1);
+        const step = Math.max(-0.3, Math.min(0.3, dy * (e.ctrlKey ? 0.008 : 0.0012)));
+        const r = canvas.getBoundingClientRect();
+        const x = e.clientX - r.left;
+        const y = e.clientY - r.top;
+        const under = this.unproject(x, y);
+        this.ftPerPx = Math.min(20000, Math.max(2, this.ftPerPx * Math.exp(step)));
+        if (!this.follow) {
+          // keep the place under the pointer where it is
+          const now = this.unproject(x, y);
+          this.centre = [this.centre[0] + under[0] - now[0], this.centre[1] + under[1] - now[1]];
+        }
         this.draw();
       }, { passive: false });
     }
@@ -251,6 +265,32 @@
         x.stroke();
         this.label(p, String(i + 1), COL.preview, 11, -9);
       });
+      // other aircraft: an arrowhead on its heading, its callsign and its height against ours in hundreds of feet
+      for (const t of d.traffic || []) {
+        const q = this.project([t.lat, t.lon]);
+        if (q[0] < -30 || q[1] < -30 || q[0] > this.w + 30 || q[1] > this.h + 30) continue;
+        const lvl = t.threat ? t.threat.level : null;
+        const far = t.threat && (t.threat.dist_ft > 20 * geo.NM || Math.abs(t.threat.rel_ft) > 5000);
+        const col = lvl === 'warning' ? '#ff3b3b' : lvl ? COL.lost : far ? '#6b7885' : '#e6edf3';
+        x.save();
+        x.translate(q[0], q[1]);
+        x.rotate((t.hdg * Math.PI) / 180);
+        x.beginPath();
+        x.moveTo(0, -8);
+        x.lineTo(6, 7);
+        x.lineTo(0, 3);
+        x.lineTo(-6, 7);
+        x.closePath();
+        x.fillStyle = lvl ? col : 'transparent';
+        x.strokeStyle = col;
+        x.lineWidth = 1.5;
+        x.fill();
+        x.stroke();
+        x.restore();
+        const rel = t.threat ? Math.round(t.threat.rel_ft / 100) : 0;
+        const arrow = t.vs_fps > 8 ? ' ↑' : t.vs_fps < -8 ? ' ↓' : '';
+        this.label([t.lat, t.lon], `${t.callsign} ${rel >= 0 ? '+' : '−'}${String(Math.abs(rel)).padStart(2, '0')}${arrow}`, col, 10, 4);
+      }
       this.line(this.trail, COL.trail, 1.5);
       if (this.own) {
         const q = this.project(this.own.p);

@@ -27,13 +27,28 @@
   TANKS.forEach((t, i) => (TELEMETRY['tank' + i] = `${J}propulsion/tank[${i}]/contents-lbs`));
   const NAVS = [['kna', 'KN-A'], ['knb', 'KN-B'], ['lna', 'LN-A'], ['lnb', 'LN-B']];
   NAVS.forEach((n) => (TELEMETRY['nav_' + n[0]] = `${J}nav/${n[0]}-on`));
+  const demo = q.get('demo') === '1';
   const station = q.get('station') || 'LRE';
   // over a satellite everything is late: 1.2 s each way is an assumed round figure for an MCE, none for the others
   const latency = q.get('latency') !== null ? Number(q.get('latency')) : station === 'MCE' ? 1200 : 0;
-  const link = new G.Link({ transport: new G.WsTransport(host, port), station, latency });
+  const demoSpeed = Math.max(1, Number(q.get('speed') || 1));
+  const aircraft = demo ? new G.DemoAircraft({ speed: demoSpeed }) : null; // ?demo=1: a stand-in in this page
+  const link = new G.Link({ transport: aircraft || new G.WsTransport(host, port), station, latency });
   const map = new G.MapView($('map'));
   const pfd = new G.FlightDisplay($('pfd'));
   const alerts = new G.Alerts();
+  let trafficList = []; // other aircraft, from FlightGear's AI and multiplayer tree
+  function pollTraffic() {
+    if (demo) {
+      trafficList = aircraft.traffic();
+      return;
+    }
+    if (link.state.mode !== 'live') return;
+    fetch(`http://${host}:${port}/json/ai/models?d=3`, { cache: 'no-store' }).then((r) => r.json()).then((tree) => {
+      trafficList = G.traffic.parse(tree);
+    }).catch(() => {});
+  }
+  setInterval(pollTraffic, 2000);
   const forecast = G.predict.make(G.perfdata);
   let editor = null; // the plan being edited, or null
   const hms = (s) => (s >= 3600 ? `${Math.floor(s / 3600)} h ${String(Math.round((s % 3600) / 60)).padStart(2, '0')} min` : `${Math.round(s / 60)} min`);
@@ -45,6 +60,21 @@
     const on = !(tel['nav_' + n[0]] > 0.5);
     arm({ name: 'nav', button: null, ready: () => true, args: () => ({ name: n[0], on }), text: () => `Switch navigator ${n[1]} ${on ? 'ON' : 'OFF'}${on ? '' : ': the aircraft votes between those left on'}` });
   }));
+
+  /* ------------------------------------------------------------- the demo's own controls */
+  $('demobar').hidden = !demo;
+  if (demo) {
+    $('d-speed').textContent = demoSpeed > 1 ? `running ${demoSpeed} times as fast as the clock` : 'add &speed=10 to the address to run it faster';
+    $('d-engine').addEventListener('click', () => {
+      aircraft.send('/fdm/jsbsim/engine/failed', 1);
+      $('d-engine').disabled = true;
+    });
+    $('d-link').addEventListener('click', () => {
+      if (link.beating) link.stop();
+      else link.start([]);
+      $('d-link').textContent = link.beating ? 'Cut the link' : 'Restore the link';
+    });
+  }
 
   /* ------------------------------------------------------------- who has control, and handing it over */
   const ticked = (id) => [...$(id).querySelectorAll('input[type=checkbox]')].every((b) => b.checked);
@@ -233,9 +263,10 @@
   }
 
   $('c-demo').addEventListener('click', () => {
-    fetch('../Missions/demo-local.json').then((r) => r.json()).then((p) => armPlan(p, $('c-demo'))).catch(() => {
-      $('conn').textContent = 'The demo plan could not be read from here (a page opened from a file cannot read other files): use "Plan file" and pick GlobalHawk/Missions/demo-local.json.';
-    });
+    // the copy that ships in js/demoplan.js is the same plan: a page opened from a file cannot read the Missions folder
+    const builtin = () => armPlan(JSON.parse(JSON.stringify(G.demoplan)), $('c-demo'));
+    if (demo || location.protocol === 'file:') builtin();
+    else fetch('../Missions/demo-local.json').then((r) => r.json()).then((p) => armPlan(p, $('c-demo'))).catch(builtin);
   });
   $('c-file').addEventListener('change', (e) => {
     const f = e.target.files[0];
@@ -552,7 +583,13 @@
     $('n-fuel').textContent = Number.isFinite(tel.fuel) ? fmtAlt(tel.fuel) : '-';
     $('n-thr').textContent = Number.isFinite(tel.thr) ? Math.round(tel.thr * 100) + ' %' : '-';
     // one list: the aircraft's alerts and the station's own, ranked, each with what to do
-    const list = alerts.update(s ? s.alerts : [], link.lastDown, !!(s && s.started) || link.lastDown !== null);
+    // other aircraft against our own path; the station raises the traffic alert (the aircraft has no sensor for it)
+    const ownPath = Number.isFinite(tel.lat) && Number.isFinite(tel.trackRad) ? { lat: tel.lat, lon: tel.lon, alt_ft: tel.alt, track: (tel.trackRad * 180) / Math.PI, kt: tel.gs || 0, vs_fps: tel.vs || 0 } : null;
+    const airborneNow = !!(s && s.started && !['taxi', 'takeoff', 'done'].includes(s.kind));
+    trafficList.forEach((t) => (t.threat = ownPath ? G.traffic.threat(ownPath, t) : null));
+    const trafficAlert = airborneNow ? G.traffic.alert(trafficList) : null;
+    map.data.traffic = trafficList;
+    const list = alerts.update(s ? s.alerts : [], link.lastDown, !!(s && s.started) || link.lastDown !== null, trafficAlert ? [trafficAlert] : []);
     const html = list.map((a) => `<div class="alert ${a.level} ${a.acked ? 'acked' : 'new'}"><b>${esc(a.text)}</b><span class="do">${esc(a.action)}</span>${a.acked ? '' : `<button data-ack="${esc(a.id)}">OK</button>`}</div>`).join('');
     if ($('alerts').dataset.html !== html) {
       $('alerts').innerHTML = html;
@@ -599,8 +636,8 @@
     $('c-resume').disabled = !(mine && s && s.off_plan && s.contingency !== 'engine' && s.kind !== 'done' && !byHand);
     $('c-home').disabled = !(mine && enroute && link.plan && link.plan.lost_link && !byHand);
     $('m-auto').disabled = !(mine && byHand);
-    $('m-prot').disabled = !(mine && enroute && s.manual !== 1);
-    $('m-direct').disabled = !(mine && enroute && s.manual !== 2);
+    $('m-prot').disabled = !(mine && enroute && s.manual !== 1) || demo; // flying by hand needs the flight model
+    $('m-direct').disabled = !(mine && enroute && s.manual !== 2) || demo;
     $('m-auto').classList.toggle('on', !!s && s.manual === 0);
     $('m-prot').classList.toggle('on', !!s && s.manual === 1);
     $('m-direct').classList.toggle('on', !!s && s.manual === 2);

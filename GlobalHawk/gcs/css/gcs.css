@@ -14,6 +14,9 @@ label { display: block; color: var(--dim); font-size: 11px; text-transform: uppe
 .chip.live { background: #123c25; color: var(--ok); }
 .chip.down { background: #4a1616; color: var(--warn); }
 .chip.connecting { background: #3d3210; color: var(--lost); }
+#demobar { background: #10303c; color: var(--preview); padding: 4px 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+#demobar[hidden] { display: none; }
+#demobar button { padding: 2px 10px; }
 #alerts { display: flex; flex-direction: column; }
 #alerts .alert { padding: 5px 12px; display: flex; gap: 14px; align-items: baseline; border-bottom: 1px solid #0006; }
 #alerts .alert b { letter-spacing: .04em; white-space: nowrap; }

@@ -160,8 +160,8 @@ class Onboard:
                 seq, name, station = int(cmd['seq']), str(cmd['name']), str(cmd.get('station', ''))
             except (ValueError, KeyError, TypeError):
                 return                           # not a command: nothing to answer
-            if self.answered.get(station) == seq:
-                return                           # answered already: a repeat is not done twice
+            if seq <= self.answered.get(station, float('-inf')):
+                return                           # this or a later one was answered already: an old command is never done again
             self.answered[station] = seq
             self.heard(station)
             self.sender = station

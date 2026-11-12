@@ -15,6 +15,12 @@
     <div class="cell"><label>Speed KCAS</label><div class="mid"><span id="kcas">-</span> <span class="target" id="kcas-cmd"></span></div></div>
     <div class="cell"><label>Link</label><div id="link" class="chip down">no link</div><div id="link-note" class="small"></div></div>
   </header>
+  <div id="demobar" hidden>
+    <b>DEMO</b> <span>a stand-in aircraft inside this page, not the flight model: for learning the station.</span>
+    <button id="d-engine">Fail the engine</button>
+    <button id="d-link">Cut the link</button>
+    <span id="d-speed"></span>
+  </div>
   <div id="alerts"></div>
   <main>
     <section id="mapwrap">
@@ -130,7 +136,10 @@
   <script src="js/plancheck.js"></script>
   <script src="js/reach.js"></script>
   <script src="js/editor.js"></script>
+  <script src="js/traffic.js"></script>
   <script src="js/controls.js"></script>
+  <script src="js/demoplan.js"></script>
+  <script src="js/demo.js"></script>
   <script src="js/map.js"></script>
   <script src="js/main.js"></script>
 </body>

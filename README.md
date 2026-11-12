@@ -45,6 +45,8 @@ station and the FlightGear aircraft don't exist yet.
   aircraft's end of the link; `fdm/phase8a_checks.py` flies a scenario through it. `fdm/phase8b_checks.py` checks the alerts the aircraft raises. [fdm/gcs_perf.py](fdm/gcs_perf.py) samples
   the model into the table the station forecasts with; `fdm/phase8c_checks.py` holds the forecast against flights of the model.
   `fdm/phase8d_checks.py`: several stations, handing over control, and flying by hand through the link.
+  `fdm/phase8e_checks.py`: traffic, and the demo's stand-in aircraft against the model. The station also runs
+  with nothing behind it: `GlobalHawk/gcs/index.html?demo=1`.
 
 ## Licence
 
