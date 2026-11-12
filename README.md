@@ -39,6 +39,10 @@ station and the FlightGear aircraft don't exist yet.
   recorded landings and one whole mission with it.
   `fdm/phase7c_checks.py`: a failed navigator, a lost link and a landing without the engine.
   `fdm/phase7d_checks.py`: flying it by hand, protected and direct.
+- [GlobalHawk/gcs/](GlobalHawk/gcs/README.md): the ground control station, a browser page (first part: the command
+  link, a map, commands with preview and acknowledgement). [fdm/gcs_server.py](fdm/gcs_server.py) stands in for
+  FlightGear with the flight model behind FlightGear's own web protocol; [fdm/onboard.py](fdm/onboard.py) is the
+  aircraft's end of the link; `fdm/phase8a_checks.py` flies a scenario through it.
 
 ## Licence
 

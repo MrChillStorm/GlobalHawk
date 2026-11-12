@@ -1,0 +1,10 @@
+{
+  "name": "globalhawk-gcs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ground control station for the FlightGear Global Hawk, in the browser",
+  "license": "GPL-2.0-only",
+  "scripts": {
+    "test": "for t in tests/*.test.js; do node $t || exit 1; done"
+  }
+}

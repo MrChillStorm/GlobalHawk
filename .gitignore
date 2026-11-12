@@ -12,3 +12,4 @@ __pycache__/
 .DS_Store
 # third-party tools set up locally (fdm/mkpycycle.sh): never committed
 /tools/
+/.claude/

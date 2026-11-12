@@ -7,6 +7,8 @@ A plan is a list of items:
     dict(kind='takeoff', start=(lat, lon), end=(lat, lon), elev=2300)
     dict(kind='route', points=[(lat, lon, alt_ft), ...])
     dict(kind='land', fix=(lat, lon), aim=(lat, lon), elev=2300)
+    dict(kind='hold', centre=(lat, lon), alt=20000)                           a circle; never ends by itself
+A route may carry start=(lat, lon): its first leg then begins there, not where the aircraft is (resuming a plan).
 
 Contingencies (docs/FLIGHT-LAWS.md, section 6):
     lost_link=[items]       what the aircraft flies instead of the rest of the plan once ap/link-lost is set
@@ -29,6 +31,9 @@ IN_HAND = 1000.0               # ft kept over at the entry point when choosing a
 CIRCLE_BANK = 15.0             # deg
 FINAL_SURPLUS = 300.0          # ft above the glide path the circle aims to leave for the final
 WING_AREA = 540.0
+K_PSI = 1.2                    # the heading law's gain (fdm/laws.py), deg of bank per deg at 600 ft/s
+MAX_ALT = 65000.0              # ft: the aircraft's maximum (NASA 2008)
+HOLD_BANK = 11.5               # deg: a hold's circle is flown well inside the bank limit, so it can be caught without overshoot
 
 
 class Field:
@@ -99,7 +104,8 @@ class Manager:
             f['ap/thrust-mode'], f['ap/ground-steer'], f['ap/pitch-mode'], f['ap/roll-mode'] = 1, 1, 3, 2
             f['ap/spoiler-mode'], f['ap/spoiler-cmd'] = 1, 0.0
         elif kind == 'route':
-            pts = [self.here() + (f['position/h-sl-ft'],)] + list(it['points'])
+            first = tuple(it['start']) if it.get('start') else self.here()
+            pts = [first + (f['position/h-sl-ft'],)] + list(it['points'])
             it['_pts'] = pts
             self.leg(pts[0], pts[1])
             f['ap/roll-mode'], f['ap/ground-steer'] = 2, 0
@@ -116,6 +122,11 @@ class Manager:
             f['ap/spoiler-mode'], f['ap/spoiler-cmd'] = 1, 0.667
             f['gear/gear-cmd-norm'] = 1
             it['_on_path'] = False
+        elif kind == 'hold':
+            f['ap/land-mode'] = 0
+            f['ap/roll-mode'], f['ap/ground-steer'] = 1, 0
+            it['side'] = 1.0
+            self.vertical(it['alt'])
         elif kind == 'engine_out':
             self.choose_site(it)
             f['ap/land-mode'] = 0
@@ -218,16 +229,34 @@ class Manager:
                 f['ap/thrust-mode'] = 4
                 self.next()
 
+    def circle(self, centre, radius, side, out_max=45.0, lead=False):
+        """The heading that flies a circle about a centre: the tangent, turned in or out for the distance off it.
+        Returns the bearing from the centre and the distance from it."""
+        f = self.f
+        out, d = course(centre, self.here())
+        ahead = 0.0
+        if lead:
+            # the heading law banks in proportion to the heading error, so a steady turn needs the command ahead
+            # of the nose by the error that gives the circle's bank (without it the hold sat 0.7 nmi outside)
+            bank = math.degrees(math.atan(f['velocities/vg-fps'] ** 2 / (32.174 * radius)))
+            ahead = bank / (K_PSI * max(f['velocities/vt-fps'], 100.0) / 600.0)
+        f['ap/heading-cmd-deg'] = (out + 90.0 * side + side * (ahead + float(np.clip(60.0 * (d - radius) / radius, -out_max, 80.0)))) % 360.0
+        return out, d
+
+    def hold_radius(self):
+        vg = max(self.f['velocities/vg-fps'], 100.0)
+        return vg * vg / (32.174 * math.tan(math.radians(HOLD_BANK)))
+
     def contingencies(self):
         """Leave the plan when the link is lost or the engine stops. Only in the air, and only once each."""
         f = self.f
         kind = self.plan[self.i]['kind']
-        if f['engine/failed'] == 1 and self.contingency != 'engine' and kind in ('route', 'land') and self.sites and f['ap/rollout'] == 0:
+        if f['engine/failed'] == 1 and self.contingency != 'engine' and kind in ('route', 'land', 'hold') and self.sites and f['ap/rollout'] == 0:
             self.contingency = 'engine'
             self.note('ENGINE FAILED')
             self.plan = self.plan[:self.i + 1] + [dict(kind='engine_out')]
             self.next()
-        elif f['ap/link-lost'] == 1 and self.contingency is None and kind == 'route' and self.lost_link:
+        elif f['ap/link-lost'] == 1 and self.contingency is None and kind in ('route', 'hold') and self.lost_link:
             self.contingency = 'link'
             self.note('LINK LOST: the contingency route')
             self.plan = self.plan[:self.i + 1] + [dict(d) for d in self.lost_link]
@@ -237,6 +266,7 @@ class Manager:
         """Climb, descend or hold towards a height."""
         f = self.f
         h = f['position/h-sl-ft']
+        alt = min(alt, MAX_ALT)
         f['ap/alt-cmd-ft'] = alt
         f['ap/speed-schedule'] = 1
         if abs(alt - h) <= 150.0:
@@ -268,6 +298,11 @@ class Manager:
         if kind == 'engine_out':
             self.engine_out(it)
             return
+        if kind == 'hold':
+            it['radius'] = it.get('radius') or self.hold_radius()      # fixed once the hold begins: the station draws it
+            self.circle(it['centre'], it['radius'], it['side'], out_max=30.0, lead=True)
+            self.vertical(it['alt'])
+            return
         if kind == 'taxi':
             pts = it['_pts']
             last = self.k == len(pts) - 2
@@ -298,7 +333,7 @@ class Manager:
                 self.next()
         elif kind == 'route':
             pts = it['_pts']
-            self.vertical(pts[self.k + 1][2])
+            self.vertical(it.get('alt_override', pts[self.k + 1][2]))
             last = self.k == len(pts) - 2
             lead = 0.0
             if not last:
@@ -312,6 +347,7 @@ class Manager:
                     self.next()
                 else:
                     self.k += 1
+                    it.pop('alt_override', None)
                     self.leg(pts[self.k], pts[self.k + 1])
                     self.note('leg %d' % (self.k + 1))
         elif kind == 'land':

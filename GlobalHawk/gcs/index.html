@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Global Hawk ground control station</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="css/gcs.css">
+</head>
+<body>
+  <header id="strip">
+    <div class="cell wide"><label>Doing</label><div id="doing" class="big">no connection</div></div>
+    <div class="cell wide"><label>Next</label><div id="next" class="mid"></div></div>
+    <div class="cell"><label>Altitude ft</label><div class="mid"><span id="alt">-</span> <span class="target" id="alt-cmd"></span></div></div>
+    <div class="cell"><label>Speed KCAS</label><div class="mid"><span id="kcas">-</span> <span class="target" id="kcas-cmd"></span></div></div>
+    <div class="cell"><label>Link</label><div id="link" class="chip down">no link</div><div id="link-note" class="small"></div></div>
+  </header>
+  <div id="alerts"></div>
+  <main>
+    <section id="mapwrap">
+      <canvas id="map"></canvas>
+      <div id="maptools">
+        <button id="follow" class="on" title="keep the aircraft in the middle">follow</button>
+        <button id="fit" title="show the whole plan">plan</button>
+      </div>
+      <div id="legend">
+        <span class="k plan">plan</span><span class="k active">flying now</span><span class="k lost">if the link is lost</span><span class="k preview">not sent yet</span>
+      </div>
+      <div id="confirm" hidden>
+        <div id="confirm-text"></div>
+        <div id="confirm-extra"></div>
+        <button id="confirm-yes">Send</button>
+        <button id="confirm-no">Cancel</button>
+      </div>
+    </section>
+    <aside>
+      <h2>Aircraft</h2>
+      <table id="numbers">
+        <tr><td>Heading</td><td id="n-hdg">-</td><td>Mach</td><td id="n-mach">-</td></tr>
+        <tr><td>Ground speed</td><td id="n-gs">-</td><td>Climb ft/min</td><td id="n-vs">-</td></tr>
+        <tr><td>Fuel lb</td><td id="n-fuel">-</td><td>Throttle</td><td id="n-thr">-</td></tr>
+      </table>
+      <h2>Commands</h2>
+      <div id="commands">
+        <div class="row">
+          <button id="c-demo" title="the demo plan that ships with the aircraft">Demo plan</button>
+          <label class="filebtn">Plan file<input type="file" id="c-file" accept=".json,application/json"></label>
+          <button id="c-start">Start</button>
+        </div>
+        <div class="row">
+          <button id="c-goto" title="then click the map">Go to…</button>
+          <button id="c-hold">Hold here</button>
+          <button id="c-alt">Altitude…</button>
+        </div>
+        <div class="row">
+          <button id="c-resume">Resume plan</button>
+          <button id="c-home">Return home</button>
+        </div>
+      </div>
+      <h2>Sent</h2>
+      <ol id="log"></ol>
+      <h2>From the aircraft</h2>
+      <ol id="events"></ol>
+      <footer id="conn"></footer>
+    </aside>
+  </main>
+  <script src="js/geo.js"></script>
+  <script src="js/link.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
