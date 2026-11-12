@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <!-- NASA's Global Hawk N872NA (an RQ-4A) for FlightGear: a JSBSim model built from public data, with its own flight
      laws on board. Not made or endorsed by NASA or by the aircraft's makers. The real aircraft has no cockpit, and
-     neither has this one: it is watched from outside or through a camera in the nose, and flown from the ground
+     neither has this one: it is watched from outside or through its cameras (one in the nose, one under the belly for the sensor operator), and flown from the ground
      control station in gcs/ (start FlightGear with its web server on: the httpd option, port 5400). -->
 <PropertyList>
  <sim>
@@ -14,6 +14,7 @@
   <flight-model>jsb</flight-model>
   <aero>GlobalHawk</aero>
   <model><path>Aircraft/GlobalHawk/Models/GlobalHawk.xml</path></model>
+  <sound><path>Aircraft/GlobalHawk/Sounds/globalhawk-sound.xml</path></sound>
   <rating><FDM type="int">3</FDM><systems type="int">2</systems><cockpit type="int">0</cockpit><model type="int">1</model></rating>
   <tags><tag>uav</tag><tag>jet</tag><tag>high-altitude</tag><tag>nasa</tag></tags>
   <!-- the camera in the nose: there is no cockpit to sit in -->
@@ -28,7 +29,39 @@
     <default-field-of-view-deg type="double">70</default-field-of-view-deg>
    </config>
   </view>
+  <!-- the sensor operator's camera, in the dome under the fuselage behind the wing that NASA's 3-D model has (the
+       military aircraft's electro-optical and infrared sensor sits further forward, under the nose section): it starts
+       looking 45 deg down and ahead, and is turned and zoomed as any view is -->
+  <view n="100">
+   <name>Belly Camera</name>
+   <type>lookfrom</type>
+   <internal type="bool">false</internal>
+   <config>
+    <from-model type="bool">true</from-model>
+    <from-model-idx type="int">0</from-model-idx>
+    <ground-level-nearplane-m type="double">0.3</ground-level-nearplane-m>
+    <x-offset-m type="double">0.0</x-offset-m>
+    <y-offset-m type="double">0.66</y-offset-m>
+    <z-offset-m type="double">9.0</z-offset-m>
+    <pitch-offset-deg type="double">-45</pitch-offset-deg>
+    <default-field-of-view-deg type="double">40</default-field-of-view-deg>
+    <limits><enabled type="bool">false</enabled></limits>
+   </config>
+  </view>
   <chase-distance-m type="double" archive="y">-55</chase-distance-m>
+  <menubar>
+   <default>
+    <menu n="100">
+     <label>Global Hawk</label>
+     <item><label>Autostart</label><binding><command>nasal</command><script>globalhawk.autostart()</script></binding></item>
+     <item><label>Shutdown</label><binding><command>nasal</command><script>globalhawk.shutdown()</script></binding></item>
+     <item><label>Belly camera: lock and slew...</label><binding><command>dialog-show</command><dialog-name>globalhawk-camera</dialog-name></binding></item>
+     <item><label>Belly camera: lock on the cross</label><binding><command>nasal</command><script>globalhawk.camera.lock_cross()</script></binding></item>
+     <item><label>Belly camera: lock on the nearest object</label><binding><command>nasal</command><script>globalhawk.camera.lock_nearest()</script></binding></item>
+     <item><label>Belly camera: unlock</label><binding><command>nasal</command><script>globalhawk.camera.unlock()</script></binding></item>
+    </menu>
+   </default>
+  </menubar>
   <help><title>Global Hawk</title><line>It flies itself. Supervise it from the ground control station: open gcs/index.html</line><line>and point it at FlightGear (started with --httpd=5400). With a joystick it is flown through its protected law.</line></help>
  </sim>
  <controls>
@@ -40,5 +73,6 @@
   <file>Aircraft/GlobalHawk/Nasal/json.nas</file>
   <file>Aircraft/GlobalHawk/Nasal/missionmgr.nas</file>
   <file>Aircraft/GlobalHawk/Nasal/onboard.nas</file>
+  <file>Aircraft/GlobalHawk/Nasal/camera.nas</file>
  </globalhawk></nasal>
 </PropertyList>

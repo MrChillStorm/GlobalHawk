@@ -1,0 +1,559 @@
+{
+ "aircraft": "RQ-4A Global Hawk",
+ "generator": "pywopwop tyre",
+ "sample_rate": 48000.0,
+ "exterior_distance_m": 30.0,
+ "gain_db": {
+  "cockpit": -26.307,
+  "exterior": -28.96
+ },
+ "surface": "asphalt",
+ "structure": "p2006t",
+ "airframe_kg": 9072.0,
+ "speeds_kt": [
+  5.0,
+  10.0,
+  20.0,
+  30.0,
+  45.0,
+  60.0,
+  75.0,
+  90.0
+ ],
+ "low_speed_power": {
+  "nose": 2.41,
+  "left_main": 2.45,
+  "right_main": 2.45
+ },
+ "tyres": [
+  {
+   "name": "nose",
+   "gear": 0,
+   "position": [
+    -3.2150304000000003,
+    0.0,
+    0.0
+   ],
+   "width_m": 0.165,
+   "diameter_m": 0.457,
+   "count": 2,
+   "static_compression_ft": 0.2990718459951873
+  },
+  {
+   "name": "left_main",
+   "gear": 1,
+   "position": [
+    -7.7080872000000005,
+    2.0816316,
+    0.0
+   ],
+   "width_m": 0.146,
+   "diameter_m": 0.559,
+   "count": 2,
+   "static_compression_ft": 0.3738233164373642
+  },
+  {
+   "name": "right_main",
+   "gear": 2,
+   "position": [
+    -7.7080872000000005,
+    -2.0816316,
+    0.0
+   ],
+   "width_m": 0.146,
+   "diameter_m": 0.559,
+   "count": 2,
+   "static_compression_ft": 0.3738233164373642
+  }
+ ],
+ "properties": {
+  "speed": "/gear/gear[{n}]/rollspeed-ms",
+  "speed_scale": 1.9438461717893492,
+  "load": "/gear/gear[{n}]/compression-norm",
+  "wow": "/gear/gear[{n}]/wow"
+ },
+ "files": [
+  {
+   "file": "tyre_nose_5kt_side.wav",
+   "tyre": "nose",
+   "view": "side",
+   "groundspeed_kt": 5.0,
+   "oaspl_db": 38.55,
+   "dba": 35.75,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_nose_5kt_cockpit.wav",
+   "tyre": "nose",
+   "view": "cockpit",
+   "groundspeed_kt": 5.0,
+   "oaspl_db": 68.81,
+   "dba": 55.05,
+   "limited_samples": 0,
+   "airborne_dba": 45.54,
+   "structure_dba": 55.26
+  },
+  {
+   "file": "tyre_nose_10kt_side.wav",
+   "tyre": "nose",
+   "view": "side",
+   "groundspeed_kt": 10.0,
+   "oaspl_db": 46.65,
+   "dba": 44.23,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_nose_10kt_cockpit.wav",
+   "tyre": "nose",
+   "view": "cockpit",
+   "groundspeed_kt": 10.0,
+   "oaspl_db": 73.9,
+   "dba": 61.32,
+   "limited_samples": 0,
+   "airborne_dba": 53.7,
+   "structure_dba": 61.11
+  },
+  {
+   "file": "tyre_nose_20kt_side.wav",
+   "tyre": "nose",
+   "view": "side",
+   "groundspeed_kt": 20.0,
+   "oaspl_db": 54.06,
+   "dba": 52.47,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_nose_20kt_cockpit.wav",
+   "tyre": "nose",
+   "view": "cockpit",
+   "groundspeed_kt": 20.0,
+   "oaspl_db": 77.61,
+   "dba": 66.53,
+   "limited_samples": 0,
+   "airborne_dba": 61.11,
+   "structure_dba": 65.59
+  },
+  {
+   "file": "tyre_nose_30kt_side.wav",
+   "tyre": "nose",
+   "view": "side",
+   "groundspeed_kt": 30.0,
+   "oaspl_db": 58.1,
+   "dba": 57.12,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_nose_30kt_cockpit.wav",
+   "tyre": "nose",
+   "view": "cockpit",
+   "groundspeed_kt": 30.0,
+   "oaspl_db": 79.57,
+   "dba": 69.49,
+   "limited_samples": 0,
+   "airborne_dba": 65.19,
+   "structure_dba": 67.81
+  },
+  {
+   "file": "tyre_nose_45kt_side.wav",
+   "tyre": "nose",
+   "view": "side",
+   "groundspeed_kt": 45.0,
+   "oaspl_db": 62.16,
+   "dba": 61.82,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_nose_45kt_cockpit.wav",
+   "tyre": "nose",
+   "view": "cockpit",
+   "groundspeed_kt": 45.0,
+   "oaspl_db": 81.13,
+   "dba": 72.4,
+   "limited_samples": 0,
+   "airborne_dba": 69.54,
+   "structure_dba": 69.7
+  },
+  {
+   "file": "tyre_nose_60kt_side.wav",
+   "tyre": "nose",
+   "view": "side",
+   "groundspeed_kt": 60.0,
+   "oaspl_db": 65.43,
+   "dba": 65.51,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_nose_60kt_cockpit.wav",
+   "tyre": "nose",
+   "view": "cockpit",
+   "groundspeed_kt": 60.0,
+   "oaspl_db": 82.82,
+   "dba": 75.05,
+   "limited_samples": 0,
+   "airborne_dba": 73.1,
+   "structure_dba": 71.25
+  },
+  {
+   "file": "tyre_nose_75kt_side.wav",
+   "tyre": "nose",
+   "view": "side",
+   "groundspeed_kt": 75.0,
+   "oaspl_db": 68.28,
+   "dba": 68.61,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_nose_75kt_cockpit.wav",
+   "tyre": "nose",
+   "view": "cockpit",
+   "groundspeed_kt": 75.0,
+   "oaspl_db": 84.77,
+   "dba": 77.6,
+   "limited_samples": 0,
+   "airborne_dba": 76.2,
+   "structure_dba": 72.72
+  },
+  {
+   "file": "tyre_nose_90kt_side.wav",
+   "tyre": "nose",
+   "view": "side",
+   "groundspeed_kt": 90.0,
+   "oaspl_db": 70.83,
+   "dba": 71.31,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_nose_90kt_cockpit.wav",
+   "tyre": "nose",
+   "view": "cockpit",
+   "groundspeed_kt": 90.0,
+   "oaspl_db": 86.21,
+   "dba": 79.95,
+   "limited_samples": 0,
+   "airborne_dba": 78.93,
+   "structure_dba": 74.16
+  },
+  {
+   "file": "tyre_left_main_5kt_side.wav",
+   "tyre": "left_main",
+   "view": "side",
+   "groundspeed_kt": 5.0,
+   "oaspl_db": 37.59,
+   "dba": 34.33,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_left_main_5kt_cockpit.wav",
+   "tyre": "left_main",
+   "view": "cockpit",
+   "groundspeed_kt": 5.0,
+   "oaspl_db": 69.44,
+   "dba": 55.1,
+   "limited_samples": 0,
+   "airborne_dba": 37.19,
+   "structure_dba": 55.83
+  },
+  {
+   "file": "tyre_left_main_10kt_side.wav",
+   "tyre": "left_main",
+   "view": "side",
+   "groundspeed_kt": 10.0,
+   "oaspl_db": 45.62,
+   "dba": 42.8,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_left_main_10kt_cockpit.wav",
+   "tyre": "left_main",
+   "view": "cockpit",
+   "groundspeed_kt": 10.0,
+   "oaspl_db": 74.41,
+   "dba": 61.03,
+   "limited_samples": 0,
+   "airborne_dba": 45.28,
+   "structure_dba": 61.62
+  },
+  {
+   "file": "tyre_left_main_20kt_side.wav",
+   "tyre": "left_main",
+   "view": "side",
+   "groundspeed_kt": 20.0,
+   "oaspl_db": 52.92,
+   "dba": 51.01,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_left_main_20kt_cockpit.wav",
+   "tyre": "left_main",
+   "view": "cockpit",
+   "groundspeed_kt": 20.0,
+   "oaspl_db": 78.08,
+   "dba": 65.66,
+   "limited_samples": 0,
+   "airborne_dba": 52.48,
+   "structure_dba": 66.0
+  },
+  {
+   "file": "tyre_left_main_30kt_side.wav",
+   "tyre": "left_main",
+   "view": "side",
+   "groundspeed_kt": 30.0,
+   "oaspl_db": 56.72,
+   "dba": 55.51,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_left_main_30kt_cockpit.wav",
+   "tyre": "left_main",
+   "view": "cockpit",
+   "groundspeed_kt": 30.0,
+   "oaspl_db": 79.88,
+   "dba": 68.02,
+   "limited_samples": 0,
+   "airborne_dba": 56.39,
+   "structure_dba": 68.17
+  },
+  {
+   "file": "tyre_left_main_45kt_side.wav",
+   "tyre": "left_main",
+   "view": "side",
+   "groundspeed_kt": 45.0,
+   "oaspl_db": 60.76,
+   "dba": 60.23,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_left_main_45kt_cockpit.wav",
+   "tyre": "left_main",
+   "view": "cockpit",
+   "groundspeed_kt": 45.0,
+   "oaspl_db": 81.23,
+   "dba": 70.06,
+   "limited_samples": 0,
+   "airborne_dba": 60.57,
+   "structure_dba": 70.01
+  },
+  {
+   "file": "tyre_left_main_60kt_side.wav",
+   "tyre": "left_main",
+   "view": "side",
+   "groundspeed_kt": 60.0,
+   "oaspl_db": 64.0,
+   "dba": 63.91,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_left_main_60kt_cockpit.wav",
+   "tyre": "left_main",
+   "view": "cockpit",
+   "groundspeed_kt": 60.0,
+   "oaspl_db": 82.99,
+   "dba": 71.85,
+   "limited_samples": 0,
+   "airborne_dba": 64.05,
+   "structure_dba": 71.57
+  },
+  {
+   "file": "tyre_left_main_75kt_side.wav",
+   "tyre": "left_main",
+   "view": "side",
+   "groundspeed_kt": 75.0,
+   "oaspl_db": 66.93,
+   "dba": 67.13,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_left_main_75kt_cockpit.wav",
+   "tyre": "left_main",
+   "view": "cockpit",
+   "groundspeed_kt": 75.0,
+   "oaspl_db": 84.91,
+   "dba": 73.75,
+   "limited_samples": 0,
+   "airborne_dba": 67.11,
+   "structure_dba": 73.06
+  },
+  {
+   "file": "tyre_left_main_90kt_side.wav",
+   "tyre": "left_main",
+   "view": "side",
+   "groundspeed_kt": 90.0,
+   "oaspl_db": 69.48,
+   "dba": 69.83,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_left_main_90kt_cockpit.wav",
+   "tyre": "left_main",
+   "view": "cockpit",
+   "groundspeed_kt": 90.0,
+   "oaspl_db": 86.47,
+   "dba": 75.53,
+   "limited_samples": 0,
+   "airborne_dba": 69.83,
+   "structure_dba": 74.55
+  },
+  {
+   "file": "tyre_right_main_5kt_side.wav",
+   "tyre": "right_main",
+   "view": "side",
+   "groundspeed_kt": 5.0,
+   "oaspl_db": 38.66,
+   "dba": 35.37,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_right_main_5kt_cockpit.wav",
+   "tyre": "right_main",
+   "view": "cockpit",
+   "groundspeed_kt": 5.0,
+   "oaspl_db": 69.46,
+   "dba": 55.17,
+   "limited_samples": 0,
+   "airborne_dba": 37.19,
+   "structure_dba": 55.83
+  },
+  {
+   "file": "tyre_right_main_10kt_side.wav",
+   "tyre": "right_main",
+   "view": "side",
+   "groundspeed_kt": 10.0,
+   "oaspl_db": 46.64,
+   "dba": 43.86,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_right_main_10kt_cockpit.wav",
+   "tyre": "right_main",
+   "view": "cockpit",
+   "groundspeed_kt": 10.0,
+   "oaspl_db": 74.62,
+   "dba": 61.16,
+   "limited_samples": 0,
+   "airborne_dba": 45.28,
+   "structure_dba": 61.62
+  },
+  {
+   "file": "tyre_right_main_20kt_side.wav",
+   "tyre": "right_main",
+   "view": "side",
+   "groundspeed_kt": 20.0,
+   "oaspl_db": 53.92,
+   "dba": 52.03,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_right_main_20kt_cockpit.wav",
+   "tyre": "right_main",
+   "view": "cockpit",
+   "groundspeed_kt": 20.0,
+   "oaspl_db": 78.25,
+   "dba": 65.73,
+   "limited_samples": 0,
+   "airborne_dba": 52.48,
+   "structure_dba": 66.0
+  },
+  {
+   "file": "tyre_right_main_30kt_side.wav",
+   "tyre": "right_main",
+   "view": "side",
+   "groundspeed_kt": 30.0,
+   "oaspl_db": 57.8,
+   "dba": 56.58,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_right_main_30kt_cockpit.wav",
+   "tyre": "right_main",
+   "view": "cockpit",
+   "groundspeed_kt": 30.0,
+   "oaspl_db": 79.83,
+   "dba": 67.98,
+   "limited_samples": 0,
+   "airborne_dba": 56.39,
+   "structure_dba": 68.17
+  },
+  {
+   "file": "tyre_right_main_45kt_side.wav",
+   "tyre": "right_main",
+   "view": "side",
+   "groundspeed_kt": 45.0,
+   "oaspl_db": 61.81,
+   "dba": 61.27,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_right_main_45kt_cockpit.wav",
+   "tyre": "right_main",
+   "view": "cockpit",
+   "groundspeed_kt": 45.0,
+   "oaspl_db": 81.34,
+   "dba": 70.1,
+   "limited_samples": 0,
+   "airborne_dba": 60.57,
+   "structure_dba": 70.01
+  },
+  {
+   "file": "tyre_right_main_60kt_side.wav",
+   "tyre": "right_main",
+   "view": "side",
+   "groundspeed_kt": 60.0,
+   "oaspl_db": 65.11,
+   "dba": 65.01,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_right_main_60kt_cockpit.wav",
+   "tyre": "right_main",
+   "view": "cockpit",
+   "groundspeed_kt": 60.0,
+   "oaspl_db": 82.91,
+   "dba": 71.86,
+   "limited_samples": 0,
+   "airborne_dba": 64.05,
+   "structure_dba": 71.57
+  },
+  {
+   "file": "tyre_right_main_75kt_side.wav",
+   "tyre": "right_main",
+   "view": "side",
+   "groundspeed_kt": 75.0,
+   "oaspl_db": 67.99,
+   "dba": 68.17,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_right_main_75kt_cockpit.wav",
+   "tyre": "right_main",
+   "view": "cockpit",
+   "groundspeed_kt": 75.0,
+   "oaspl_db": 84.71,
+   "dba": 73.74,
+   "limited_samples": 0,
+   "airborne_dba": 67.11,
+   "structure_dba": 73.06
+  },
+  {
+   "file": "tyre_right_main_90kt_side.wav",
+   "tyre": "right_main",
+   "view": "side",
+   "groundspeed_kt": 90.0,
+   "oaspl_db": 70.58,
+   "dba": 70.94,
+   "limited_samples": 0
+  },
+  {
+   "file": "tyre_right_main_90kt_cockpit.wav",
+   "tyre": "right_main",
+   "view": "cockpit",
+   "groundspeed_kt": 90.0,
+   "oaspl_db": 86.24,
+   "dba": 75.46,
+   "limited_samples": 0,
+   "airborne_dba": 69.83,
+   "structure_dba": 74.55
+  }
+ ],
+ "max_sources": 6,
+ "note": "positions: m from the moment reference, the aircraft's frame (x forward, y left, z up); outside: the tyre's airborne sound, scaled from a measured truck tyre (Hoever 2014) and checked against one aircraft measurement; cockpit: mostly what the wheels put in through the structure, from one recorded landing in the p2006t airframe's cabin, scaled to 9072 kg (estimated); asphalt only"
+}

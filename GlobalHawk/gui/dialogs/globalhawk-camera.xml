@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<!-- The belly camera's lock and slew (Nasal/camera.nas) -->
+<PropertyList>
+ <name>globalhawk-camera</name>
+ <modal>false</modal>
+ <layout>vbox</layout>
+ <draggable>true</draggable>
+ <group>
+  <layout>hbox</layout>
+  <empty><stretch>1</stretch></empty>
+  <text><label>Belly camera</label></text>
+  <empty><stretch>1</stretch></empty>
+  <button><pref-width>16</pref-width><pref-height>16</pref-height><legend></legend><default>1</default><keynum>27</keynum><border>2</border><binding><command>dialog-close</command></binding></button>
+ </group>
+ <hrule/>
+ <group>
+  <layout>hbox</layout>
+  <button><legend>Lock on the cross</legend><binding><command>nasal</command><script>globalhawk.camera.lock_cross()</script></binding></button>
+  <button><legend>Lock on the nearest object</legend><binding><command>nasal</command><script>globalhawk.camera.lock_nearest()</script></binding></button>
+  <button><legend>Unlock</legend><binding><command>nasal</command><script>globalhawk.camera.unlock()</script></binding></button>
+ </group>
+ <group>
+  <layout>hbox</layout>
+  <text><label>Latitude</label></text>
+  <input><pref-width>110</pref-width><property>/sim/globalhawk/camera/enter-lat</property></input>
+  <text><label>Longitude</label></text>
+  <input><pref-width>110</pref-width><property>/sim/globalhawk/camera/enter-lon</property></input>
+  <button><legend>Lock on these</legend><binding><command>dialog-apply</command></binding><binding><command>nasal</command><script>globalhawk.camera.lock_entered()</script></binding></button>
+ </group>
+ <text><label>Degrees, south and west negative. Locked on a point, slewing moves the point.</label></text>
+ <hrule/>
+ <group>
+  <layout>table</layout>
+  <button><row>0</row><col>1</col><legend>Up</legend><binding><command>nasal</command><script>globalhawk.camera.nudge(0, 1)</script></binding></button>
+  <button><row>1</row><col>0</col><legend>Left</legend><binding><command>nasal</command><script>globalhawk.camera.nudge(-1, 0)</script></binding></button>
+  <button><row>1</row><col>2</col><legend>Right</legend><binding><command>nasal</command><script>globalhawk.camera.nudge(1, 0)</script></binding></button>
+  <button><row>2</row><col>1</col><legend>Down</legend><binding><command>nasal</command><script>globalhawk.camera.nudge(0, -1)</script></binding></button>
+ </group>
+ <text><label>Or the stick, while the aircraft flies itself; x and X zoom.</label></text>
+ <text><label>Now:</label></text>
+ <text><label>MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM</label><format>%s</format><property>/sim/globalhawk/camera/name</property><live>true</live></text>
+</PropertyList>

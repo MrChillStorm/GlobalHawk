@@ -1,0 +1,52 @@
+{
+ "aircraft": "RQ-4A Global Hawk",
+ "generator": "pywopwop wind",
+ "sample_rate": 48000.0,
+ "windscreen_m": 1.2,
+ "windscreen": {
+  "surface_mass": 4.0,
+  "coincidence_hz": 2500.0,
+  "loss_factor": 0.03
+ },
+ "gain_db": {
+  "cockpit": -26.307
+ },
+ "files": [
+  {
+   "file": "wind_30kt_cockpit.wav",
+   "airspeed_kt": 30.0,
+   "oaspl_db": 88.71,
+   "dba": 80.05
+  },
+  {
+   "file": "wind_60kt_cockpit.wav",
+   "airspeed_kt": 60.0,
+   "oaspl_db": 95.31,
+   "dba": 88.19
+  },
+  {
+   "file": "wind_100kt_cockpit.wav",
+   "airspeed_kt": 100.0,
+   "oaspl_db": 99.51,
+   "dba": 93.65
+  },
+  {
+   "file": "wind_150kt_cockpit.wav",
+   "airspeed_kt": 150.0,
+   "oaspl_db": 102.3,
+   "dba": 97.62
+  },
+  {
+   "file": "wind_200kt_cockpit.wav",
+   "airspeed_kt": 200.0,
+   "oaspl_db": 103.88,
+   "dba": 100.17
+  },
+  {
+   "file": "wind_250kt_cockpit.wav",
+   "airspeed_kt": 250.0,
+   "oaspl_db": 104.84,
+   "dba": 101.96
+  }
+ ]
+}

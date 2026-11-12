@@ -44,6 +44,10 @@ AILERON = dict(inner=0.55, outer=0.95, chord=0.25)
 RUDDERVATOR = dict(chord=0.30)
 SPOILER = dict(inner=0.18, outer=0.50, front=0.62, back=0.76, travel_deg=45.0)
 WHITE, GREY, DARK, TYRE = 0, 1, 2, 3
+RED_LIGHT, GREEN_LIGHT, WHITE_LIGHT = 4, 5, 6      # lamps: they glow by themselves
+BLUE = 7                                         # the stripe
+STRIPE = (4.05, 4.30, 1.0, 40.0)                 # ft: the blue stripe's lower and upper edge and its fore and aft ends
+L = '/sim/model/globalhawk/lights/'               # what switches each lamp (Nasal/globalhawk.nas)
 BAY_X = (22.0, 24.3)                      # ft: the opening in the gear fairing's underside, fore and aft of the wheels
 KNEE = 0.15                               # where the main gear's side brace is jointed, as a fraction of its length from the fuselage
 MAIN_OUT = G['gear']['main_out']           # ft: how much further out the main legs stand than in NASA's model (fdm/geometry.py)
@@ -63,6 +67,7 @@ HALF = G['wing']['span'] / 2
 HEIGHT = 15.2                                                      # ft: NASA's published height, ground to the V-tail's tips on its wheels
 KZ = 1.0                                                           # heights in NASA's model times this give HEIGHT (set in build)
 WHEEL_TOP = 1.45                                                   # ft: below this a gear part is wheel, and keeps its shape
+BEND = (10.0, 16.0, 22.0, 28.0, 38.0, 44.0, 50.0)                 # ft from the centreline: where the bending wing is hinged (and at the aileron's ends)
 PODS = 8.0                                                         # ft: outboard of the gear fairings at the wing root; the wing's stretch begins here
 ROOT_TE_X = 25.70                                                  # ft: the trailing edge just outboard of the fairings, which runs nearly square to the fuselage
 WING_MID_X = 23.05                                                 # ft: the wing's mid-chord at that station in NASA's model
@@ -241,12 +246,20 @@ def build():
     # edges sharp. (Unmerged, every one of NASA's pieces showed its outline.)
     airframe = trimesh.Trimesh(stretch_wing(merged.vertices), merged.faces, process=False)
     core = airframe
+    # The wing bends: outboard of BEND[0] it is cut into segments along the span, each hinged to the one inboard of it
+    # about a chordwise line at the wing's own height there, and turned by the flight model's tip deflection
+    # (flex/tip-deflection-ft: about -1.6 ft standing with full tanks, +4.3 ft in flight at 1 g) so that the segments'
+    # ends lie on the beam model's bent shape (fdm/data/flex.json). The ailerons and the spoilers are cut at the same
+    # places and go with their segments.
+    flex = json.load(open(os.path.join(HERE, 'data', 'flex.json')))['shape']
+    fy, fd = np.array([0.0] + list(flex['y']) + [HALF]), np.array([0.0] + list(flex['deflection_over_tip']) + [1.0])
+    ya, yb = AILERON['inner'] * HALF, AILERON['outer'] * HALF
+    cuts = sorted(set(list(BEND) + [ya, yb]))                      # the hinges' stations; the aileron's ends are among them
+    ends = cuts + [HALF + 1.0]
+    defl = lambda y: float(np.interp(min(y, HALF), fy, fd))
+    slopes = [(defl(min(ends[k + 1], HALF)) - defl(ends[k])) / (min(ends[k + 1], HALF) - ends[k]) for k in range(len(cuts))]
+    kinks = [math.degrees(slopes[k] - (slopes[k - 1] if k else 0.0)) for k in range(len(cuts))]      # deg per ft of tip deflection at each hinge
     for side, sn in ((1, 'right'), (-1, 'left')):
-        ya, yb = AILERON['inner'] * HALF, AILERON['outer'] * HALF
-        # the outer wing between the aileron's ends: nothing else is this far out
-        band = keep(keep(airframe, (0, side, 0), (0, side * ya, 0)), (0, -side, 0), (0, side * yb, 0))
-        tip = keep(airframe, (0, side, 0), (0, side * yb, 0))
-        core = keep(core, (0, -side, 0), (0, side * ya, 0))
         la, ta, za = chord_at(airframe, side * (ya + 0.4))
         lb, tb, zb = chord_at(airframe, side * (yb - 0.4))
         h = 1 - AILERON['chord']
@@ -256,21 +269,50 @@ def build():
         aft /= np.linalg.norm(aft)
         if aft[0] < 0:
             aft = -aft
-        objs.append(Obj('wing-%s-mid' % sn, keep(band, -aft, h0)))
-        objs.append(Obj('wing-%s-tip' % sn, tip))
-        objs.append(Obj('aileron-%s' % sn, keep(band, aft, h0), GREY))
-        anims.append(dict(obj='aileron-%s' % sn, prop=J + 'ctl/aileron-deg', factor=1.0 if side > 0 else -1.0, a=h0, b=h1, down=side))
-        # spoiler plates sitting on the upper skin
-        cs = []
-        for y, fr in ((SPOILER['inner'] * HALF, SPOILER['front']), (SPOILER['outer'] * HALF, SPOILER['front']),
-                      (SPOILER['outer'] * HALF, SPOILER['back']), (SPOILER['inner'] * HALF, SPOILER['back'])):
-            le, te, _ = chord_at(airframe, side * y)
-            x = le + fr * (te - le)
-            sec = np.asarray(airframe.section(plane_origin=[0, side * y, 0], plane_normal=[0, 1, 0]).vertices)
-            top = sec[(np.abs(sec[:, 0] - x) < 0.12 * (te - le)) & (sec[:, 2] < G['wing']['z'] + 1.5)]
-            cs.append((x, side * y, top[:, 2].max() + 0.01))
-        objs.append(plate('spoiler-%s' % sn, cs))
-        anims.append(dict(obj='spoiler-%s' % sn, prop=J + 'ctl/spoiler-norm', factor=SPOILER['travel_deg'], a=np.array(cs[0]), b=np.array(cs[1]), down=-side))
+        hinges = []                                                  # each bending hinge of this wing: an animation's fields
+        for k, yk in enumerate(cuts):
+            zk = chord_at(airframe, side * (yk + 0.2))[2]
+            hinges.append(dict(prop=J + 'flex/tip-deflection-ft', factor=side * kinks[k], down=1.0, a=np.array([20.0, side * yk, zk]), b=np.array([21.0, side * yk, zk])))
+        bent = lambda name, k: [dict(hk, obj=name) for hk in hinges[:k + 1]]         # the hinges a part in segment k hangs on, the innermost first
+        for k, yk in enumerate(cuts):
+            seg = keep(keep(airframe, (0, side, 0), (0, side * yk, 0)), (0, -side, 0), (0, side * ends[k + 1], 0))
+            if seg is None:
+                continue
+            if ya - 1e-6 <= yk < yb - 1e-6:
+                name = 'aileron-%s-%d' % (sn, k)
+                objs.append(Obj(name, keep(seg, aft, h0), GREY))
+                anims.extend(bent(name, k))
+                anims.append(dict(obj=name, prop=J + 'ctl/aileron-deg', factor=1.0 if side > 0 else -1.0, a=h0, b=h1, down=side))
+                seg = keep(seg, -aft, h0)
+            name = 'wing-%s-%d' % (sn, k)
+            objs.append(Obj(name, seg))
+            anims.extend(bent(name, k))
+        core = keep(core, (0, -side, 0), (0, side * cuts[0], 0))
+        # spoiler plates sitting on the upper skin, one to each segment they lie over
+        s0, s1 = SPOILER['inner'] * HALF, SPOILER['outer'] * HALF
+        stations = [s0] + [c for c in cuts if s0 < c < s1] + [s1]
+        for n in range(len(stations) - 1):
+            cs = []
+            for y, fr in ((stations[n], SPOILER['front']), (stations[n + 1], SPOILER['front']), (stations[n + 1], SPOILER['back']), (stations[n], SPOILER['back'])):
+                le, te, _ = chord_at(airframe, side * y)
+                x = le + fr * (te - le)
+                sec = np.asarray(airframe.section(plane_origin=[0, side * y, 0], plane_normal=[0, 1, 0]).vertices)
+                top = sec[(np.abs(sec[:, 0] - x) < 0.12 * (te - le)) & (sec[:, 2] < G['wing']['z'] + 1.5)]
+                cs.append((x, side * y, top[:, 2].max() + 0.01))
+            name = 'spoiler-%s-%d' % (sn, n)
+            objs.append(plate(name, cs))
+            k = max([i for i, c in enumerate(cuts) if c <= stations[n] + 1e-6], default=-1)
+            anims.extend(bent(name, k))
+            anims.append(dict(obj=name, prop=J + 'ctl/spoiler-norm', factor=SPOILER['travel_deg'], a=np.array(cs[0]), b=np.array(cs[1]), down=-side))
+        # the wing tip's lamps: the navigation light (red on the left, green on the right) and a white strobe behind
+        # it, on the tip's own segment so that they ride the bending wing
+        tipv = airframe.vertices[airframe.vertices[:, 1] * side > HALF - 0.4]
+        at = np.array([np.percentile(tipv[:, 0], 30), side * (HALF + 0.05), tipv[:, 2].mean()])
+        for lamp, dx, mat, switch in (('nav', 0.0, GREEN_LIGHT if side > 0 else RED_LIGHT, 'nav'), ('strobe', 0.9, WHITE_LIGHT, 'strobe')):
+            name = 'light-%s-%s' % (lamp, sn)
+            objs.append(Obj(name, trimesh.creation.icosphere(subdivisions=1, radius=0.13).apply_translation(at + [dx, 0, 0]), mat))
+            anims.extend(bent(name, len(cuts) - 1))
+            anims.append(dict(obj=name, select=L + switch, a=np.zeros(3), b=np.ones(3)))
     # the V-tail's ruddervators, cut out of what is left
     t = G['vtail']
     d = math.radians(t['dihedral_deg'])
@@ -327,7 +369,24 @@ def build():
     for sd, nm in ((1.0, 'right'), (-1.0, 'left')):
         door, core = cut_out(core, [((1, 0, 0), (x0, 0, 0)), ((-1, 0, 0), (x1, 0, 0)), ((0, sd, 0), (0, 0, 0)), ((0, -sd, 0), (0, sd * hw, 0)), ((0, 0, -1), (0, 0, 4.3 * KZ))])
         nose_doors[nm] = door
+    # NASA's two Global Hawks are white with one thin dark blue stripe along each side of the fuselage from the nose
+    # to the tail, about where the wing's underside meets it (NASA's photograph of 871 and 872 on the Dryden ramp, "in
+    # their blue-and-white paint scheme"). It is cut out of the skin as a band between two heights. No insignia and
+    # no lettering are drawn (NASA's are not to be used).
+    sz0, sz1, sx0, sx1 = STRIPE
+    stripe, core = cut_out(core, [((0, 0, 1), (0, 0, sz0)), ((0, 0, -1), (0, 0, sz1)), ((1, 0, 0), (sx0, 0, 0)), ((-1, 0, 0), (sx1, 0, 0))])
     objs.insert(0, Obj('airframe', core))
+    if stripe is not None:
+        objs.append(Obj('stripe', stripe, BLUE))
+    # the white tail light at the fuselage's end, and red beacons on top of the nacelle and under the belly
+    fv = core.vertices[np.abs(core.vertices[:, 1]) < 0.6]
+    tail = fv[np.argmax(fv[:, 0])]
+    top = fv[(fv[:, 0] > 29.0) & (fv[:, 0] < 31.0)]
+    under = fv[(fv[:, 0] > 13.0) & (fv[:, 0] < 15.0)]
+    for name, at, mat, switch in (('light-tail', tail + [0.05, 0, 0], WHITE_LIGHT, 'nav'), ('light-beacon-top', [30.0, 0.0, top[:, 2].max() + 0.05], RED_LIGHT, 'beacon'),
+                                  ('light-beacon-under', [14.0, 0.0, under[:, 2].min() - 0.05], RED_LIGHT, 'beacon')):
+        objs.append(Obj(name, trimesh.creation.icosphere(subdivisions=1, radius=0.13).apply_translation(np.asarray(at, float)), mat))
+        anims.append(dict(obj=name, select=L + switch, a=np.zeros(3), b=np.ones(3)))
     zb = max(d.vertices[:, 2].max() for d in nose_doors.values())          # above the doors' highest edge: the belly is curved, and a well that began lower stood out of it at the sides
     wv = np.array([(x, y, z) for z in (zb + 0.05, zb + 2.5) for x, y in ((x0, -hw), (x1, -hw), (x1, hw), (x0, hw))]) * [1, 0.97, 1]
     wf = [(4, 5, 6), (4, 6, 7)] + [t for k in range(4) for t in ((k, (k + 1) % 4, 4 + (k + 1) % 4), (k, 4 + (k + 1) % 4, 4 + k))]
@@ -566,8 +625,9 @@ def write(objs, anims):
     os.makedirs(OUT, exist_ok=True)
     with open(os.path.join(OUT, 'GlobalHawk.ac'), 'w') as fh:
         fh.write('AC3Db\n')
-        for rgb, name, spec in (((0.94, 0.94, 0.95), 'white', 0.25), ((0.80, 0.82, 0.84), 'grey', 0.25), ((0.20, 0.21, 0.23), 'dark', 0.1), ((0.05, 0.05, 0.05), 'tyre', 0.02)):
-            fh.write('MATERIAL "%s" rgb %g %g %g  amb %g %g %g  emis 0 0 0  spec %g %g %g  shi 30  trans 0\n' % ((name,) + rgb + rgb + (spec, spec, spec)))
+        for rgb, name, spec in (((0.94, 0.94, 0.95), 'white', 0.25), ((0.80, 0.82, 0.84), 'grey', 0.25), ((0.20, 0.21, 0.23), 'dark', 0.1), ((0.05, 0.05, 0.05), 'tyre', 0.02), ((1.0, 0.05, 0.05), 'red lamp', 1.0), ((0.05, 1.0, 0.15), 'green lamp', 1.0), ((1.0, 1.0, 1.0), 'white lamp', 1.0), ((0.05, 0.16, 0.42), 'blue', 0.25)):
+            emis = rgb if 'lamp' in name else (0, 0, 0)
+            fh.write('MATERIAL "%s" rgb %g %g %g  amb %g %g %g  emis %g %g %g  spec %g %g %g  shi 30  trans 0\n' % ((name,) + rgb + rgb + emis + (spec, spec, spec)))
         fh.write('OBJECT world\nkids %d\n' % len(objs))
         for o in objs:
             o.write(fh)
@@ -582,6 +642,9 @@ def write(objs, anims):
             p0[0], p0[1], p0[2], p1[0], p1[1], p1[2])
         if a.get('hide_up'):
             hidden.append((a['obj'], a['hide_up']))
+            continue
+        if a.get('select'):
+            x.append(' <animation><type>select</type><object-name>%s</object-name><condition><property>%s</property></condition></animation>' % (a['obj'], a['select']))
             continue
         if a.get('spin'):
             # drawn slowed (see SHOWN); the property itself keeps the real speed
@@ -627,7 +690,7 @@ def test(objs, anims, airframe):
         ok &= good
         print('  %-42s %7.2f, published %7.2f  %s' % (name, got, want, 'pass' if good else 'MISS'))
     names = {o.name for o in objs}
-    need = ['aileron-left', 'aileron-right', 'ruddervator-left', 'ruddervator-right', 'spoiler-left', 'spoiler-right', 'gear-nose-tyres', 'gear-left', 'gear-right', 'gear-left-tyres',
+    need = ['aileron-left-4', 'aileron-right-4', 'ruddervator-left', 'ruddervator-right', 'spoiler-left-0', 'spoiler-right-0', 'wing-left-0', 'wing-right-8', 'gear-nose-tyres', 'gear-left', 'gear-right', 'gear-left-tyres',
             'gear-left-bay-door-fore', 'gear-right-bay-door-aft', 'gear-left-brace-inner', 'gear-right-brace-outer', 'gear-nose-door-left', 'gear-nose-door-right']
     missing = [n for n in need if n not in names]
     ok &= not missing and all(a['obj'] in names for a in anims)

@@ -133,6 +133,7 @@
   <system file="engine"/>
   <system file="fuel"/>
   <system file="flex"/>
+  <system file="touchdown"/>
   <flight_control name="fcs"/>
   <aerodynamics>
     <axis name="LIFT">

@@ -126,6 +126,7 @@ var Onboard = {
         m.holder = nil; m.offer = nil;           # who has control; a handover offered: [to, when]
         m.sender = "";
         m.last_mgr = -1; m.last_status = -1;
+        m.last = nil;
         foreach (var p; ["ack", "status", "plan"]) setprop("/gcs/down/" ~ p, "");
         m.status();
         return m;
@@ -267,6 +268,7 @@ var Onboard = {
         "start": func(a) {
             if (me.plan == nil) return "no plan";
             if (me.started) return "the plan has already begun";
+            if (!fget("engine/running")) return "the engine is not running";
             fset("ap/speed-schedule", 1);
             fset("ap/theta-cmd-deg", fget("attitude/theta-deg"));
             fset("fcs/left-brake-cmd-norm", 0); fset("fcs/right-brake-cmd-norm", 0);
@@ -453,6 +455,7 @@ var Onboard = {
         ev = sort(ev, func(a, b) { return a[0] < b[0] ? -1 : (a[0] > b[0] ? 1 : cmp(a[1], b[1])); });
         s["events"] = size(ev) > 6 ? subvec(ev, size(ev) - 6) : ev;
         setprop("/gcs/down/status", JSON.encode(s));
+        me.last = s;                             # for the head-up display
         return s;
     },
 

@@ -1,0 +1,128 @@
+{
+ "aircraft": "RQ-4A Global Hawk",
+ "generator": "pywopwop gear",
+ "sample_rate": 48000.0,
+ "exterior_distance_m": 30.0,
+ "gain_db": {
+  "cockpit": -26.307,
+  "exterior": -28.96
+ },
+ "legs": [
+  {
+   "position": [
+    -3.2150304000000003,
+    0.0,
+    0.2285
+   ],
+   "wheel_m": 0.457,
+   "strut_m": 0.09,
+   "strut_length_m": 0.8
+  },
+  {
+   "position": [
+    -7.7080872000000005,
+    2.0816316,
+    0.2795
+   ],
+   "wheel_m": 0.559,
+   "strut_m": 0.09,
+   "strut_length_m": 1.2
+  },
+  {
+   "position": [
+    -7.7080872000000005,
+    -2.0816316,
+    0.2795
+   ],
+   "wheel_m": 0.559,
+   "strut_m": 0.09,
+   "strut_length_m": 1.2
+  }
+ ],
+ "files": [
+  {
+   "file": "gear_50kt_cockpit.wav",
+   "view": "cockpit",
+   "airspeed_kt": 50.0,
+   "oaspl_db": 66.49,
+   "dba": 54.23
+  },
+  {
+   "file": "gear_80kt_cockpit.wav",
+   "view": "cockpit",
+   "airspeed_kt": 80.0,
+   "oaspl_db": 77.71,
+   "dba": 68.16
+  },
+  {
+   "file": "gear_110kt_cockpit.wav",
+   "view": "cockpit",
+   "airspeed_kt": 110.0,
+   "oaspl_db": 85.15,
+   "dba": 77.45
+  },
+  {
+   "file": "gear_140kt_cockpit.wav",
+   "view": "cockpit",
+   "airspeed_kt": 140.0,
+   "oaspl_db": 90.81,
+   "dba": 84.58
+  },
+  {
+   "file": "gear_170kt_cockpit.wav",
+   "view": "cockpit",
+   "airspeed_kt": 170.0,
+   "oaspl_db": 95.47,
+   "dba": 90.51
+  },
+  {
+   "file": "gear_200kt_cockpit.wav",
+   "view": "cockpit",
+   "airspeed_kt": 200.0,
+   "oaspl_db": 99.53,
+   "dba": 95.69
+  },
+  {
+   "file": "gear_50kt_side.wav",
+   "view": "side",
+   "airspeed_kt": 50.0,
+   "oaspl_db": 57.59,
+   "dba": 49.61
+  },
+  {
+   "file": "gear_80kt_side.wav",
+   "view": "side",
+   "airspeed_kt": 80.0,
+   "oaspl_db": 70.02,
+   "dba": 64.93
+  },
+  {
+   "file": "gear_110kt_side.wav",
+   "view": "side",
+   "airspeed_kt": 110.0,
+   "oaspl_db": 78.47,
+   "dba": 74.98
+  },
+  {
+   "file": "gear_140kt_side.wav",
+   "view": "side",
+   "airspeed_kt": 140.0,
+   "oaspl_db": 84.89,
+   "dba": 82.41
+  },
+  {
+   "file": "gear_170kt_side.wav",
+   "view": "side",
+   "airspeed_kt": 170.0,
+   "oaspl_db": 90.09,
+   "dba": 88.31
+  },
+  {
+   "file": "gear_200kt_side.wav",
+   "view": "side",
+   "airspeed_kt": 200.0,
+   "oaspl_db": 94.47,
+   "dba": 93.2
+  }
+ ]
+}

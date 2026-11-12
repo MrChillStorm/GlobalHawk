@@ -125,8 +125,8 @@
       <output>propulsion/tank[5]/contents-lbs</output>
     </fcs_function>
     <switch name="fuel/engine-fed">
-      <description>the engine stops when the tanks are dry</description>
-      <default value="1"/>
+      <description>the engine runs while its master switch is on (engine/master: the aircraft's Autostart and Shutdown) and the tanks are not dry</description>
+      <default value="engine/master"/>
       <test value="0">fuel/total-lbs lt 1</test>
       <output>engine/running</output>
     </switch>

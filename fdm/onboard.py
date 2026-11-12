@@ -227,6 +227,8 @@ class Onboard:
             return 'no plan'
         if self.started:
             return 'the plan has already begun'
+        if not self.f['engine/running']:
+            return 'the engine is not running'
         items, lost, sites = self._new
         f = self.f
         f['ap/speed-schedule'] = 1

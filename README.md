@@ -1,4 +1,4 @@
-# NASA Global Hawk for FlightGear, with a ground control station
+# Global Hawk for FlightGear, with a ground control station
 
 A JSBSim flight model of NASA's Global Hawk N872NA, the high-altitude, long-endurance unmanned aircraft (a Northrop
 Grumman RQ-4A) that NASA flew on science missions, and a ground control station to fly it from. It is modelled from
@@ -59,6 +59,18 @@ station and the FlightGear aircraft don't exist yet.
   line for line (change both together); `json.nas` reads and writes the link's JSON. With them the ground station
   flies FlightGear itself: start FlightGear with `--httpd=5400` and open the station on that address.
   `fdm/phase9b_checks.py` flies it in FlightGear through the station's protocol.
+- [GlobalHawk/Huds/hud.nas](GlobalHawk/Huds/hud.nas): the head-up display over the nose camera's picture, in place
+  of FlightGear's standard one: one green, the horizon and flight path marker lying on the world outside, the
+  flight laws' targets and limits, what the aircraft is doing and what the crew must know. `h` switches it.
+  `fdm/phase9c_checks.py` checks it in FlightGear from screenshots.
+- [GlobalHawk/Nasal/camera.nas](GlobalHawk/Nasal/camera.nas): the belly camera (the view "Belly Camera", for the
+  sensor operator): it locks on a point on the ground or on any model FlightGear has (a ship, a vehicle, an
+  aircraft) and follows it, and is slewed by buttons or the stick. In the "Global Hawk" menu.
+  `fdm/phase9d_checks.py` flies it. [GlobalHawk/Sounds/](GlobalHawk/Sounds/): the engine's sound, made by PyWopWop's
+  turbofan model with the fan's speeds and blade count measured from recordings of Global Hawks, and with it the
+  wind on the nose, the tyres, the gear in the airflow, the touchdowns and the airframe: every loop and one-shot is
+  made by [fdm/mksounds.py](fdm/mksounds.py) from [PyWopWop](https://github.com/MrChillStorm/PyWopWop) (about 270 MB).
+  The inside sounds are what a microphone in the nose bay would hear, and play in the two cameras' views.
 
 ## Credits
 

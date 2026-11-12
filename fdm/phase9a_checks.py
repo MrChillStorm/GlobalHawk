@@ -21,6 +21,7 @@ AIRCRAFT_DIR = os.path.realpath(os.path.join(HERE, '..', 'GlobalHawk'))
 PORT = 5477
 FG_ROOT = os.path.expanduser('~/git/fgdata')     # where this machine keeps FlightGear's data; left to FlightGear if absent
 J = '/fdm/jsbsim/'
+SOUND = False                        # True: FlightGear's sound on, its volume at zero (for checking the sound section)
 rows = []
 
 
@@ -64,7 +65,7 @@ def start_once(extra, log):
         print('the screen is locked: FlightGear cannot start until it is unlocked', flush=True)
         return None, None
     args = [FGFS, '--aircraft-dir=' + AIRCRAFT_DIR, '--aircraft=GlobalHawk', '--httpd=%d' % PORT, '--disable-ai-traffic', '--disable-real-weather-fetch',
-            '--timeofday=noon', '--geometry=1024x640', '--disable-sound', '--disable-terrasync', '--prop:/sim/rendering/multi-sample-buffers=0',
+            '--timeofday=noon', '--geometry=1024x640', '--disable-terrasync'] + (['--prop:/sim/sound/volume=0'] if SOUND else ['--disable-sound']) + [ '--prop:/sim/rendering/multi-sample-buffers=0',
             '--prop:/sim/startup/save-on-exit=false', '--model-hz=120'] + extra
     if os.path.isdir(FG_ROOT):
         args.insert(1, '--fg-root=' + FG_ROOT)
@@ -145,7 +146,7 @@ def ground():
 
 def air():
     log = os.path.join(HERE, 'out', 'fg-air.log')
-    proc, took = start(['--lat=35.2', '--lon=-117.4', '--altitude=20000', '--vc=150', '--heading=40'], log)
+    proc, took = start(['--lat=60.317', '--lon=24.963', '--altitude=20000', '--vc=150', '--heading=40'], log)      # over EFHK: the scenery that is on this machine
     if took is None:
         stop(proc)
         add('F3', 'starts in the air', False, 'FlightGear did not come up with the aircraft in 4 minutes (see fdm/out/fg-air.log)')

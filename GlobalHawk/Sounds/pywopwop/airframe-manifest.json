@@ -1,0 +1,94 @@
+{
+ "aircraft": "RQ-4A Global Hawk (airframe)",
+ "generator": "pywopwop glider (the airframe)",
+ "exterior_distance_m": 50.0,
+ "gain_db": {
+  "exterior": -28.96
+ },
+ "files": [
+  {
+   "file": "airframe_airframe_90kt_side.wav",
+   "layer": "airframe",
+   "airspeed_kt": 90.0,
+   "oaspl_db": 48.46,
+   "dba": 49.14
+  },
+  {
+   "file": "airframe_brakes_90kt_side.wav",
+   "layer": "brakes",
+   "airspeed_kt": 90.0,
+   "oaspl_db": 76.6,
+   "dba": 64.99
+  },
+  {
+   "file": "airframe_airframe_110kt_side.wav",
+   "layer": "airframe",
+   "airspeed_kt": 110.0,
+   "oaspl_db": 44.46,
+   "dba": 43.67
+  },
+  {
+   "file": "airframe_brakes_110kt_side.wav",
+   "layer": "brakes",
+   "airspeed_kt": 110.0,
+   "oaspl_db": 80.94,
+   "dba": 70.05
+  },
+  {
+   "file": "airframe_airframe_130kt_side.wav",
+   "layer": "airframe",
+   "airspeed_kt": 130.0,
+   "oaspl_db": 43.88,
+   "dba": 42.88
+  },
+  {
+   "file": "airframe_brakes_130kt_side.wav",
+   "layer": "brakes",
+   "airspeed_kt": 130.0,
+   "oaspl_db": 84.73,
+   "dba": 74.52
+  },
+  {
+   "file": "airframe_airframe_150kt_side.wav",
+   "layer": "airframe",
+   "airspeed_kt": 150.0,
+   "oaspl_db": 44.45,
+   "dba": 42.59
+  },
+  {
+   "file": "airframe_brakes_150kt_side.wav",
+   "layer": "brakes",
+   "airspeed_kt": 150.0,
+   "oaspl_db": 88.13,
+   "dba": 78.53
+  },
+  {
+   "file": "airframe_airframe_170kt_side.wav",
+   "layer": "airframe",
+   "airspeed_kt": 170.0,
+   "oaspl_db": 48.98,
+   "dba": 47.63
+  },
+  {
+   "file": "airframe_brakes_170kt_side.wav",
+   "layer": "brakes",
+   "airspeed_kt": 170.0,
+   "oaspl_db": 91.14,
+   "dba": 82.11
+  },
+  {
+   "file": "airframe_airframe_190kt_side.wav",
+   "layer": "airframe",
+   "airspeed_kt": 190.0,
+   "oaspl_db": 49.1,
+   "dba": 46.18
+  },
+  {
+   "file": "airframe_brakes_190kt_side.wav",
+   "layer": "brakes",
+   "airspeed_kt": 190.0,
+   "oaspl_db": 93.86,
+   "dba": 85.32
+  }
+ ]
+}
