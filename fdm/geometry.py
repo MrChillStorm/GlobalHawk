@@ -24,6 +24,7 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_GEOM = os.path.join(HERE, 'data', 'geometry.json')
+MAIN_GEAR_OUT = 0.65                      # ft a side: the main legs stand this much further out than in NASA's 3-D model (after its height is squashed to 15.2 ft)
 OUT_MASS = os.path.join(HERE, 'data', 'mass.json')
 
 # ---- published (fdm/data/README.md has the sources)
@@ -240,10 +241,12 @@ def build(mesh):
     g['vtail']['vertical_volume'] = round(g['vtail']['area_projected_vertical'] * g['vtail']['arm_from_wing_quarter']
                                           / (AREA * b), 4)
 
-    # gear: along the length and in height from the side view, track from the mesh
+    # gear: along the length and in height from the side view. The track is the mesh's plus MAIN_GEAR_OUT a side:
+    # at the mesh's own track a leg folded inboard puts its tyres 0.45 ft into the fuselage's side, so the mesh has
+    # its legs too close in. MAIN_GEAR_OUT is the least that lets the gear fold clear (an estimate, not a measurement).
     main, nose = sv_point(SV['main_axle']), sv_point(SV['nose_axle'])
     g['gear'] = dict(main_x=round(main[0], 3), nose_x=round(nose[0], 3), wheelbase=round(main[0] - nose[0], 3),
-                     main_track=round(2 * mesh['main_track_half'] * k_len, 3),
+                     main_track=round(2 * (mesh['main_track_half'] * k_len + MAIN_GEAR_OUT), 3), main_out=MAIN_GEAR_OUT,
                      main_wheel_spacing=round(mesh['main_wheel_spacing'] * k_len, 3),
                      main_wheel_diameter=round(2 * SV['main_wheel_radius'] * FT_PER_PX, 3),
                      nose_wheel_diameter=round(2 * SV['nose_wheel_radius'] * FT_PER_PX, 3),

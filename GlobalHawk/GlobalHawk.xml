@@ -15,9 +15,9 @@
     <location name="VRP" unit="IN"><x>0.00</x><y>0.00</y><z>0.00</z></location>
   </metrics>
   <mass_balance>
-    <ixx unit="SLUG*FT2">45887</ixx>
+    <ixx unit="SLUG*FT2">45992</ixx>
     <iyy unit="SLUG*FT2">27686</iyy>
-    <izz unit="SLUG*FT2">71142</izz>
+    <izz unit="SLUG*FT2">71247</izz>
     <emptywt unit="LBS">9100.0</emptywt>
     <location name="CG" unit="IN"><x>294.98</x><y>0.00</y><z>69.31</z></location>
     <pointmass name="payload">
@@ -36,7 +36,7 @@
       <retractable>1</retractable>
     </contact>
     <contact type="BOGEY" name="left main">
-      <location unit="IN"><x>303.47</x><y>-74.15</y><z>-6.00</z></location>
+      <location unit="IN"><x>303.47</x><y>-81.95</y><z>-6.00</z></location>
       <static_friction>0.8</static_friction><dynamic_friction>0.5</dynamic_friction><rolling_friction>0.015</rolling_friction>
       <spring_coeff unit="LBS/FT">22096</spring_coeff>
       <damping_coeff unit="LBS/FT/SEC">2754</damping_coeff>
@@ -45,7 +45,7 @@
       <retractable>1</retractable>
     </contact>
     <contact type="BOGEY" name="right main">
-      <location unit="IN"><x>303.47</x><y>74.15</y><z>-6.00</z></location>
+      <location unit="IN"><x>303.47</x><y>81.95</y><z>-6.00</z></location>
       <static_friction>0.8</static_friction><dynamic_friction>0.5</dynamic_friction><rolling_friction>0.015</rolling_friction>
       <spring_coeff unit="LBS/FT">22096</spring_coeff>
       <damping_coeff unit="LBS/FT/SEC">2754</damping_coeff>

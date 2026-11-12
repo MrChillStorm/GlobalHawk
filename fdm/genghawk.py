@@ -290,6 +290,7 @@ def controls_file():
      (Systems/laws.xml) are off. Spoilers, gear and steering are direct for now. -->
 <system name="controls">
   <property value="0">ctl/instant</property>
+  <property value="0">fcs/throttle-cmd-norm</property>   <!-- the model has no JSBSim engine, so nothing else makes this one -->
   <property value="%g">cal/spoiler-lift</property>
   <property value="%g">cal/spoiler-drag</property>
   <channel name="surfaces">
@@ -392,6 +393,16 @@ def engine_file():
           <pow><quotient><property>atmosphere/T-R</property><property>engine/isa-T-R</property></quotient><value>0.5</value></pow>
 %s
         </product>
+      </function>
+    </fcs_function>
+    <fcs_function name="engine/fan-rpm">
+      <description>fan speed for the 3-D model's fan, not used by the flight model: an estimate. Running: from 2,200 rpm at idle towards 8,700 (about the AE 3007's fan at full speed) with the square root of the thrust fraction. Stopped in flight it windmills, 9 rpm per knot (assumed)</description>
+      <function>
+        <ifthen>
+          <gt><product><property>engine/running</property><difference><value>1</value><property>engine/failed</property></difference></product><value>0.5</value></gt>
+          <sum><value>2200</value><product><value>6500</value><pow><max><value>0</value><min><value>1</value><property>engine/thrust-fraction</property></min></max><value>0.5</value></pow></product></sum>
+          <product><value>9</value><property>velocities/vc-kts</property></product>
+        </ifthen>
       </function>
     </fcs_function>
   </channel>

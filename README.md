@@ -48,6 +48,19 @@ station and the FlightGear aircraft don't exist yet.
   `fdm/phase8e_checks.py`: traffic, and the demo's stand-in aircraft against the model. The station also runs
   with nothing behind it: `GlobalHawk/gcs/index.html?demo=1`.
 
+- [GlobalHawk/GlobalHawk-set.xml](GlobalHawk/GlobalHawk-set.xml): the FlightGear aircraft. Its 3-D model is made by
+  [fdm/mkmodel.py](fdm/mkmodel.py) from NASA's 3-D model of the Global Hawk: scaled to the published length, span and
+  height, the ailerons, ruddervators and spoilers cut out, the fan and turbine turning, and the gear folding into
+  fairings behind doors. [fdm/viewmodel.py](fdm/viewmodel.py) draws it posed, for checking without FlightGear;
+  `fdm/phase9a_checks.py` starts FlightGear with it. The fairings, the doors and the way the gear folds are our own
+  guesses: no drawing of them is public.
+
+## Credits
+
+The 3-D model is derived from NASA's Global Hawk model on NASA 3D Resources (credit: NASA). NASA's material is
+generally not copyrighted and may be used with that credit; its use here does not mean NASA endorses this project,
+and NASA's insignia are not used. The flight records are NASA's ATTREX data (NASA ESPO archive).
+
 ## Licence
 
 GNU General Public License, version 2. See [COPYING](COPYING).

@@ -42,6 +42,7 @@ NASA's drawing:
 | Wing span stations | 3-D model | published span, 116.2 ft |
 | Wing chords | 3-D model's planform: taper, sweep and the root fillet | **a fit:** scaled so the straight-tapered wing, carried to the centreline, has the published 540 ft² |
 | Widths: fuselage, gear track; V-tail dihedral | 3-D model | published length |
+| Main gear track | 3-D model's, plus 0.65 ft a side | **an estimate:** at the model's own track the gear, folded inboard, cuts into the fuselage side; 0.65 ft is what lets it fold clear once the model is squashed to the published 15.2 ft height (`MAIN_GEAR_OUT` in `fdm/geometry.py`) |
 
 | Wing | Value | |
 |---|---|---|
