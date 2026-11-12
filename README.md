@@ -44,6 +44,7 @@ station and the FlightGear aircraft don't exist yet.
   FlightGear with the flight model behind FlightGear's own web protocol; [fdm/onboard.py](fdm/onboard.py) is the
   aircraft's end of the link; `fdm/phase8a_checks.py` flies a scenario through it. `fdm/phase8b_checks.py` checks the alerts the aircraft raises. [fdm/gcs_perf.py](fdm/gcs_perf.py) samples
   the model into the table the station forecasts with; `fdm/phase8c_checks.py` holds the forecast against flights of the model.
+  `fdm/phase8d_checks.py`: several stations, handing over control, and flying by hand through the link.
 
 ## Licence
 

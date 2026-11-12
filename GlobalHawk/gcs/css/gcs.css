@@ -43,6 +43,14 @@ label { display: block; color: var(--dim); font-size: 11px; text-transform: uppe
 #ed-table button { padding: 0 7px; }
 #ed-warn { color: var(--lost); font-size: 13px; margin: 6px 0; }
 #ed-warn .bad { display: block; }
+.tick { display: block; text-transform: none; letter-spacing: 0; font-size: 13px; color: var(--text); margin: 3px 0; cursor: pointer; }
+.tick input { margin-right: 6px; }
+#control button { margin-top: 6px; }
+#control select { background: #0b0e12; color: var(--text); border: 1px solid var(--line); border-radius: 3px; padding: 2px 4px; font: inherit; }
+#ctl-state.mine { color: var(--ok); } #ctl-state.theirs { color: var(--lost); }
+#stickbox { display: flex; gap: 12px; align-items: center; }
+#stick { background: #0b0e12; border: 1px solid var(--line); }
+body.watching #commands button, body.watching #navs button { opacity: .35; }
 main { flex: 1; display: flex; min-height: 0; }
 #mapwrap { position: relative; flex: 1; min-width: 0; }
 #mapwrap { display: flex; flex-direction: column; }

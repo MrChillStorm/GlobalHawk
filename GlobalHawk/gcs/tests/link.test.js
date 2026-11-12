@@ -72,6 +72,27 @@ function rig(opts) {
   assert.strictEqual(r.beats().length, b.length);
   assert.ok(r.transport.paths.includes('/gcs/down/status'));
 }
+// the heartbeat names its station; control is what the aircraft says it is
+{
+  const r = rig();
+  r.link.start([]);
+  r.advance(1000);
+  assert.ok(/^T:\d+$/.test(r.beats()[0].value), r.beats()[0].value);
+  assert.strictEqual(r.link.inControl(), false);
+  r.transport.onValue('/gcs/down/status', JSON.stringify({ control: { holder: 'T' } }));
+  assert.strictEqual(r.link.inControl(), true);
+  r.transport.onValue('/gcs/down/status', JSON.stringify({ control: { holder: 'OTHER' } }));
+  assert.strictEqual(r.link.inControl(), false);
+}
+// the stick goes up with the station's name, late by the delay
+{
+  const r = rig({ latency: 300 });
+  r.link.stick({ p: -1, r: 0.5, y: 0, t: 0.7, s: 0 });
+  const sticks = () => r.sent.filter((x) => x.path === '/gcs/up/stick');
+  assert.strictEqual(sticks().length, 0);
+  r.advance(300);
+  assert.deepStrictEqual(JSON.parse(sticks()[0].value), { station: 'T', p: -1, r: 0.5, y: 0, t: 0.7, s: 0 });
+}
 // satellite latency: the uplink leaves late, the answer arrives late, and "no answer" allows for both
 {
   const r = rig({ latency: 1200 });

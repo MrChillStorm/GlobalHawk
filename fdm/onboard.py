@@ -15,6 +15,8 @@ MAX_LEG_NM = 3000.0
 MIN_FINAL_NM = 8.0
 FUEL_LOW_LB = 1500.0               # assumed: about an hour and a half at cruise
 AOA_NEAR_DEG, AOA_SEC = 0.3, 3.0
+OFFER_SEC = 120.0                  # a handover offer lapses after this
+FREE = ('control.take', 'control.accept')      # commands a station that does not hold control may send
 
 
 def _num(x):
@@ -123,15 +125,35 @@ class Onboard:
         self.down = {'/gcs/down/ack': '', '/gcs/down/status': '', '/gcs/down/plan': ''}
         self.frame = 0
         self.aoa_since = None
+        self.stations = {}                       # name -> when last heard (sim seconds)
+        self.holder, self.offer = None, None     # who has control; a handover offered: (to, when)
         self.status()
 
     # ---- uplink
     def uplink(self, path, value):
+        t = self.f['simulation/sim-time-sec']
         if path == '/gcs/up/heartbeat':
-            if value != self.beat:
-                self.beat = value
-                self.f['ap/link-last-sec'] = self.f['simulation/sim-time-sec']
-                self.f['ap/link-monitor'] = 1
+            if value == self.beat:
+                return
+            self.beat = value
+            name = value.rsplit(':', 1)[0] if isinstance(value, str) and ':' in value else None
+            if name is None:
+                self.alive()                     # a bare counter: keeps the link alive for whoever holds control, takes none
+            else:
+                self.heard(name)
+        elif path == '/gcs/up/stick':
+            try:
+                m = json.loads(value)
+                name = str(m['station'])
+                v = [float(m[k]) for k in ('p', 'r', 'y', 't', 's')]
+            except (ValueError, KeyError, TypeError):
+                return
+            self.heard(name)
+            if name == self.holder and self.f['ap/manual'] > 0:
+                f = self.f
+                clip = lambda x, lo: max(lo, min(1.0, x))
+                f['fcs/elevator-cmd-norm'], f['fcs/aileron-cmd-norm'], f['fcs/rudder-cmd-norm'] = clip(v[0], -1.0), clip(v[1], -1.0), clip(v[2], -1.0)
+                f['fcs/throttle-cmd-norm'], f['fcs/speedbrake-cmd-norm'] = clip(v[3], 0.0), clip(v[4], 0.0)
         elif path == '/gcs/up/cmd':
             try:
                 cmd = json.loads(value)
@@ -141,15 +163,33 @@ class Onboard:
             if self.answered.get(station) == seq:
                 return                           # answered already: a repeat is not done twice
             self.answered[station] = seq
-            self.f['ap/link-last-sec'] = self.f['simulation/sim-time-sec']
-            try:
-                reason = getattr(self, 'cmd_' + name.replace('.', '_'), self.cmd_unknown)(cmd.get('args') or {})
-            except (KeyError, TypeError, ValueError) as e:
-                reason = 'bad arguments (%s)' % e
+            self.heard(station)
+            self.sender = station
+            if station != self.holder and name not in FREE:
+                reason = '%s has control' % self.holder
+            else:
+                try:
+                    reason = getattr(self, 'cmd_' + name.replace('.', '_'), self.cmd_unknown)(cmd.get('args') or {})
+                except (KeyError, TypeError, ValueError) as e:
+                    reason = 'bad arguments (%s)' % e
             self.down['/gcs/down/ack'] = json.dumps(dict(seq=seq, station=station, name=name, status='rejected' if reason else 'accepted',
                                                          reason=reason or '', t=round(self.f['simulation/sim-time-sec'], 2)))
             self.note('%s %s%s' % (name, 'REJECTED: ' + reason if reason else 'accepted', ''))
             self.status()
+
+    def alive(self):
+        """An uplink from the station that holds control: the link is alive."""
+        self.f['ap/link-last-sec'] = self.f['simulation/sim-time-sec']
+        self.f['ap/link-monitor'] = 1
+
+    def heard(self, name):
+        """A station was heard. The first one gets control; the holder's uplinks keep the link alive."""
+        self.stations[name] = self.f['simulation/sim-time-sec']
+        if self.holder is None:
+            self.holder = name
+            self.note('%s has control' % name)
+        if name == self.holder:
+            self.alive()
 
     def note(self, text):
         self.events.append((self.f['simulation/sim-time-sec'], text))
@@ -273,6 +313,74 @@ class Onboard:
         self.leave([dict(d) for d in self.mgr.lost_link], 'home')
         return None
 
+    def cmd_control_offer(self, a):
+        to = str(a['to'])
+        t = self.f['simulation/sim-time-sec']
+        if to == self.holder:
+            return 'that is this station'
+        if to not in self.stations or t - self.stations[to] > 10.0:
+            return 'station %s is not being heard' % to
+        self.offer = (to, t)
+        return None
+
+    def cmd_control_cancel(self, a):
+        if self.offer is None:
+            return 'no handover is offered'
+        self.offer = None
+        return None
+
+    def cmd_control_accept(self, a):
+        if self.offer is None or self.offer[0] != self.sender:
+            return 'control has not been offered to %s' % self.sender
+        old, self.holder, self.offer = self.holder, self.sender, None
+        self.alive()
+        self.note('control passed from %s to %s' % (old, self.holder))
+        return None
+
+    def cmd_control_take(self, a):
+        if self.holder == self.sender:
+            return 'this station already has control'
+        if self.holder is not None and not self.f['ap/link-lost']:
+            return '%s has control and is being heard' % self.holder
+        old, self.holder, self.offer = self.holder, self.sender, None
+        self.alive()
+        self.note('%s took control%s' % (self.holder, ' (%s was lost)' % old if old else ''))
+        return None
+
+    def cmd_manual(self, a):
+        mode = a['mode']
+        if mode not in (0, 1, 2):
+            return 'mode must be 0 (automatic), 1 (protected) or 2 (direct)'
+        f = self.f
+        if mode == 0:
+            if f['ap/manual'] == 0:
+                return 'already automatic'
+            self.automatic()
+            return None
+        if not self.airborne():
+            return 'only while enroute'
+        if f['ap/manual'] == 0:
+            # the levers start where the laws have them; the manager holds here, off the plan, until told otherwise
+            f['fcs/throttle-cmd-norm'], f['fcs/speedbrake-cmd-norm'] = f['ctl/throttle-norm'], f['ctl/spoiler-norm']
+            for k in ('elevator', 'aileron', 'rudder'):
+                f['fcs/%s-cmd-norm' % k] = 0.0
+        f['ap/land-mode'] = 0
+        f['ap/manual'] = mode
+        self.remember()
+        self.off = 'manual'
+        return None
+
+    def automatic(self):
+        """Back from flying by hand: the laws take over and the aircraft holds where it is."""
+        f = self.f
+        f['ap/manual'] = 0
+        for k in ('elevator', 'aileron', 'rudder'):
+            f['fcs/%s-cmd-norm' % k] = 0.0
+        self.off = None
+        f['ap/alt-cmd-ft'] = round(f['position/h-sl-ft'] / 100.0) * 100.0
+        if self.airborne():
+            self.cmd_hold({})
+
     def cmd_nav(self, a):
         if a.get('name') not in NAVS:
             return 'unknown navigator'
@@ -284,6 +392,11 @@ class Onboard:
         self.frame += 1
         if self.started:
             m = self.mgr
+            if self.f['ap/manual'] > 0 and self.f['ap/link-lost']:
+                self.note('link lost while flown by hand: automatic')
+                self.automatic()
+            if self.offer and self.f['simulation/sim-time-sec'] - self.offer[1] > OFFER_SEC:
+                self.offer = None
             before = m.contingency
             if before is None and (self.f['ap/link-lost'] or self.f['engine/failed']) and not m.done:
                 self.remember()                  # the manager is about to leave the plan by itself
@@ -314,6 +427,10 @@ class Onboard:
                 s['site'] = it.get('site', {}).get('name')
                 s['surplus_ft'] = round(it.get('surplus', 0.0))
         s['alerts'] = self.alerts(m)
+        now = f['simulation/sim-time-sec']
+        s['control'] = dict(holder=self.holder, offer_to=self.offer[0] if self.offer else None,
+                            stations=[dict(name=n, age=round(now - t, 1)) for n, t in sorted(self.stations.items())])
+        s['manual'] = int(f['ap/manual'])
         s['target'] = dict(alt_ft=round(f['ap/alt-cmd-ft']), kcas=round(f['ap/speed-target-kcas'], 1))
         s['events'] = [[round(t, 1), e] for t, e in ((m.events if m else []) + self.events)]
         s['events'] = sorted(s['events'])[-6:]
@@ -348,6 +465,8 @@ class Onboard:
         self.aoa_since = (self.aoa_since if self.aoa_since is not None else t) if near else None
         if near and t - self.aoa_since >= AOA_SEC:
             add('aoa', 'caution', 'ANGLE OF ATTACK LIMIT', 'The aircraft is holding it')
+        if f['ap/manual'] > 0:
+            add('manual', 'advisory', 'FLOWN BY HAND: ' + ('PROTECTED' if f['ap/manual'] == 1 else 'DIRECT, NO PROTECTIONS'))
         if self.off in ('goto', 'hold', 'home'):
             add('off-plan', 'advisory', 'OFF THE PLAN: ' + self.off.upper())
         return out
@@ -359,6 +478,8 @@ class Onboard:
         nxt = 'then ' + after[rest[0]] if rest else 'end of plan'
         if kind == 'done':
             return 'plan complete', ''
+        if f['ap/manual'] > 0:
+            return 'FLOWN BY HAND (%s)' % ('protected' if f['ap/manual'] == 1 else 'direct'), 'automatic when commanded, or if the link is lost'
         if kind == 'taxi':
             return ('stopped' if f['ap/ground-speed-kt'] < 0.3 else 'taxi, %.0f kt' % f['ap/ground-speed-kt']), nxt
         if kind == 'takeoff':

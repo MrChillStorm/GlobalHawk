@@ -4,8 +4,9 @@ A browser page from which the Global Hawk is supervised: you tell the aircraft w
 "hold", "come home") and it works out how. The autonomy is on board; this page is a terminal. **Close it and the
 aircraft notices the silence and flies its lost-link route home.**
 
-So far: the command link, a map, a flight display, engine, fuel and navigator status, one alert list, and a plan
-editor with a forecast of time, fuel and height. Several stations with a handover and hand-flying with a stick come next.
+So far: the command link, a map, a flight display, engine, fuel and navigator status, one alert list, a plan
+editor with a forecast of time, fuel and height, several stations with a handover between them, and flying by hand
+with a gamepad or the keyboard. Traffic and a demo that needs no server come next.
 
 ## Run it
 
@@ -24,8 +25,8 @@ then open <http://localhost:5400/gcs/>. The aircraft stands on its stand, engine
 5. Close the tab in flight: 30 s later the aircraft turns for home and lands.
 
 With FlightGear (`fgfs --httpd=5400`, once the aircraft package is complete) the page is pointed at it the same
-way: `index.html?host=…&port=5400`. Also `&station=LRE` (the station's name) and `&latency=1200` (milliseconds
-of delay each way, as over a satellite).
+way: `index.html?host=…&port=5400`. Also `&station=LRE` (the station's name; `MCE` gets 1.2 s of delay each
+way, an assumed figure for a satellite link) and `&latency=…` in milliseconds to set the delay yourself.
 
 Tests: `npm test` in this folder (plain `node`, nothing to install); `python3 fdm/phase8a_checks.py` flies a
 whole scenario through the link; `fdm/phase8c_checks.py` holds the forecast and the two ports against the model.
@@ -52,6 +53,28 @@ whole scenario through the link; `fdm/phase8c_checks.py` holds the forecast and 
   without the engine, and each landing site says what height it would have in hand there, or OUT OF REACH.
 - **The height profile** under the map: the heights the plan asks for (dashed) and the height forecast.
 
+## Several stations, and handing over
+
+Open the page more than once, each with its own `?station=` name: they are separate crew positions. **The aircraft
+decides who has control**: the first station it hears. The others watch: same map, same alerts, commands greyed.
+The lost-link watch follows the station in control, not the watchers.
+
+To hand over, the station in control ticks its three checks under **Control** and offers control to another;
+that one ticks its own three and accepts, and control passes at that moment. If the station in control goes
+silent and the link is declared lost, any other station may **Take control**.
+
+## Flying by hand
+
+Enroute, the station in control can choose **Protected** or **Direct** under **By hand** (confirmed like any
+command). Protected: the stick asks for pitch rate and bank angle and the aircraft keeps its limits. Direct: the
+surfaces follow the stick, with no limits. **Automatic** gives it back: the aircraft holds where it is.
+
+A gamepad is used if one is connected (left stick pitch and roll, right stick pedals, triggers throttle, bumpers
+spoilers); otherwise keys: arrows for the stick (up is stick forward), Q/E pedals, W/S throttle, Z/X spoilers. With a
+delay set, everything you do arrives that much later and what you see is that much older, which is why nobody
+hand-flies the real aircraft over a satellite. If the link is lost while flying by hand, the aircraft goes back to
+automatic by itself and flies its lost-link route.
+
 ## Editing a plan
 
 **Edit plan** takes the plan the aircraft holds. Choose **Route** or **Lost-link route**; click the map to add a
@@ -77,7 +100,8 @@ Everything goes through FlightGear's web server: the `PropertyListener` websocke
 
 | Property | Written by | Content |
 |---|---|---|
-| `/gcs/up/heartbeat` | station, once a second | a counter; each change tells the aircraft the link is alive |
+| `/gcs/up/heartbeat` | station, once a second | `"NAME:n"`; from the station in control, each change tells the aircraft the link is alive |
+| `/gcs/up/stick` | station in control, 20 a second by hand | `{"station","p","r","y","t","s"}`: pitch, roll, pedals -1..1; throttle, spoilers 0..1 |
 | `/gcs/up/cmd` | station | `{"seq":n,"station":"LRE","name":"goto","args":{…}}` as a string |
 | `/gcs/down/ack` | aircraft | `{"seq":n,"status":"accepted"` or `"rejected","reason":"…"}` |
 | `/gcs/down/status` | aircraft, twice a second | doing, next, alerts, the leg or hold, targets, its last notes |
@@ -96,6 +120,13 @@ under `/fdm/jsbsim/`.
 | `resume` | | returns to the leg it left | when not off the plan; engine failed |
 | `home` | | flies the lost-link route and lands | with no such route; on the ground |
 | `nav` | `name`, `on` | switches a navigator | unknown name |
+| `manual` | `mode` 0, 1, 2 | automatic, protected or direct flying by hand | 1 and 2 when not enroute |
+| `control.offer` | `to` | offers control to a station it hears | to itself; to a station not heard |
+| `control.cancel` | | withdraws the offer | with none made |
+| `control.accept` | | the station offered to takes control | when not offered to it |
+| `control.take` | | takes control | while the station in control is still heard |
+
+Every command but the last two is done only for the station that has control; another's is refused, naming who has it.
 
 A plan is JSON (`../Missions/demo-local.json` is one): a `field`, `items` (`taxi`, `takeoff`, `route`, `land`,
 `hold`), a `lost_link` route that begins with a route and ends in a landing, and landing `sites` for a glide
@@ -106,6 +137,7 @@ without the engine. The aircraft refuses a plan with an unknown item, a point of
 
 - `js/link.js`: the station's end of the link (commands and their fates, heartbeat, delay), and the websocket.
 - `js/geo.js`: small-area geometry, as the aircraft does it.
+- `js/controls.js`: gamepad and keys to the stick message.
 - `js/alerts.js`: the alert list's order, tones and acknowledging. `js/pfdmath.js`, `js/pfd.js`: the flight display.
 - `js/predict.js` with `js/perfdata.js`: the forecast. `js/editor.js`: the plan editor's logic. `js/plancheck.js`,
   `js/reach.js`: the aircraft's plan check and glide planner, ported so the station can show them at once.

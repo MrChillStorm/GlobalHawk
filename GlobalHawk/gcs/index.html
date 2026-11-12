@@ -50,6 +50,36 @@
       <div id="tanks"></div>
       <h2>Navigators <span id="nav-note"></span></h2>
       <div id="navs" class="row"></div>
+      <h2>Control</h2>
+      <div id="control">
+        <div id="ctl-state" class="mid"></div>
+        <div id="ctl-offer" hidden>
+          <div class="small">Hand over to <select id="ctl-to"></select>. Before offering:</div>
+          <label class="tick"><input type="checkbox"> the other station shows the same plan and aircraft position</label>
+          <label class="tick"><input type="checkbox"> the aircraft's state and any alerts have been told to them</label>
+          <label class="tick"><input type="checkbox"> no command of mine is waiting for an answer</label>
+          <button id="ctl-offer-go">Offer control</button>
+        </div>
+        <div id="ctl-offered" hidden><span id="ctl-offered-text"></span> <button id="ctl-cancel">Withdraw the offer</button></div>
+        <div id="ctl-accept" hidden>
+          <div class="small">Control is offered to this station. Before accepting:</div>
+          <label class="tick"><input type="checkbox"> I see the aircraft, its plan and its lost-link route</label>
+          <label class="tick"><input type="checkbox"> I have read the alerts and know what it is doing now and next</label>
+          <label class="tick"><input type="checkbox"> I know this station's link delay</label>
+          <button id="ctl-accept-go">Accept control</button>
+        </div>
+        <button id="ctl-take" hidden>Take control: the station that had it is not being heard</button>
+      </div>
+      <h2>By hand</h2>
+      <div class="row">
+        <button id="m-auto">Automatic</button>
+        <button id="m-prot" title="the stick asks for pitch rate and bank; the aircraft keeps its limits">Protected</button>
+        <button id="m-direct" title="the surfaces follow the stick; no limits">Direct</button>
+      </div>
+      <div id="stickbox" hidden>
+        <canvas id="stick" width="110" height="110"></canvas>
+        <div id="stick-text" class="small"></div>
+      </div>
       <h2>Commands</h2>
       <div id="commands">
         <div class="row">
@@ -100,6 +130,7 @@
   <script src="js/plancheck.js"></script>
   <script src="js/reach.js"></script>
   <script src="js/editor.js"></script>
+  <script src="js/controls.js"></script>
   <script src="js/map.js"></script>
   <script src="js/main.js"></script>
 </body>

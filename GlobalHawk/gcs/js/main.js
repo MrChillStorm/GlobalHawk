@@ -27,7 +27,10 @@
   TANKS.forEach((t, i) => (TELEMETRY['tank' + i] = `${J}propulsion/tank[${i}]/contents-lbs`));
   const NAVS = [['kna', 'KN-A'], ['knb', 'KN-B'], ['lna', 'LN-A'], ['lnb', 'LN-B']];
   NAVS.forEach((n) => (TELEMETRY['nav_' + n[0]] = `${J}nav/${n[0]}-on`));
-  const link = new G.Link({ transport: new G.WsTransport(host, port), station: q.get('station') || 'LRE', latency: Number(q.get('latency') || 0) });
+  const station = q.get('station') || 'LRE';
+  // over a satellite everything is late: 1.2 s each way is an assumed round figure for an MCE, none for the others
+  const latency = q.get('latency') !== null ? Number(q.get('latency')) : station === 'MCE' ? 1200 : 0;
+  const link = new G.Link({ transport: new G.WsTransport(host, port), station, latency });
   const map = new G.MapView($('map'));
   const pfd = new G.FlightDisplay($('pfd'));
   const alerts = new G.Alerts();
@@ -42,6 +45,91 @@
     const on = !(tel['nav_' + n[0]] > 0.5);
     arm({ name: 'nav', button: null, ready: () => true, args: () => ({ name: n[0], on }), text: () => `Switch navigator ${n[1]} ${on ? 'ON' : 'OFF'}${on ? '' : ': the aircraft votes between those left on'}` });
   }));
+
+  /* ------------------------------------------------------------- who has control, and handing it over */
+  const ticked = (id) => [...$(id).querySelectorAll('input[type=checkbox]')].every((b) => b.checked);
+  const untick = (id) => $(id).querySelectorAll('input[type=checkbox]').forEach((b) => (b.checked = false));
+  $('ctl-offer-go').addEventListener('click', () => {
+    link.command('control.offer', { to: $('ctl-to').value });
+    untick('ctl-offer');
+  });
+  $('ctl-cancel').addEventListener('click', () => link.command('control.cancel'));
+  $('ctl-accept-go').addEventListener('click', () => {
+    link.command('control.accept');
+    untick('ctl-accept');
+  });
+  $('ctl-take').addEventListener('click', () => link.command('control.take'));
+  function renderControl(s, live) {
+    const c = s && s.control;
+    const mine = link.inControl();
+    const st = $('ctl-state');
+    st.className = 'mid ' + (mine ? 'mine' : 'theirs');
+    st.textContent = !live || !c ? '-' : mine ? `${station} has control` : c.holder ? `watching: ${c.holder} has control` : 'nobody has control yet';
+    document.body.classList.toggle('watching', live && !mine);
+    const others = c ? c.stations.filter((x) => x.name !== station && x.age < 10).map((x) => x.name) : [];
+    const sel = $('ctl-to');
+    if (sel.dataset.list !== others.join(',')) {
+      sel.innerHTML = others.map((n) => `<option>${esc(n)}</option>`).join('');
+      sel.dataset.list = others.join(',');
+    }
+    $('ctl-offer').hidden = !(live && mine && !c.offer_to && others.length);
+    $('ctl-offer-go').disabled = !ticked('ctl-offer');
+    $('ctl-offered').hidden = !(live && mine && c.offer_to);
+    $('ctl-offered-text').textContent = c && c.offer_to ? `Control is offered to ${c.offer_to}: waiting for them to accept.` : '';
+    $('ctl-accept').hidden = !(live && !mine && c && c.offer_to === station);
+    $('ctl-accept-go').disabled = !ticked('ctl-accept');
+    $('ctl-take').hidden = !(live && !mine && c && c.holder && s.link_lost);
+    return mine;
+  }
+
+  /* ------------------------------------------------------------- flying by hand: gamepad or keys, sent as the stick */
+  let stickNow = null; // { p, r, y, t, s } while the aircraft is flown by hand from this station
+  let stickAt = 0;
+  const keysDown = new Set();
+  const FLY_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'q', 'e', 'w', 's', 'z', 'x'];
+  document.addEventListener('keydown', (e) => {
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (stickNow && FLY_KEYS.includes(k) && e.target.tagName !== 'INPUT') {
+      keysDown.add(k);
+      e.preventDefault();
+    }
+  });
+  document.addEventListener('keyup', (e) => keysDown.delete(e.key.length === 1 ? e.key.toLowerCase() : e.key));
+  window.addEventListener('blur', () => keysDown.clear());
+  function flyByHand() {
+    const s = link.status;
+    const on = !!(s && s.manual > 0 && link.inControl());
+    if (on && !stickNow) stickNow = { p: 0, r: 0, y: 0, t: Number.isFinite(tel.thr) ? tel.thr : 0.5, s: 0 };
+    if (!on) stickNow = null;
+    $('stickbox').hidden = !on;
+    if (!on) return;
+    const now = performance.now();
+    const dt = Math.min(0.2, (now - stickAt) / 1000);
+    stickAt = now;
+    const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter((p) => p && p.connected) : [];
+    const pad = pads[0];
+    stickNow = pad && !keysDown.size ? G.controls.fromGamepad(pad.axes, pad.buttons, stickNow, dt) : G.controls.fromKeys(keysDown, stickNow, dt);
+    link.stick(stickNow);
+    const x = $('stick').getContext('2d');
+    x.clearRect(0, 0, 110, 110);
+    x.strokeStyle = '#243040';
+    x.beginPath();
+    x.moveTo(55, 0);
+    x.lineTo(55, 110);
+    x.moveTo(0, 55);
+    x.lineTo(110, 55);
+    x.stroke();
+    x.fillStyle = '#3fd0ff';
+    x.beginPath();
+    x.arc(55 + stickNow.r * 50, 55 - stickNow.p * 50, 6, 0, 2 * Math.PI); // stick forward is up
+    x.fill();
+    $('stick-text').innerHTML = `${pad ? 'gamepad: ' + esc(pad.id.slice(0, 28)) : 'keys: arrows stick, Q E pedals, W S throttle, Z X spoilers'}<br>throttle ${Math.round(stickNow.t * 100)} %, spoilers ${Math.round(stickNow.s * 100)} %, pedals ${stickNow.y.toFixed(1)}${link.latency ? `<br>everything arrives ${link.latency / 1000} s late` : ''}`;
+  }
+  setInterval(flyByHand, 50);
+  const armManual = (mode, button, text) => button.addEventListener('click', () => arm({ name: 'manual', button, ready: () => true, args: () => ({ mode }), text: () => text }));
+  armManual(0, $('m-auto'), 'Automatic: the aircraft takes over and holds where it is; Resume plan takes it back to the plan');
+  armManual(1, $('m-prot'), 'Fly by hand, PROTECTED: the stick asks for pitch rate and bank angle, the aircraft keeps its limits. It goes back to automatic by itself if the link is lost');
+  armManual(2, $('m-direct'), 'Fly by hand, DIRECT: the surfaces follow the stick, with damping only. NO LIMITS: the aircraft can be stalled or overstressed');
 
   /* ------------------------------------------------------------- the tone: a second sense for warnings and cautions */
   let audio = null;
@@ -439,6 +527,8 @@
   function render() {
     const s = link.status;
     const live = link.state.mode === 'live' && link.lastDown !== null && Date.now() - link.lastDown < 3000 + link.latency;
+    // only the station that has control commands (before anyone has it, the first to speak gets it)
+    const mine = renderControl(s, live) || !!(live && s && s.control && !s.control.holder);
     $('doing').textContent = !live ? 'no connection' : s ? s.doing : 'waiting for the aircraft';
     $('doing').style.color = s && s.contingency ? 'var(--lost)' : '';
     $('next').textContent = live && s ? s.next + (s.off_plan ? `   (off the plan: ${s.off_plan})` : '') : '';
@@ -497,16 +587,23 @@
       const b = $('nav-' + n[0]);
       b.classList.toggle('off', !on);
       b.textContent = `${n[1]} ${on ? 'on' : 'OFF'}`;
-      b.disabled = !live;
+      b.disabled = !mine;
     });
     $('nav-note').textContent = tel.miscompare > 0.5 ? '· two disagree' : '';
     // which commands make sense now
     const enroute = !!(live && s && s.started && (s.kind === 'route' || s.kind === 'hold'));
-    $('c-start').disabled = !(live && s && s.plan && !s.started);
-    $('c-demo').disabled = !live;
-    $('c-goto').disabled = $('c-hold').disabled = $('c-alt').disabled = !enroute;
-    $('c-resume').disabled = !(live && s && s.off_plan && s.contingency !== 'engine' && s.kind !== 'done');
-    $('c-home').disabled = !(enroute && link.plan && link.plan.lost_link);
+    const byHand = !!(s && s.manual > 0);
+    $('c-start').disabled = !(mine && s && s.plan && !s.started);
+    $('c-demo').disabled = !mine;
+    $('c-goto').disabled = $('c-hold').disabled = $('c-alt').disabled = !(mine && enroute && !byHand);
+    $('c-resume').disabled = !(mine && s && s.off_plan && s.contingency !== 'engine' && s.kind !== 'done' && !byHand);
+    $('c-home').disabled = !(mine && enroute && link.plan && link.plan.lost_link && !byHand);
+    $('m-auto').disabled = !(mine && byHand);
+    $('m-prot').disabled = !(mine && enroute && s.manual !== 1);
+    $('m-direct').disabled = !(mine && enroute && s.manual !== 2);
+    $('m-auto').classList.toggle('on', !!s && s.manual === 0);
+    $('m-prot').classList.toggle('on', !!s && s.manual === 1);
+    $('m-direct').classList.toggle('on', !!s && s.manual === 2);
     $('follow').classList.toggle('on', map.follow);
     // sent commands and the aircraft's notes
     $('log').innerHTML = link.commands.slice(-8).reverse().map((c) => {
@@ -524,6 +621,7 @@
         }) }
       : null;
     $('c-edit').disabled = !live;
+    if (editor) $('ed-send').disabled = $('ed-send').disabled || !mine;
     if (editor) renderEditor();
     else drawProfile();
     map.data.plan = link.plan;

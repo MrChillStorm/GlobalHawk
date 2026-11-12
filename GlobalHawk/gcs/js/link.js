@@ -5,7 +5,9 @@
  *   ws://HOST:PORT/PropertyListener   {"command":"addListener"|"get"|"set","node":path[,"value":v]}
  *
  * The contract with the aircraft (see README.md):
- *   /gcs/up/heartbeat   a counter, once a second. If it stops, the aircraft flies its lost-link route.
+ *   /gcs/up/heartbeat   "STATION:n", once a second. If the station that holds control stops, the aircraft flies its
+ *                       lost-link route.
+ *   /gcs/up/stick       {"station","p","r","y","t","s"} twenty times a second while the aircraft is flown by hand
  *   /gcs/up/cmd         {"seq","station","name","args"} as a JSON string
  *   /gcs/down/ack       {"seq","status":"accepted"|"rejected","reason"} : a command counts only when this comes back
  *   /gcs/down/status    what the aircraft is doing; /gcs/down/plan the plan it holds
@@ -61,7 +63,7 @@
       const tick = () => {
         if (!this.beating) return;
         this.beat += 1;
-        const b = this.beat;
+        const b = `${this.station}:${this.beat}`;
         this.later(() => this.t.send('/gcs/up/heartbeat', b));
         this.expire();
         this.timer(tick, BEAT_MS);
@@ -85,6 +87,17 @@
       this.timer(() => this.expire(), ANSWER_MS + 2 * this.latency + 50);
       this.emit('command', c);
       return c;
+    }
+
+    /** Does the aircraft say this station holds control? */
+    inControl() {
+      return !!(this.status && this.status.control && this.status.control.holder === this.station);
+    }
+
+    /** One stick sample up the link: { p, r, y, t, s }. It arrives late by the delay, like everything else. */
+    stick(v) {
+      const msg = JSON.stringify({ station: this.station, p: v.p, r: v.r, y: v.y, t: v.t, s: v.s });
+      this.later(() => this.t.send('/gcs/up/stick', msg));
     }
 
     expire() {
