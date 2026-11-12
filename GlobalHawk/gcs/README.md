@@ -31,8 +31,12 @@ then open <http://localhost:5400/gcs/>. The aircraft stands on its stand, engine
 4. **Edit plan**: click the map to add a point, drag points, change heights; **Send plan…** when it looks right.
 5. Close the tab in flight: 30 s later the aircraft turns for home and lands.
 
-With FlightGear (`fgfs --httpd=5400`, once the aircraft package is complete) the page is pointed at it the same
-way: `index.html?host=…&port=5400`. Also `&station=LRE` (the station's name; `MCE` gets 1.2 s of delay each
+With FlightGear the page is pointed at it the same way: start FlightGear with the aircraft and `--httpd=5400`
+at any airport, open `index.html` (from the folder is fine; `?host=…&port=5400` if FlightGear is elsewhere), then
+**Plan from here**, **Send**, **Start**, **Send**. "Plan from here" lays a local flight from the runway the
+aircraft stands on: takeoff straight ahead, a box at 15,000 ft, a landing on the same runway. The aircraft's end
+of the link runs in FlightGear's Nasal (`GlobalHawk/Nasal/`). The demo plan is for the made-up field of the
+simulator server, not for FlightGear. Also `&station=LRE` (the station's name; `MCE` gets 1.2 s of delay each
 way, an assumed figure for a satellite link) and `&latency=…` in milliseconds to set the delay yourself.
 
 Tests: `npm test` in this folder (plain `node`, nothing to install); `python3 fdm/phase8a_checks.py` flies a

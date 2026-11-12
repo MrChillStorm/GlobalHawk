@@ -16,6 +16,7 @@
   const J = '/fdm/jsbsim/';
   const TELEMETRY = {
     lat: '/position/latitude-deg', lon: '/position/longitude-deg', alt: '/position/altitude-ft', hdg: '/orientation/heading-deg',
+    agl: '/position/altitude-agl-ft',
     kcas: '/velocities/airspeed-kt', gs: '/velocities/groundspeed-kt', vs: '/velocities/vertical-speed-fps', mach: '/velocities/mach',
     fuel: J + 'fuel/total-lbs', thr: J + 'ctl/throttle-norm',
     pitch: '/orientation/pitch-deg', roll: '/orientation/roll-deg', alpha: J + 'aero/alpha-deg', alphaLimit: J + 'ap/alpha-limit-deg',
@@ -267,6 +268,12 @@
     const builtin = () => armPlan(JSON.parse(JSON.stringify(G.demoplan)), $('c-demo'));
     if (demo || location.protocol === 'file:') builtin();
     else fetch('../Missions/demo-local.json').then((r) => r.json()).then((p) => armPlan(p, $('c-demo'))).catch(builtin);
+  });
+  $('c-here').addEventListener('click', () => {
+    // for an airport FlightGear started it at: the aircraft stands lined up on a runway, and the plan is laid from there
+    if (!here() || !Number.isFinite(tel.hdg) || !Number.isFinite(tel.alt)) return;
+    const elev = tel.alt - (Number.isFinite(tel.agl) ? tel.agl : 5);
+    armPlan(geo.localPlan(here(), tel.hdg, elev), $('c-here'));
   });
   $('c-file').addEventListener('change', (e) => {
     const f = e.target.files[0];

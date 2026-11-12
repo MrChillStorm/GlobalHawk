@@ -23,3 +23,15 @@ assert.deepStrictEqual(lines[0].points[0], [0, 0]);
 assert.deepStrictEqual(lines[2].points, [[1, 3], [2, 3], [3, 3]]);
 assert.deepStrictEqual(lines[3].points, [[3, 3], [3, 4], [3, 5]]);
 console.log('geo OK');
+
+// a local plan from where the aircraft stands: one the aircraft's own check accepts, wherever it is
+const pc = require('../js/plancheck.js');
+for (const [at, hdg, elev] of [[[60.3172, 24.9633], 43, 179], [[34.9, -117.88], 220, 2300], [[-33.9, 151.2], 355, 21]]) {
+  const p = g.localPlan(at, hdg, elev);
+  assert.strictEqual(pc.checkPlan(p), null);
+  near(g.course(p.items[0].start, p.items[0].end).deg, hdg, 0.1);
+  near(g.course(p.items[2].fix, p.items[2].aim).deg, hdg, 0.2);            // it lands the way it took off (the flat-earth courses differ a little 10 nmi apart)
+  assert.ok(g.course(p.items[2].fix, p.items[2].aim).ft / g.NM > 8);
+  assert.deepStrictEqual(p.lost_link[1], p.items[2]);
+}
+console.log('geo: local plan ok');

@@ -36,17 +36,33 @@ def get(path):
         return None
 
 
-def start(extra, log, tries=2):
-    """FlightGear sometimes stalls in its start and never comes up: it is then stopped and started once more."""
+FG_LOG = os.path.expanduser('~/Library/Application Support/FlightGear/fgfs.log')
+
+
+def start(extra, log, tries=4):
+    """Started from a script, FlightGear on the Mac waits to be brought to the front before it goes on (a click on
+    its Dock icon does it): start_once brings it forward itself. With the screen locked that cannot work. A start
+    that still hangs is told by FlightGear's own log not being begun within 45 s: stopped, and started again."""
     for n in range(tries):
         proc, took = start_once(extra, log)
-        if took is not None or n == tries - 1:
+        if took is not None or n == tries - 1 or proc is None:
             return proc, took
         stop(proc)
-        time.sleep(5)
+        time.sleep(30)
+
+
+def screen_locked():
+    """With the Mac's screen locked FlightGear never finishes starting: it waits for the window system for ever
+    (this was the "sometimes stalls": found 2026-11-12 with a sample of the hung process)."""
+    out = subprocess.run(['ioreg', '-n', 'Root', '-d1', '-a'], capture_output=True, text=True).stdout
+    i = out.find('CGSSessionScreenIsLocked')
+    return i >= 0 and '<true/>' in out[i:i + 80]
 
 
 def start_once(extra, log):
+    if screen_locked():
+        print('the screen is locked: FlightGear cannot start until it is unlocked', flush=True)
+        return None, None
     args = [FGFS, '--aircraft-dir=' + AIRCRAFT_DIR, '--aircraft=GlobalHawk', '--httpd=%d' % PORT, '--disable-ai-traffic', '--disable-real-weather-fetch',
             '--timeofday=noon', '--geometry=1024x640', '--disable-sound', '--disable-terrasync', '--prop:/sim/rendering/multi-sample-buffers=0',
             '--prop:/sim/startup/save-on-exit=false', '--model-hz=120'] + extra
@@ -54,16 +70,24 @@ def start_once(extra, log):
         args.insert(1, '--fg-root=' + FG_ROOT)
     proc = subprocess.Popen(args, stdout=open(log, 'w'), stderr=subprocess.STDOUT)
     t0 = time.time()
+    front = [3, 10, 20]                         # seconds after the start at which FlightGear is brought to the front
     while time.time() - t0 < 240:
+        if front and time.time() - t0 > front[0]:
+            front.pop(0)
+            subprocess.run(['open', '-a', os.path.dirname(os.path.dirname(os.path.dirname(FGFS)))], capture_output=True)
         if proc.poll() is not None:
             return proc, None
         if get('/sim/globalhawk/started'):
             return proc, time.time() - t0
+        if time.time() - t0 > 45 and not (os.path.exists(FG_LOG) and os.path.getmtime(FG_LOG) >= t0):
+            return proc, None                   # hung before its log was begun
         time.sleep(2)
     return proc, None
 
 
 def stop(proc):
+    if proc is None:
+        return
     proc.terminate()
     try:
         proc.wait(20)

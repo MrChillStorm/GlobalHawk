@@ -46,7 +46,37 @@
     return out;
   }
 
-  const api = { FT_PER_DEG, NM, course, along, turn, planLines };
+  /**
+   * A local flight from where the aircraft stands, lined up on a runway: takeoff straight ahead, a box to the
+   * right at 15,000 ft, and a landing back on the same runway; the lost-link route goes straight to that landing.
+   * For flying from any airport FlightGear starts it at. here is [lat, lon], hdg the runway's course, elev the
+   * ground's height there (ft).
+   */
+  function localPlan(here, hdg, elev) {
+    const r = (v) => Math.round(v * 1e6) / 1e6;
+    const pt = (p, alt) => (alt === undefined ? [r(p[0]), r(p[1])] : [r(p[0]), r(p[1]), alt]);
+    const fixAlt = Math.round((elev + 3500) / 100) * 100;
+    const p1 = along(here, hdg, 12 * NM);
+    const p2 = along(p1, hdg + 90, 15 * NM);
+    const p3 = along(p2, hdg + 180, 22 * NM);
+    const fix = along(here, hdg + 180, 10 * NM);
+    const aim = along(here, hdg, 800);
+    const land = { kind: 'land', fix: pt(fix), aim: pt(aim) };
+    return {
+      id: 'local-from-here',
+      note: 'A local flight from where the aircraft stood: takeoff, a box at 15,000 ft, landing on the same runway.',
+      field: { name: 'here', lat: r(here[0]), lon: r(here[1]), elev_ft: Math.round(elev) },
+      items: [
+        { kind: 'takeoff', start: pt(here), end: pt(along(here, hdg, 9000)) },
+        { kind: 'route', points: [pt(p1, 15000), pt(p2, 15000), pt(p3, 15000), pt(fix, fixAlt)] },
+        land,
+      ],
+      lost_link: [{ kind: 'route', points: [pt(fix, fixAlt)] }, land],
+      sites: [{ name: 'home', aim: pt(aim), course: Math.round(((hdg % 360) + 360) % 360 * 10) / 10, elev_ft: Math.round(elev) }],
+    };
+  }
+
+  const api = { FT_PER_DEG, NM, course, along, turn, planLines, localPlan };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else (root.GCS = root.GCS || {}).geo = api;
 })(typeof window !== 'undefined' ? window : globalThis);

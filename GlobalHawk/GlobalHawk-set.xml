@@ -35,5 +35,10 @@
   <gear><brake-parking type="double">1</brake-parking><gear-down type="bool">true</gear-down></gear>
   <engines><engine n="0"><throttle type="double">0</throttle></engine></engines>
  </controls>
- <nasal><globalhawk><file>Aircraft/GlobalHawk/Nasal/globalhawk.nas</file></globalhawk></nasal>
+ <nasal><globalhawk>
+  <file>Aircraft/GlobalHawk/Nasal/globalhawk.nas</file>
+  <file>Aircraft/GlobalHawk/Nasal/json.nas</file>
+  <file>Aircraft/GlobalHawk/Nasal/missionmgr.nas</file>
+  <file>Aircraft/GlobalHawk/Nasal/onboard.nas</file>
+ </globalhawk></nasal>
 </PropertyList>

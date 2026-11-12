@@ -54,6 +54,11 @@ station and the FlightGear aircraft don't exist yet.
   fairings behind doors. [fdm/viewmodel.py](fdm/viewmodel.py) draws it posed, for checking without FlightGear;
   `fdm/phase9a_checks.py` starts FlightGear with it. The fairings, the doors and the way the gear folds are our own
   guesses: no drawing of them is public.
+- [GlobalHawk/Nasal/](GlobalHawk/Nasal/): what runs inside FlightGear. `onboard.nas` and `missionmgr.nas` are the
+  aircraft's end of the link and the mission manager, the same logic as `fdm/onboard.py` and `fdm/missionmgr.py`
+  line for line (change both together); `json.nas` reads and writes the link's JSON. With them the ground station
+  flies FlightGear itself: start FlightGear with `--httpd=5400` and open the station on that address.
+  `fdm/phase9b_checks.py` flies it in FlightGear through the station's protocol.
 
 ## Credits
 
