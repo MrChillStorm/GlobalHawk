@@ -13,6 +13,8 @@ NAVS = ('kna', 'knb', 'lna', 'lnb')
 KINDS = ('taxi', 'takeoff', 'route', 'land', 'hold')
 MAX_LEG_NM = 3000.0
 MIN_FINAL_NM = 8.0
+FUEL_LOW_LB = 1500.0               # assumed: about an hour and a half at cruise
+AOA_NEAR_DEG, AOA_SEC = 0.3, 3.0
 
 
 def _num(x):
@@ -120,6 +122,7 @@ class Onboard:
         self.events = []
         self.down = {'/gcs/down/ack': '', '/gcs/down/status': '', '/gcs/down/plan': ''}
         self.frame = 0
+        self.aoa_since = None
         self.status()
 
     # ---- uplink
@@ -256,6 +259,7 @@ class Onboard:
         if m.contingency == 'link':
             m.contingency = None
             self.f['ap/link-monitor'] = 0        # clears the lost-link latch; the next heartbeat starts the watch again
+            self.f['ap/link-lost'] = 0           # and at once: a heartbeat may switch the watch back on before the latch has run
         m.plan = m.plan[:m.i + 1] + self.saved
         self.saved, self.off = None, None
         m.next()
@@ -309,21 +313,44 @@ class Onboard:
             if kind == 'engine_out':
                 s['site'] = it.get('site', {}).get('name')
                 s['surplus_ft'] = round(it.get('surplus', 0.0))
-            if m.alert:
-                s['alerts'].append(dict(level='warning', text=m.alert.upper()))
-        if f['engine/failed']:
-            s['alerts'].append(dict(level='warning', text='ENGINE FAILED'))
-        if f['ap/link-lost']:
-            s['alerts'].append(dict(level='caution', text='LINK WAS LOST'))
-        if f['nav/miscompare']:
-            s['alerts'].append(dict(level='caution', text='NAVIGATORS DISAGREE'))
-        if f['limits/overstress']:
-            s['alerts'].append(dict(level='warning', text='STRUCTURAL LIMIT PASSED'))
+        s['alerts'] = self.alerts(m)
         s['target'] = dict(alt_ft=round(f['ap/alt-cmd-ft']), kcas=round(f['ap/speed-target-kcas'], 1))
         s['events'] = [[round(t, 1), e] for t, e in ((m.events if m else []) + self.events)]
         s['events'] = sorted(s['events'])[-6:]
         self.down['/gcs/down/status'] = json.dumps(s)
         return s
+
+    def alerts(self, m):
+        """What the crew must know, as the aircraft sees it. Only what the model computes."""
+        f = self.f
+        out = []
+
+        def add(i, level, text, action=''):
+            out.append(dict(id=i, level=level, text=text, action=action))
+        if f['engine/failed']:
+            it = m.plan[min(m.i, len(m.plan) - 1)] if m else {}
+            site = it.get('site', {}).get('name') if it.get('kind') == 'engine_out' else None
+            add('engine', 'warning', 'ENGINE FAILED', ('Gliding to %s by itself. Clear the runway. ' % site if site else '') + 'No restart is modelled')
+        if m and m.alert:
+            add('no-site', 'warning', 'NO RUNWAY IN REACH', 'Gliding towards the nearest')
+        if f['limits/overstress']:
+            add('structure', 'warning', 'STRUCTURAL LIMIT PASSED', 'Land')
+        if f['ap/link-lost']:
+            add('link', 'caution', 'LINK WAS LOST', 'The aircraft left its plan when the link was lost. Resume when ready')
+        if f['nav/miscompare']:
+            add('nav-disagree', 'caution', 'NAVIGATORS DISAGREE', 'The aircraft is using the one that matches its turn rate. Land')
+        if f['nav/count'] < 2 and f['simulation/sim-time-sec'] > 1.0:
+            add('nav-one', 'caution', 'ONE NAVIGATOR LEFT' if f['nav/count'] == 1 else 'NO NAVIGATOR', 'No cross-check of attitude is left. Switch one on')
+        if f['fuel/total-lbs'] < FUEL_LOW_LB and f['simulation/sim-time-sec'] > 1.0:
+            add('fuel-low', 'caution', 'FUEL LOW', 'Return home')
+        near = f['ap/engaged'] == 1 and f['ap/on-mains'] == 0 and f['ap/alpha-limit-deg'] - f['aero/alpha-deg'] < AOA_NEAR_DEG
+        t = f['simulation/sim-time-sec']
+        self.aoa_since = (self.aoa_since if self.aoa_since is not None else t) if near else None
+        if near and t - self.aoa_since >= AOA_SEC:
+            add('aoa', 'caution', 'ANGLE OF ATTACK LIMIT', 'The aircraft is holding it')
+        if self.off in ('goto', 'hold', 'home'):
+            add('off-plan', 'advisory', 'OFF THE PLAN: ' + self.off.upper())
+        return out
 
     def describe(self, m, it, kind):
         f = self.f

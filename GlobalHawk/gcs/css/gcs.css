@@ -15,9 +15,25 @@ label { display: block; color: var(--dim); font-size: 11px; text-transform: uppe
 .chip.down { background: #4a1616; color: var(--warn); }
 .chip.connecting { background: #3d3210; color: var(--lost); }
 #alerts { display: flex; flex-direction: column; }
-#alerts .alert { padding: 5px 12px; font-weight: 700; letter-spacing: .04em; }
+#alerts .alert { padding: 5px 12px; display: flex; gap: 14px; align-items: baseline; border-bottom: 1px solid #0006; }
+#alerts .alert b { letter-spacing: .04em; white-space: nowrap; }
+#alerts .alert .do { flex: 1; }
+#alerts .alert button { padding: 1px 10px; background: #0003; color: inherit; border-color: currentColor; }
 #alerts .warning { background: var(--warn); color: #fff; }
 #alerts .caution { background: var(--lost); color: #000; }
+#alerts .advisory { background: #0d2a36; color: var(--preview); }
+#alerts .acked { opacity: .72; }
+#alerts .new b::before { content: "● "; }
+#pfd { width: 400px; height: 336px; display: block; margin: 0 auto 4px; max-width: 100%; }
+#engine { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+#engine td { padding: 2px 4px; } #engine td:nth-child(odd) { color: var(--dim); } #engine td:nth-child(even) { text-align: right; }
+#tanks { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-top: 6px; }
+#tanks .tank { font-size: 10px; color: var(--dim); text-align: center; }
+#tanks .bar { height: 34px; background: #0b0e12; border: 1px solid var(--line); position: relative; margin-bottom: 2px; }
+#tanks .bar i { position: absolute; left: 0; right: 0; bottom: 0; background: #3b82c4; }
+#navs button.off { color: var(--lost); border-color: var(--lost); }
+#nav-note { color: var(--lost); text-transform: none; letter-spacing: 0; }
+.bad { color: var(--warn); font-weight: 700; }
 main { flex: 1; display: flex; min-height: 0; }
 #mapwrap { position: relative; flex: 1; min-width: 0; }
 #map { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
@@ -32,7 +48,7 @@ main { flex: 1; display: flex; min-height: 0; }
 #confirm-text { font-size: 16px; }
 #confirm-extra { display: flex; gap: 6px; align-items: center; color: var(--dim); }
 #confirm-extra input { width: 90px; }
-aside { width: 360px; background: var(--panel); border-left: 1px solid var(--line); padding: 8px 12px; overflow-y: auto; }
+aside { width: 432px; background: var(--panel); border-left: 1px solid var(--line); padding: 8px 12px; overflow-y: auto; }
 h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--dim); margin: 14px 0 6px; font-weight: 600; }
 #numbers { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 #numbers td { padding: 2px 4px; } #numbers td:nth-child(odd) { color: var(--dim); } #numbers td:nth-child(even) { text-align: right; }

@@ -34,12 +34,21 @@
       </div>
     </section>
     <aside>
+      <canvas id="pfd" width="400" height="336"></canvas>
       <h2>Aircraft</h2>
       <table id="numbers">
         <tr><td>Heading</td><td id="n-hdg">-</td><td>Mach</td><td id="n-mach">-</td></tr>
         <tr><td>Ground speed</td><td id="n-gs">-</td><td>Climb ft/min</td><td id="n-vs">-</td></tr>
         <tr><td>Fuel lb</td><td id="n-fuel">-</td><td>Throttle</td><td id="n-thr">-</td></tr>
       </table>
+      <h2>Engine and fuel</h2>
+      <table id="engine">
+        <tr><td>Engine</td><td id="e-state">-</td><td>Thrust lbf</td><td id="e-thrust">-</td></tr>
+        <tr><td>Fuel flow lb/h</td><td id="e-ff">-</td><td>Fuel left</td><td id="e-hours">-</td></tr>
+      </table>
+      <div id="tanks"></div>
+      <h2>Navigators <span id="nav-note"></span></h2>
+      <div id="navs" class="row"></div>
       <h2>Commands</h2>
       <div id="commands">
         <div class="row">
@@ -66,6 +75,9 @@
   </main>
   <script src="js/geo.js"></script>
   <script src="js/link.js"></script>
+  <script src="js/alerts.js"></script>
+  <script src="js/pfdmath.js"></script>
+  <script src="js/pfd.js"></script>
   <script src="js/map.js"></script>
   <script src="js/main.js"></script>
 </body>

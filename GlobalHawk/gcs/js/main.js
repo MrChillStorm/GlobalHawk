@@ -18,9 +18,45 @@
     lat: '/position/latitude-deg', lon: '/position/longitude-deg', alt: '/position/altitude-ft', hdg: '/orientation/heading-deg',
     kcas: '/velocities/airspeed-kt', gs: '/velocities/groundspeed-kt', vs: '/velocities/vertical-speed-fps', mach: '/velocities/mach',
     fuel: J + 'fuel/total-lbs', thr: J + 'ctl/throttle-norm',
+    pitch: '/orientation/pitch-deg', roll: '/orientation/roll-deg', alpha: J + 'aero/alpha-deg', alphaLimit: J + 'ap/alpha-limit-deg',
+    gamma: J + 'flight-path/gamma-deg', trackRad: J + 'flight-path/psi-gt-rad', udot: J + 'accelerations/udot-ft_sec2', vt: J + 'velocities/vt-fps',
+    bankLimit: J + 'ap/bank-limit-deg', thrust: J + 'engine/thrust-lbf', ff: J + 'engine/fuel-flow-pph', failed: J + 'engine/failed',
+    miscompare: J + 'nav/miscompare',
   };
+  const TANKS = [['wing in L', 1736.5], ['wing in R', 1736.5], ['wing out L', 1557.3], ['wing out R', 1557.3], ['fus fwd', 5624.4], ['fus aft', 3088.0]];
+  TANKS.forEach((t, i) => (TELEMETRY['tank' + i] = `${J}propulsion/tank[${i}]/contents-lbs`));
+  const NAVS = [['kna', 'KN-A'], ['knb', 'KN-B'], ['lna', 'LN-A'], ['lnb', 'LN-B']];
+  NAVS.forEach((n) => (TELEMETRY['nav_' + n[0]] = `${J}nav/${n[0]}-on`));
   const link = new G.Link({ transport: new G.WsTransport(host, port), station: q.get('station') || 'LRE', latency: Number(q.get('latency') || 0) });
   const map = new G.MapView($('map'));
+  const pfd = new G.FlightDisplay($('pfd'));
+  const alerts = new G.Alerts();
+  $('tanks').innerHTML = TANKS.map((t, i) => `<div class="tank"><div class="bar"><i id="tank${i}"></i></div>${t[0]}</div>`).join('');
+  $('navs').innerHTML = NAVS.map((n) => `<button id="nav-${n[0]}" data-nav="${n[0]}">${n[1]}</button>`).join('');
+  NAVS.forEach((n) => $('nav-' + n[0]).addEventListener('click', () => {
+    const on = !(tel['nav_' + n[0]] > 0.5);
+    arm({ name: 'nav', button: null, ready: () => true, args: () => ({ name: n[0], on }), text: () => `Switch navigator ${n[1]} ${on ? 'ON' : 'OFF'}${on ? '' : ': the aircraft votes between those left on'}` });
+  }));
+
+  /* ------------------------------------------------------------- the tone: a second sense for warnings and cautions */
+  let audio = null;
+  let toneAt = 0;
+  document.addEventListener('pointerdown', () => {
+    if (!audio && (window.AudioContext || window.webkitAudioContext)) audio = new (window.AudioContext || window.webkitAudioContext)();
+  }, { once: false });
+  function beep(level) {
+    if (!audio || audio.state !== 'running') return;
+    const n = level === 'warning' ? 3 : 1;
+    for (let i = 0; i < n; i++) {
+      const o = audio.createOscillator();
+      const g = audio.createGain();
+      o.frequency.value = level === 'warning' ? 880 : 520;
+      g.gain.value = 0.08;
+      o.connect(g).connect(audio.destination);
+      o.start(audio.currentTime + i * 0.18);
+      o.stop(audio.currentTime + i * 0.18 + 0.12);
+    }
+  }
   const tel = {};
   let armed = null; // the command being prepared: { name, text, args(), preview, needsPoint, altField }
   let fitted = false;
@@ -58,6 +94,10 @@
     map.draw();
   }
 
+  $('alerts').addEventListener('click', (e) => {
+    const id = e.target.getAttribute && e.target.getAttribute('data-ack');
+    if (id) alerts.acknowledge(id);
+  });
   $('confirm-no').addEventListener('click', () => arm(null));
   $('confirm-yes').addEventListener('click', () => {
     if (!armed || !armed.ready()) return;
@@ -186,10 +226,45 @@
     $('n-vs').textContent = Number.isFinite(tel.vs) ? (tel.vs * 60 >= 0 ? '+' : '') + Math.round(tel.vs * 6) * 10 : '-';
     $('n-fuel').textContent = Number.isFinite(tel.fuel) ? fmtAlt(tel.fuel) : '-';
     $('n-thr').textContent = Number.isFinite(tel.thr) ? Math.round(tel.thr * 100) + ' %' : '-';
-    // alerts: the aircraft's, most serious first, and the station's own
-    const alerts = (s && live ? s.alerts.slice() : []).sort((a, b) => (a.level === b.level ? 0 : a.level === 'warning' ? -1 : 1));
-    if (!live && s && s.started) alerts.unshift({ level: 'warning', text: 'NO LINK TO THE AIRCRAFT' });
-    $('alerts').innerHTML = alerts.map((a) => `<div class="alert ${a.level}">${esc(a.text)}</div>`).join('');
+    // one list: the aircraft's alerts and the station's own, ranked, each with what to do
+    const list = alerts.update(s ? s.alerts : [], link.lastDown, !!(s && s.started) || link.lastDown !== null);
+    const html = list.map((a) => `<div class="alert ${a.level} ${a.acked ? 'acked' : 'new'}"><b>${esc(a.text)}</b><span class="do">${esc(a.action)}</span>${a.acked ? '' : `<button data-ack="${esc(a.id)}">OK</button>`}</div>`).join('');
+    if ($('alerts').dataset.html !== html) {
+      $('alerts').innerHTML = html;
+      $('alerts').dataset.html = html;
+    }
+    const tone = alerts.tone();
+    if (tone && Date.now() - toneAt > (tone === 'warning' ? 2000 : 5000)) {
+      toneAt = Date.now();
+      beep(tone);
+    }
+    // the flight display
+    pfd.draw({
+      pitch: tel.pitch, roll: tel.roll, hdg: tel.hdg, track: Number.isFinite(tel.trackRad) ? (tel.trackRad * 180) / Math.PI : NaN, gamma: tel.gamma,
+      kcas: tel.kcas, mach: tel.mach, alt: tel.alt, vs: tel.vs, alpha: tel.alpha, alphaLimit: tel.alphaLimit, vt: tel.vt, udot: tel.udot, bankLimit: tel.bankLimit,
+      target: flying ? s.target : null, course: flying && s.leg ? geo.course(s.leg[0], s.leg[1]).deg : NaN,
+      mode: live && s ? s.doing : 'NO LINK', caution: !live || !!(s && s.contingency),
+    });
+    // engine, fuel, navigators
+    const dead = tel.failed > 0.5;
+    $('e-state').textContent = Number.isFinite(tel.failed) ? (dead ? 'FAILED' : 'running') : '-';
+    $('e-state').className = dead ? 'bad' : '';
+    $('e-thrust').textContent = Number.isFinite(tel.thrust) ? fmtAlt(tel.thrust) : '-';
+    $('e-ff').textContent = Number.isFinite(tel.ff) ? fmtAlt(tel.ff) : '-';
+    $('e-hours').textContent = tel.ff > 20 && Number.isFinite(tel.fuel) ? (tel.fuel / tel.ff).toFixed(1) + ' h at this flow' : '-';
+    TANKS.forEach((t, i) => {
+      const v = tel['tank' + i];
+      $('tank' + i).style.height = Number.isFinite(v) ? Math.max(0, Math.min(100, (100 * v) / t[1])) + '%' : '0';
+      $('tank' + i).parentNode.title = Number.isFinite(v) ? `${Math.round(v)} of ${Math.round(t[1])} lb` : '';
+    });
+    NAVS.forEach((n) => {
+      const on = tel['nav_' + n[0]] > 0.5;
+      const b = $('nav-' + n[0]);
+      b.classList.toggle('off', !on);
+      b.textContent = `${n[1]} ${on ? 'on' : 'OFF'}`;
+      b.disabled = !live;
+    });
+    $('nav-note').textContent = tel.miscompare > 0.5 ? '· two disagree' : '';
     // which commands make sense now
     const enroute = !!(live && s && s.started && (s.kind === 'route' || s.kind === 'hold'));
     $('c-start').disabled = !(live && s && s.plan && !s.started);
@@ -238,5 +313,5 @@
     if (armed) renderConfirm();
     render();
   }, 250);
-  window.GCSApp = { link, map, tel }; // for looking at from the console
+  window.GCSApp = { link, map, tel, pfd, alerts }; // for looking at from the console
 })();
