@@ -26,6 +26,7 @@
       <div id="legend">
         <span class="k plan">plan</span><span class="k active">flying now</span><span class="k lost">if the link is lost</span><span class="k preview">not sent yet</span>
       </div>
+      <canvas id="profile"></canvas>
       <div id="confirm" hidden>
         <div id="confirm-text"></div>
         <div id="confirm-extra"></div>
@@ -54,6 +55,7 @@
         <div class="row">
           <button id="c-demo" title="the demo plan that ships with the aircraft">Demo plan</button>
           <label class="filebtn">Plan file<input type="file" id="c-file" accept=".json,application/json"></label>
+          <button id="c-edit" title="change the route or the lost-link route">Edit plan</button>
           <button id="c-start">Start</button>
         </div>
         <div class="row">
@@ -64,6 +66,21 @@
         <div class="row">
           <button id="c-resume">Resume plan</button>
           <button id="c-home">Return home</button>
+        </div>
+      </div>
+      <div id="editor" hidden>
+        <h2>Editing <span id="ed-name"></span></h2>
+        <div class="row">
+          <button id="ed-route">Route</button>
+          <button id="ed-lost">Lost-link route</button>
+        </div>
+        <table id="ed-table"></table>
+        <div id="ed-warn"></div>
+        <div class="small">Click the map to add a point after the selected one. Drag a point to move it. Nothing is sent until Send.</div>
+        <div class="row" style="margin-top:6px">
+          <button id="ed-send">Send plan…</button>
+          <button id="ed-save">Save as file</button>
+          <button id="ed-close">Close</button>
         </div>
       </div>
       <h2>Sent</h2>
@@ -78,6 +95,11 @@
   <script src="js/alerts.js"></script>
   <script src="js/pfdmath.js"></script>
   <script src="js/pfd.js"></script>
+  <script src="js/perfdata.js"></script>
+  <script src="js/predict.js"></script>
+  <script src="js/plancheck.js"></script>
+  <script src="js/reach.js"></script>
+  <script src="js/editor.js"></script>
   <script src="js/map.js"></script>
   <script src="js/main.js"></script>
 </body>

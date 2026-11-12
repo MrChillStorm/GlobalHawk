@@ -21,7 +21,7 @@
     pitch: '/orientation/pitch-deg', roll: '/orientation/roll-deg', alpha: J + 'aero/alpha-deg', alphaLimit: J + 'ap/alpha-limit-deg',
     gamma: J + 'flight-path/gamma-deg', trackRad: J + 'flight-path/psi-gt-rad', udot: J + 'accelerations/udot-ft_sec2', vt: J + 'velocities/vt-fps',
     bankLimit: J + 'ap/bank-limit-deg', thrust: J + 'engine/thrust-lbf', ff: J + 'engine/fuel-flow-pph', failed: J + 'engine/failed',
-    miscompare: J + 'nav/miscompare',
+    miscompare: J + 'nav/miscompare', weight: J + 'inertia/weight-lbs',
   };
   const TANKS = [['wing in L', 1736.5], ['wing in R', 1736.5], ['wing out L', 1557.3], ['wing out R', 1557.3], ['fus fwd', 5624.4], ['fus aft', 3088.0]];
   TANKS.forEach((t, i) => (TELEMETRY['tank' + i] = `${J}propulsion/tank[${i}]/contents-lbs`));
@@ -31,6 +31,11 @@
   const map = new G.MapView($('map'));
   const pfd = new G.FlightDisplay($('pfd'));
   const alerts = new G.Alerts();
+  const forecast = G.predict.make(G.perfdata);
+  let editor = null; // the plan being edited, or null
+  const hms = (s) => (s >= 3600 ? `${Math.floor(s / 3600)} h ${String(Math.round((s % 3600) / 60)).padStart(2, '0')} min` : `${Math.round(s / 60)} min`);
+  /** The aircraft as the forecast takes it: now if flying, else full of what it has on the field. */
+  const stateNow = (elev) => ({ alt_ft: Number.isFinite(tel.alt) ? tel.alt : elev, weight_lb: Number.isFinite(tel.weight) ? tel.weight : 25600, fuel_lb: Number.isFinite(tel.fuel) ? tel.fuel : 14150 });
   $('tanks').innerHTML = TANKS.map((t, i) => `<div class="tank"><div class="bar"><i id="tank${i}"></i></div>${t[0]}</div>`).join('');
   $('navs').innerHTML = NAVS.map((n) => `<button id="nav-${n[0]}" data-nav="${n[0]}">${n[1]}</button>`).join('');
   NAVS.forEach((n) => $('nav-' + n[0]).addEventListener('click', () => {
@@ -102,7 +107,9 @@
   $('confirm-yes').addEventListener('click', () => {
     if (!armed || !armed.ready()) return;
     link.command(armed.name, armed.args());
+    const after = armed.sent;
     arm(null);
+    if (after) after();
   });
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') arm(null);
@@ -111,7 +118,19 @@
   const here = () => (Number.isFinite(tel.lat) ? [tel.lat, tel.lon] : null);
   const fmtAlt = (ft) => Math.round(ft).toLocaleString('en-US');
   const targetAlt = () => (link.status && link.status.target ? link.status.target.alt_ft : Math.round((tel.alt || 20000) / 500) * 500);
-  const eta = (ft) => (tel.gs > 30 ? `${Math.round(ft / geo.NM / tel.gs * 60)} min at the present ${Math.round(tel.gs)} kt` : '');
+  /** Forecast of flying from here to a point at a height, and of going home from there by the lost-link route. */
+  function forecastTo(pt, alt) {
+    if (!here()) return null;
+    const there = forecast.predict([{ dist_ft: geo.course(here(), pt).ft, alt_ft: alt, name: 'go-to point' }], stateNow(0));
+    const out = { t_s: there.total.t_s, fuel_lb: there.points[0].fuel_lb, warnings: there.warnings.slice(), home: null };
+    const p = link.plan;
+    if (p && p.lost_link) {
+      const st = stateNow(0);
+      const back = forecast.predict(G.plancheck.legs(p.lost_link, pt, p.field.elev_ft), { alt_ft: there.points[0].alt_ft, weight_lb: st.weight_lb - there.total.fuel_used_lb, fuel_lb: there.points[0].fuel_lb });
+      out.home = { t_s: back.total.t_s, fuel_lb: back.points[back.points.length - 1].fuel_lb, warnings: back.warnings };
+    }
+    return out;
+  }
 
   function planSummary(p) {
     const kinds = p.items.map((i) => i.kind).join(', ');
@@ -149,7 +168,9 @@
     c.text = () => {
       if (!c.point) return 'Go to: click the place on the map';
       const d = here() ? geo.course(here(), c.point) : null;
-      return `Go to the point${d ? ` ${(d.ft / geo.NM).toFixed(1)} nmi away on ${Math.round(d.deg)}°${eta(d.ft) ? ', ' + eta(d.ft) : ''}` : ''}, then hold over it`;
+      const f = forecastTo(c.point, c.alt);
+      const more = f ? `: there in ${hms(f.t_s)} with ${fmtAlt(f.fuel_lb)} lb${f.home ? `; going home from there, ${fmtAlt(Math.max(0, f.home.fuel_lb))} lb left on landing${f.home.fuel_lb < G.predict.RESERVE_LB ? ' (UNDER THE RESERVE)' : ''}` : ''}${f.warnings.length ? '. ' + f.warnings.join('; ') : ''}` : '';
+      return `Go to the point${d ? ` ${(d.ft / geo.NM).toFixed(1)} nmi away on ${Math.round(d.deg)}°` : ''}, then hold over it${more}`;
     };
     c.args = () => ({ lat: c.point[0], lon: c.point[1], alt_ft: c.alt });
     c.preview = () => (c.point ? { line: here() ? [here(), c.point] : null, circle: { centre: c.point, radiusFt: holdRadius() }, at: c.point, label: `hold ${fmtAlt(c.alt)} ft` } : null);
@@ -170,7 +191,12 @@
   $('c-resume').addEventListener('click', () => arm({ name: 'resume', button: $('c-resume'), ready: () => true, args: () => ({}), text: () => 'Go back to the plan, to the leg that was left' }));
   $('c-home').addEventListener('click', () => arm({
     name: 'home', button: $('c-home'), ready: () => true, args: () => ({}),
-    text: () => 'Return home now along the lost-link route, and land',
+    text: () => {
+      const p = link.plan;
+      if (!p || !p.lost_link || !here()) return 'Return home now along the lost-link route, and land';
+      const r = forecast.predict(G.plancheck.legs(p.lost_link, here(), p.field.elev_ft), stateNow(0));
+      return `Return home now along the lost-link route, and land: on the ground in ${hms(r.total.t_s)} with ${fmtAlt(Math.max(0, r.points[r.points.length - 1].fuel_lb))} lb`;
+    },
     preview: () => (link.plan && link.plan.lost_link ? { plan: { items: link.plan.lost_link }, line: here() && link.plan.lost_link[0].points ? [here(), link.plan.lost_link[0].points[0]] : null } : null),
   }));
 
@@ -184,8 +210,217 @@
     if (armed && armed.needsPoint) {
       armed.point = p;
       renderConfirm();
+    } else if (editor && !armed) {
+      editor.add(p);
+      renderEditor();
     }
   };
+  map.onHandle = (i, p, done) => {
+    if (!editor) return;
+    editor.selected = i;
+    if (p) editor.move(i, p);
+    renderEditor();
+  };
+
+  /* ------------------------------------------------------------- the plan editor */
+  const enrouteNow = () => !!(link.status && link.status.started && (link.status.kind === 'route' || link.status.kind === 'hold'));
+  /** The forecast of the plan being edited (or held): legs, result, and where it starts. */
+  function planForecast(plan, which) {
+    const elev = plan.field.elev_ft;
+    const flying = enrouteNow();
+    if (which === 'lost') {
+      const first = plan.lost_link[0].points[0];
+      const st = stateNow(elev);
+      const legs = G.plancheck.legs(plan.lost_link, null, elev);
+      return { legs, r: forecast.predict(legs, { alt_ft: first[2], weight_lb: st.weight_lb, fuel_lb: st.fuel_lb }), from: 'its first point, with the fuel there is now' };
+    }
+    const items = flying ? plan.items.slice(plan.items.findIndex((it) => it.kind === 'route')) : plan.items;
+    const legs = G.plancheck.legs(items, flying ? here() : null, elev);
+    return { legs, r: forecast.predict(legs, stateNow(elev)), from: flying ? 'where the aircraft is now' : 'the takeoff' };
+  }
+
+  function renderEditor() {
+    const box = $('editor');
+    box.hidden = !editor;
+    $('c-edit').classList.toggle('on', !!editor);
+    if (!editor) {
+      map.data.handles = null;
+      map.data.editing = null;
+      drawProfile();
+      map.draw();
+      return;
+    }
+    const plan = editor.plan;
+    $('ed-name').textContent = `"${plan.id}"`;
+    $('ed-route').classList.toggle('on', editor.which === 'route');
+    $('ed-lost').classList.toggle('on', editor.which === 'lost');
+    const bad = G.plancheck.checkPlan(plan);
+    let rowsHtml = '<tr><th>#</th><th>height ft</th><th>leg nmi</th><th>time</th><th>fuel lb</th><th></th></tr>';
+    let warn = bad ? [`<span class="bad">The aircraft will refuse this: ${esc(bad)}</span>`] : [];
+    let fc = null;
+    if (!bad && editor.item()) {
+      fc = planForecast(plan, editor.which);
+      const item = editor.item();
+      fc.legs.forEach((leg, n) => {
+        const pt = fc.r.points[n];
+        const mine = leg.item === item && leg.index !== undefined;
+        const name = leg.kind === 'takeoff' ? 'takeoff' : leg.label || (mine ? String(leg.index + 1) : '·');
+        const cls = mine ? (leg.index === editor.selected ? 'sel' : '') : 'fixed';
+        const altCell = mine ? `<input type="number" step="500" min="0" max="65000" value="${leg.alt_ft}" data-alt="${leg.index}">` : fmtAlt(leg.alt_ft);
+        rowsHtml += `<tr class="${cls}" data-row="${mine ? leg.index : ''}"><td>${name}</td><td>${altCell}${pt.reached ? '' : ' <span class="bad" title="not reached by then">!</span>'}</td><td>${(leg.dist_ft / geo.NM).toFixed(1)}</td><td>${hms(pt.t_s)}</td><td>${fmtAlt(pt.fuel_lb)}</td><td>${mine ? `<button data-del="${leg.index}" title="delete this point">×</button>` : ''}</td></tr>`;
+      });
+      warn = warn.concat(fc.r.warnings.map(esc));
+      warn.push(`<span class="small">Forecast from ${fc.from}: ${hms(fc.r.total.t_s)}, ${fmtAlt(fc.r.total.fuel_used_lb)} lb of fuel, ${(fc.r.total.dist_ft / geo.NM).toFixed(0)} nmi. No wind.</span>`);
+    }
+    if ($('ed-table').dataset.html !== rowsHtml && !$('ed-table').contains(document.activeElement)) {
+      $('ed-table').innerHTML = rowsHtml;
+      $('ed-table').dataset.html = rowsHtml;
+    }
+    $('ed-warn').innerHTML = warn.join('<br>');
+    $('ed-send').disabled = !!bad || !(link.state.mode === 'live');
+    map.data.handles = editor.points().map((p) => [p[0], p[1]]);
+    map.data.selected = editor.selected;
+    map.data.editing = { plan, fc };
+    map.data.preview = armed && armed.preview ? armed.preview() : { plan: { items: editor.which === 'lost' ? plan.lost_link : plan.items, field: plan.field } };
+    drawProfile();
+    map.draw();
+  }
+
+  $('ed-table').addEventListener('change', (e) => {
+    const i = e.target.getAttribute('data-alt');
+    if (i !== null && editor) {
+      editor.setAlt(Number(i), Number(e.target.value));
+      e.target.blur();
+      renderEditor();
+    }
+  });
+  $('ed-table').addEventListener('click', (e) => {
+    if (!editor) return;
+    const del = e.target.getAttribute('data-del');
+    const row = e.target.closest('tr');
+    if (del !== null) editor.remove(Number(del));
+    else if (row && row.getAttribute('data-row') !== '' && row.getAttribute('data-row') !== null && e.target.tagName !== 'INPUT') editor.selected = Number(row.getAttribute('data-row'));
+    else return;
+    renderEditor();
+  });
+  $('c-edit').addEventListener('click', () => {
+    if (editor) editor = null;
+    else if (link.plan) editor = new G.PlanEditor(link.plan);
+    else {
+      $('conn').textContent = 'There is no plan to edit yet: send the demo plan or a plan file first, or load one and edit it before sending.';
+      return;
+    }
+    arm(null);
+    renderEditor();
+    if (editor) $('editor').scrollIntoView({ block: 'nearest' });
+  });
+  $('ed-route').addEventListener('click', () => {
+    editor.edit('route');
+    renderEditor();
+  });
+  $('ed-lost').addEventListener('click', () => {
+    editor.edit('lost');
+    renderEditor();
+  });
+  $('ed-close').addEventListener('click', () => {
+    editor = null;
+    arm(null);
+    renderEditor();
+  });
+  $('ed-save').addEventListener('click', () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(editor.plan, null, 1)], { type: 'application/json' }));
+    a.download = editor.plan.id.replace(/[^a-z0-9-]+/gi, '-').replace(/^-|-$/g, '') + '.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  $('ed-send').addEventListener('click', () => {
+    const flying = enrouteNow();
+    const p = editor.toSend(flying);
+    arm({
+      name: 'plan', button: $('ed-send'), ready: () => true, args: () => p, preview: () => ({ plan: p }),
+      text: () => `${planSummary(p)}${flying ? '. The aircraft leaves what it is flying for this route at once' : ''}`,
+      sent: () => {
+        editor = null;
+        renderEditor();
+      },
+    });
+  });
+
+  /* ------------------------------------------------------------- the height profile under the map */
+  function drawProfile() {
+    const c = $('profile');
+    const r = c.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    if (c.width !== Math.round(r.width * dpr)) {
+      c.width = Math.round(r.width * dpr);
+      c.height = Math.round(r.height * dpr);
+    }
+    const x = c.getContext('2d');
+    x.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const w = r.width;
+    const h = r.height;
+    x.clearRect(0, 0, w, h);
+    let plan = null;
+    let fc = null;
+    let colour = '#c9d1d9';
+    if (map.data.editing) {
+      plan = map.data.editing.plan;
+      fc = map.data.editing.fc;
+      colour = G.COL.preview;
+    } else if (link.plan && G.plancheck.checkPlan(link.plan) === null) {
+      plan = link.plan;
+      fc = planForecast(plan, 'route');
+    }
+    x.font = '11px ui-sans-serif, system-ui, sans-serif';
+    x.fillStyle = '#8795a3';
+    if (!fc) {
+      x.fillText('height along the plan: no plan', 10, 16);
+      return;
+    }
+    const total = Math.max(fc.r.total.dist_ft, 1);
+    const top = Math.max(10000, ...fc.r.profile.map((p) => p[1])) * 1.12;
+    const px = (d) => 44 + (d / total) * (w - 60);
+    const py = (a) => h - 18 - (a / top) * (h - 30);
+    x.strokeStyle = '#1c2530';
+    x.lineWidth = 1;
+    for (let a = 0; a <= top; a += top > 30000 ? 20000 : 10000) {
+      x.beginPath();
+      x.moveTo(44, py(a));
+      x.lineTo(w - 16, py(a));
+      x.stroke();
+      x.fillText(`${a / 1000}k`, 10, py(a) + 4);
+    }
+    x.fillText(`height along ${map.data.editing ? 'the plan being edited' : 'the plan'}, from ${fc.from}: ${(total / geo.NM).toFixed(0)} nmi, ${hms(fc.r.total.t_s)}`, 50, 12);
+    // the heights asked for, and the height forecast
+    x.strokeStyle = G.COL.active;
+    x.setLineDash([3, 4]);
+    x.beginPath();
+    let d0 = 0;
+    fc.legs.forEach((leg, n) => {
+      const d1 = fc.r.points[n].dist_ft;
+      if (leg.kind !== 'takeoff' && leg.kind !== 'land') {
+        x.moveTo(px(d0), py(leg.alt_ft));
+        x.lineTo(px(d1), py(leg.alt_ft));
+      }
+      d0 = d1;
+    });
+    x.stroke();
+    x.setLineDash([]);
+    x.strokeStyle = colour;
+    x.lineWidth = 2;
+    x.beginPath();
+    fc.r.profile.forEach((p, i) => (i ? x.lineTo(px(p[0]), py(p[1])) : x.moveTo(px(p[0]), py(p[1]))));
+    x.stroke();
+    fc.r.points.forEach((p, n) => {
+      const leg = fc.legs[n];
+      if (leg.kind === 'takeoff') return;
+      x.fillStyle = p.reached ? colour : '#ff5252';
+      x.fillRect(px(p.dist_ft) - 3, py(p.alt_ft) - 3, 6, 6);
+      x.fillStyle = '#8795a3';
+      x.fillText(leg.label || (leg.index !== undefined ? String(leg.index + 1) : ''), px(p.dist_ft) - 3, h - 5);
+    });
+  }
   $('follow').addEventListener('click', () => {
     map.follow = !map.follow;
     render();
@@ -280,6 +515,17 @@
     }).join('');
     $('events').innerHTML = (s ? s.events.slice().reverse() : []).map((e) => `<li><span class="when">${mmss(e[0])}</span><span>${esc(e[1])}</span></li>`).join('');
     $('conn').textContent = $('conn').textContent.startsWith('The demo') || $('conn').textContent.startsWith('That file') ? $('conn').textContent : `${link.state.message || ''}`;
+    // glide reach, by the aircraft's own planner's rules: shown whenever it is flying
+    const sitesNow = link.plan && link.plan.sites ? link.plan.sites : [];
+    map.data.reach = enroute && here() && sitesNow.length && Number.isFinite(tel.trackRad)
+      ? { radiusFt: G.reach.radius(tel.alt, link.plan.field.elev_ft), sites: sitesNow.map((st) => {
+          const m = G.reach.margin(st, here(), tel.alt, (tel.trackRad * 180) / Math.PI);
+          return { aim: st.aim, inReach: m >= 0, inHand: m + G.reach.IN_HAND }; // the planner keeps 1,000 ft of it back when choosing
+        }) }
+      : null;
+    $('c-edit').disabled = !live;
+    if (editor) renderEditor();
+    else drawProfile();
     map.data.plan = link.plan;
     map.data.status = live ? s : null;
     map.data.airborne = enroute;
@@ -306,12 +552,15 @@
     }
     if (what === 'command' && armed) renderConfirm();
   });
-  window.addEventListener('resize', () => map.resize());
+  window.addEventListener('resize', () => {
+    map.resize();
+    drawProfile();
+  });
   map.resize();
   link.start(Object.values(TELEMETRY));
   setInterval(() => {
     if (armed) renderConfirm();
     render();
   }, 250);
-  window.GCSApp = { link, map, tel, pfd, alerts }; // for looking at from the console
+  window.GCSApp = { link, map, tel, pfd, alerts, get editor() { return editor; }, forecastTo }; // for looking at from the console
 })();

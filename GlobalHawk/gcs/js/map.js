@@ -22,7 +22,9 @@
       this.data = {};
       let drag = null;
       canvas.addEventListener('pointerdown', (e) => {
-        drag = { x: e.clientX, y: e.clientY, c: this.centre.slice(), moved: false };
+        const r = canvas.getBoundingClientRect();
+        const h = this.handleAt(e.clientX - r.left, e.clientY - r.top);
+        drag = { x: e.clientX, y: e.clientY, c: this.centre.slice(), moved: false, handle: h };
         canvas.setPointerCapture(e.pointerId);
       });
       canvas.addEventListener('pointermove', (e) => {
@@ -30,17 +32,19 @@
         const dx = e.clientX - drag.x;
         const dy = e.clientY - drag.y;
         if (Math.abs(dx) + Math.abs(dy) > 4) drag.moved = true;
-        if (drag.moved) {
+        if (drag.moved && drag.handle !== null) {
+          const r = canvas.getBoundingClientRect();
+          if (this.onHandle) this.onHandle(drag.handle, this.unproject(e.clientX - r.left, e.clientY - r.top), false);
+        } else if (drag.moved) {
           this.follow = false;
           this.centre = [drag.c[0] + (dy * this.ftPerPx) / geo.FT_PER_DEG, drag.c[1] - (dx * this.ftPerPx) / (geo.FT_PER_DEG * Math.cos((drag.c[0] * Math.PI) / 180))];
           this.draw();
         }
       });
       canvas.addEventListener('pointerup', (e) => {
-        if (drag && !drag.moved && this.onClick) {
-          const r = canvas.getBoundingClientRect();
-          this.onClick(this.unproject(e.clientX - r.left, e.clientY - r.top));
-        }
+        const r = canvas.getBoundingClientRect();
+        if (drag && drag.handle !== null && this.onHandle) this.onHandle(drag.handle, drag.moved ? this.unproject(e.clientX - r.left, e.clientY - r.top) : null, true);
+        else if (drag && !drag.moved && this.onClick) this.onClick(this.unproject(e.clientX - r.left, e.clientY - r.top));
         drag = null;
       });
       canvas.addEventListener('wheel', (e) => {
@@ -69,6 +73,16 @@
     unproject(x, y) {
       const k = Math.cos((this.centre[0] * Math.PI) / 180);
       return [this.centre[0] - ((y - this.h / 2) * this.ftPerPx) / geo.FT_PER_DEG, this.centre[1] + ((x - this.w / 2) * this.ftPerPx) / (geo.FT_PER_DEG * k)];
+    }
+
+    /** The index of the editing handle under a point of the canvas, or null. */
+    handleAt(x, y) {
+      const hs = this.data.handles || [];
+      for (let i = hs.length - 1; i >= 0; i--) {
+        const q = this.project(hs[i]);
+        if (Math.hypot(q[0] - x, q[1] - y) < 11) return i;
+      }
+      return null;
     }
 
     /** Show all of these points. */
@@ -212,6 +226,11 @@
         if (d.status.leg && d.status.started) this.line(d.status.leg, COL.active, 3);
         if (d.status.hold) this.circle([d.status.hold.lat, d.status.hold.lon], d.status.hold.radius_ft, COL.active, 3);
       }
+      // without the engine: how far the aircraft's own planner would count on gliding, and what it would have in hand at each site
+      if (d.reach && this.own) {
+        this.circle(this.own.p, d.reach.radiusFt, COL.site, 1, [3, 7]);
+        for (const s of d.reach.sites) this.label(s.aim, s.inReach ? `glide: ${Math.round(s.inHand / 100) * 100} ft in hand` : 'glide: OUT OF REACH', s.inReach ? COL.site : '#ff5252', 9, 18);
+      }
       // a command being prepared
       const pv = d.preview;
       if (pv) {
@@ -220,6 +239,18 @@
         if (pv.circle) this.circle(pv.circle.centre, pv.circle.radiusFt, COL.preview, 2, [6, 4]);
         if (pv.label && pv.at) this.label(pv.at, pv.label, COL.preview);
       }
+      // the points of the route being edited: handles to drag
+      (d.handles || []).forEach((p, i) => {
+        const q = this.project(p);
+        x.beginPath();
+        x.arc(q[0], q[1], i === d.selected ? 8 : 6, 0, 2 * Math.PI);
+        x.fillStyle = i === d.selected ? COL.preview : '#0b0e12';
+        x.strokeStyle = COL.preview;
+        x.lineWidth = 2;
+        x.fill();
+        x.stroke();
+        this.label(p, String(i + 1), COL.preview, 11, -9);
+      });
       this.line(this.trail, COL.trail, 1.5);
       if (this.own) {
         const q = this.project(this.own.p);

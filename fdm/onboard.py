@@ -39,7 +39,7 @@ def check_items(items, what):
         return '%s: no items' % what
     for n, it in enumerate(items):
         if not isinstance(it, dict) or it.get('kind') not in KINDS:
-            return '%s item %d: unknown kind %r' % (what, n + 1, it.get('kind') if isinstance(it, dict) else it)
+            return '%s item %d: unknown kind %s' % (what, n + 1, json.dumps(it.get('kind') if isinstance(it, dict) else it, separators=(',', ':')))
     for n, it in enumerate(items):
         w = '%s item %d' % (what, n + 1)
         kind = it['kind']

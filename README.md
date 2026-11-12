@@ -42,7 +42,8 @@ station and the FlightGear aircraft don't exist yet.
 - [GlobalHawk/gcs/](GlobalHawk/gcs/README.md): the ground control station, a browser page (first part: the command
   link, a map, commands with preview and acknowledgement). [fdm/gcs_server.py](fdm/gcs_server.py) stands in for
   FlightGear with the flight model behind FlightGear's own web protocol; [fdm/onboard.py](fdm/onboard.py) is the
-  aircraft's end of the link; `fdm/phase8a_checks.py` flies a scenario through it. `fdm/phase8b_checks.py` checks the alerts the aircraft raises.
+  aircraft's end of the link; `fdm/phase8a_checks.py` flies a scenario through it. `fdm/phase8b_checks.py` checks the alerts the aircraft raises. [fdm/gcs_perf.py](fdm/gcs_perf.py) samples
+  the model into the table the station forecasts with; `fdm/phase8c_checks.py` holds the forecast against flights of the model.
 
 ## Licence
 
