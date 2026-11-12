@@ -245,7 +245,7 @@
     const p = link.plan;
     if (p && p.lost_link) {
       const st = stateNow(0);
-      const back = forecast.predict(G.plancheck.legs(p.lost_link, pt, p.field.elev_ft), { alt_ft: there.points[0].alt_ft, weight_lb: st.weight_lb - there.total.fuel_used_lb, fuel_lb: there.points[0].fuel_lb });
+      const back = forecast.predict(G.plancheck.legs(p.lost_link, pt, p.field), { alt_ft: there.points[0].alt_ft, weight_lb: st.weight_lb - there.total.fuel_used_lb, fuel_lb: there.points[0].fuel_lb });
       out.home = { t_s: back.total.t_s, fuel_lb: back.points[back.points.length - 1].fuel_lb, warnings: back.warnings };
     }
     return out;
@@ -320,8 +320,9 @@
     text: () => {
       const p = link.plan;
       if (!p || !p.lost_link || !here()) return 'Return home now along the lost-link route, and land';
-      const r = forecast.predict(G.plancheck.legs(p.lost_link, here(), p.field.elev_ft), stateNow(0));
-      return `Return home now along the lost-link route, and land: on the ground in ${hms(r.total.t_s)} with ${fmtAlt(Math.max(0, r.points[r.points.length - 1].fuel_lb))} lb`;
+      const r = forecast.predict(G.plancheck.legs(p.lost_link, here(), p.field), stateNow(0));
+      const roll = landingWords(r, p.field);
+      return `Return home now along the lost-link route, and land: on the ground in ${hms(r.total.t_s)} with ${fmtAlt(Math.max(0, r.points[r.points.length - 1].fuel_lb))} lb${roll ? '; ' + roll : ''}`;
     },
     preview: () => (link.plan && link.plan.lost_link ? { plan: { items: link.plan.lost_link }, line: here() && link.plan.lost_link[0].points ? [here(), link.plan.lost_link[0].points[0]] : null } : null),
   }));
@@ -332,8 +333,24 @@
     return (v * v) / (32.174 * Math.tan((11.5 * Math.PI) / 180));
   }
 
+  /* ------------------------------------------------------------- the belly camera (the sensor operator's) */
+  let aiming = false; // the next click on the map is the point the camera locks on
+  const aim = (on) => {
+    aiming = on;
+    $('cam-point').classList.toggle('armed', on);
+    $('map').classList.toggle('aim', on || !!(armed && armed.needsPoint));
+  };
+  $('cam-point').addEventListener('click', () => aim(!aiming));
+  $('cam-nearest').addEventListener('click', () => link.camera('nearest'));
+  $('cam-unlock').addEventListener('click', () => link.camera('unlock'));
+  $('cam-level').addEventListener('click', () => link.camera(G.camera.state(link.values).level ? 'level off' : 'level'));
+  [['cam-left', -1, 0], ['cam-right', 1, 0], ['cam-up', 0, 1], ['cam-down', 0, -1]].forEach(([id, r, u]) => $(id).addEventListener('click', () => link.cameraSlew(r, u)));
+
   map.onClick = (p) => {
-    if (armed && armed.needsPoint) {
+    if (aiming) {
+      link.camera(G.camera.point(p));
+      aim(false);
+    } else if (armed && armed.needsPoint) {
       armed.point = p;
       renderConfirm();
     } else if (editor && !armed) {
@@ -348,6 +365,17 @@
     renderEditor();
   };
 
+  /** A forecast's landing in words: the weight, the rollout, the runway to have, and whether the plan's runway is enough. */
+  function landingWords(r, field) {
+    const pt = r.points[r.points.length - 1];
+    if (!pt || !pt.landing) return '';
+    const L = pt.landing;
+    const hundred = (v) => fmtAlt(Math.round(v / 100) * 100);
+    const have = field && Number(field.runway_past_aim_ft) > 0 ? Number(field.runway_past_aim_ft) : null;
+    const verdict = have === null ? 'the plan does not say how much there is' : L.runway_ft > have ? `MORE THAN THE ${fmtAlt(have)} ft THE PLAN SAYS THERE ARE` : `the plan says there are ${fmtAlt(have)} ft`;
+    return `landing at ${hundred(L.weight_lb)} lb: touchdown ${hundred(L.touchdown_ft)} ft past the aiming point, rollout to ${hundred(L.slow_ft)} ft past it; runway to have past the aiming point ${hundred(L.runway_ft)} ft (${verdict})`;
+  }
+
   /* ------------------------------------------------------------- the plan editor */
   const enrouteNow = () => !!(link.status && link.status.started && (link.status.kind === 'route' || link.status.kind === 'hold'));
   /** The forecast of the plan being edited (or held): legs, result, and where it starts. */
@@ -357,11 +385,11 @@
     if (which === 'lost') {
       const first = plan.lost_link[0].points[0];
       const st = stateNow(elev);
-      const legs = G.plancheck.legs(plan.lost_link, null, elev);
+      const legs = G.plancheck.legs(plan.lost_link, null, plan.field);
       return { legs, r: forecast.predict(legs, { alt_ft: first[2], weight_lb: st.weight_lb, fuel_lb: st.fuel_lb }), from: 'its first point, with the fuel there is now' };
     }
     const items = flying ? plan.items.slice(plan.items.findIndex((it) => it.kind === 'route')) : plan.items;
-    const legs = G.plancheck.legs(items, flying ? here() : null, elev);
+    const legs = G.plancheck.legs(items, flying ? here() : null, plan.field);
     return { legs, r: forecast.predict(legs, stateNow(elev)), from: flying ? 'where the aircraft is now' : 'the takeoff' };
   }
 
@@ -396,6 +424,8 @@
         rowsHtml += `<tr class="${cls}" data-row="${mine ? leg.index : ''}"><td>${name}</td><td>${altCell}${pt.reached ? '' : ' <span class="bad" title="not reached by then">!</span>'}</td><td>${(leg.dist_ft / geo.NM).toFixed(1)}</td><td>${hms(pt.t_s)}</td><td>${fmtAlt(pt.fuel_lb)}</td><td>${mine ? `<button data-del="${leg.index}" title="delete this point">×</button>` : ''}</td></tr>`;
       });
       warn = warn.concat(fc.r.warnings.map(esc));
+      const roll = landingWords(fc.r, plan.field);
+      if (roll) warn.push(`<span class="small">${esc(roll[0].toUpperCase() + roll.slice(1))}.</span>`);
       warn.push(`<span class="small">Forecast from ${fc.from}: ${hms(fc.r.total.t_s)}, ${fmtAlt(fc.r.total.fuel_used_lb)} lb of fuel, ${(fc.r.total.dist_ft / geo.NM).toFixed(0)} nmi. No wind.</span>`);
     }
     if ($('ed-table').dataset.html !== rowsHtml && !$('ed-table').contains(document.activeElement)) {
@@ -403,6 +433,7 @@
       $('ed-table').dataset.html = rowsHtml;
     }
     $('ed-warn').innerHTML = warn.join('<br>');
+    if (document.activeElement !== $('ed-runway')) $('ed-runway').value = plan.field.runway_past_aim_ft > 0 ? plan.field.runway_past_aim_ft : '';
     $('ed-send').disabled = !!bad || !(link.state.mode === 'live');
     map.data.handles = editor.points().map((p) => [p[0], p[1]]);
     map.data.selected = editor.selected;
@@ -446,6 +477,14 @@
   });
   $('ed-lost').addEventListener('click', () => {
     editor.edit('lost');
+    renderEditor();
+  });
+  // how much runway there is past the aiming point: the station's own note in the plan, for the landing's forecast
+  $('ed-runway').addEventListener('change', (e) => {
+    if (!editor) return;
+    const v = Number(e.target.value);
+    if (v > 0) editor.plan.field.runway_past_aim_ft = Math.round(v);
+    else delete editor.plan.field.runway_past_aim_ft;
     renderEditor();
   });
   $('ed-close').addEventListener('click', () => {
@@ -672,6 +711,11 @@
     map.data.status = live ? s : null;
     map.data.airborne = enroute;
     map.data.lostLabel = `if the link is lost: after ${timeout} s`;
+    const cam = G.camera.state(link.values);
+    map.data.camera = live ? cam.target : null;
+    $('cam-state').textContent = demo ? 'the stand-in aircraft of the demo has no camera' : !live ? '' : cam.text + (cam.level ? '; horizon kept level' : '');
+    $('cam-level').classList.toggle('on', cam.level);
+    document.querySelectorAll('#camera button').forEach((b) => (b.disabled = demo || !live));
     map.draw();
   }
 
@@ -699,7 +743,7 @@
     drawProfile();
   });
   map.resize();
-  link.start(Object.values(TELEMETRY));
+  link.start(Object.values(TELEMETRY).concat(Object.values(G.camera.PATHS)));
   setInterval(() => {
     if (armed) renderConfirm();
     render();

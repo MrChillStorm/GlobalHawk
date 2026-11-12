@@ -4,13 +4,11 @@ A JSBSim flight model of NASA's Global Hawk N872NA, the high-altitude, long-endu
 Grumman RQ-4A) that NASA flew on science missions, and a ground control station to fly it from. It is modelled from
 public data and is not made or endorsed by NASA or Northrop Grumman.
 
-**Status: in development.** So far: the published numbers with their sources, a reader for
-NASA's flight data from the ATTREX campaigns, the geometry and mass, the engine model,
-the aerodynamic model, and a JSBSim model generated from them that trims and flies in JSBSim under a plain
-attitude hold, calibrated against NASA's measured climb, cruise-climb and lift curve, and takes off and lands in
-JSBSim against the measured takeoffs and landings. Its flight laws fly a whole mission hands off in JSBSim, from
-taxi and takeoff to landing and taxi back, with a stand-in mission manager in Python. Contingencies, the ground
-station and the FlightGear aircraft don't exist yet.
+**Status: in development; it flies.** The flight model is built from published numbers and NASA's ATTREX flight
+data and checked against the measured climb, cruise-climb, takeoffs and landings. Its own flight laws fly a whole
+mission hands off, from taxi and takeoff to landing, with contingencies for a failed navigator, a lost link and a
+dead engine. In FlightGear it has a 3-D model with a bending wing, a head-up display over the nose camera, a
+belly camera that locks on targets, its own sounds, and a ground control station in the browser that flies it.
 
 - [fdm/data/README.md](fdm/data/README.md): every published number the model is built from, its source, and the
   choices made where sources disagree.
@@ -71,6 +69,18 @@ station and the FlightGear aircraft don't exist yet.
   wind on the nose, the tyres, the gear in the airflow, the touchdowns and the airframe: every loop and one-shot is
   made by [fdm/mksounds.py](fdm/mksounds.py) from [PyWopWop](https://github.com/MrChillStorm/PyWopWop) (about 270 MB).
   The inside sounds are what a microphone in the nose bay would hear, and play in the two cameras' views.
+  The belly camera keeps the horizon level in its picture as the aircraft banks, and the ground station has a
+  Camera panel for it (lock on a point by clicking the map).
+- Starting in the air: [fdm/trimtable.py](fdm/trimtable.py) writes the flight model's level trims by height, speed
+  and weight, and the aircraft starts from them once FlightGear's wind has settled, so it begins in steady flight.
+  (`Nasal/defaults.nas`, written by `fdm/genghawk.py`, keeps a ground station that connects early from leaving the
+  flight model's switches unset.)
+  Where the height asked for can't be flown with full tanks (above about 50,000 ft) it starts with less fuel and
+  says so. High up it also widens FlightGear's terrain range so the ground runs towards the horizon
+  ("Ground to the horizon at height" in the Global Hawk menu switches that off; expect more scenery downloads).
+- Lamps ([fdm/ghlights.py](fdm/ghlights.py)), the livery and its badge ([fdm/mkinsignia.py](fdm/mkinsignia.py)) and
+  the materials for FlightGear's HDR renderer are made with the 3-D model. The livery is FlightGear's own, not the
+  real aircraft's.
 
 ## Credits
 

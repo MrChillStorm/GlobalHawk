@@ -1,0 +1,2 @@
+<?xml version="1.0"?>
+<PropertyList><name>gh-hot</name><inherits-from>Effects/model-pbr</inherits-from><parameters><base-color-factor type="vec4d">0.2 0.18 0.17 1</base-color-factor><metallic-factor type="float">1</metallic-factor><roughness-factor type="float">0.6</roughness-factor></parameters></PropertyList>

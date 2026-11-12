@@ -3,7 +3,7 @@
  "generator": "pywopwop glider (the airframe)",
  "exterior_distance_m": 50.0,
  "gain_db": {
-  "exterior": -28.96
+  "exterior": -28.513
  },
  "files": [
   {

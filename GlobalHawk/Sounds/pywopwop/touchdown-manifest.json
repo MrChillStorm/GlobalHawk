@@ -4,8 +4,8 @@
  "sample_rate": 48000.0,
  "exterior_distance_m": 30.0,
  "gain_db": {
-  "cockpit": -26.307,
-  "exterior": -28.96
+  "cockpit": -26.274,
+  "exterior": -28.513
  },
  "thump_knee_db": 6.0,
  "thump_drive": 0.5,
@@ -1051,11 +1051,11 @@
    "correction_db": -0.001,
    "boost": 1.0,
    "limited_samples": 0,
-   "peak_over_db": -20.39,
+   "peak_over_db": -20.36,
    "held_db": 0.0,
    "played_dba": 65.33,
    "limited_db": 0.0,
-   "distortion": 0.0
+   "distortion": -0.0
   },
   {
    "file": "touchdown_main_g1_thump_0.5fps_cockpit.wav",
@@ -1069,11 +1069,11 @@
    "correction_db": -0.001,
    "boost": 1.0,
    "limited_samples": 0,
-   "peak_over_db": -14.37,
+   "peak_over_db": -14.34,
    "held_db": 0.0,
    "played_dba": 71.35,
    "limited_db": 0.0,
-   "distortion": 0.0
+   "distortion": -0.0
   },
   {
    "file": "touchdown_main_g1_thump_1fps_cockpit.wav",
@@ -1087,11 +1087,11 @@
    "correction_db": 0.0,
    "boost": 1.0,
    "limited_samples": 0,
-   "peak_over_db": -8.35,
+   "peak_over_db": -8.32,
    "held_db": 0.0,
    "played_dba": 77.37,
    "limited_db": 0.0,
-   "distortion": 0.0
+   "distortion": -0.0
   },
   {
    "file": "touchdown_main_g1_thump_2fps_cockpit.wav",
@@ -1105,11 +1105,11 @@
    "correction_db": 0.001,
    "boost": 1.0,
    "limited_samples": 0,
-   "peak_over_db": -2.33,
+   "peak_over_db": -2.3,
    "held_db": 0.0,
    "played_dba": 83.39,
    "limited_db": -0.0,
-   "distortion": 0.0
+   "distortion": -0.0
   },
   {
    "file": "touchdown_main_g1_thump_4fps_cockpit.wav",
@@ -1122,11 +1122,11 @@
    "law_dba": 89.41,
    "correction_db": 0.001,
    "boost": 1.0,
-   "limited_samples": 1617,
-   "peak_over_db": 3.69,
+   "limited_samples": 1623,
+   "peak_over_db": 3.72,
    "held_db": 0.0,
-   "played_dba": 88.84,
-   "limited_db": 0.57,
+   "played_dba": 88.83,
+   "limited_db": 0.58,
    "distortion": 0.014
   },
   {
@@ -2101,7 +2101,7 @@
    "correction_db": -0.001,
    "boost": 1.0,
    "limited_samples": 0,
-   "peak_over_db": -20.78,
+   "peak_over_db": -20.75,
    "held_db": 0.0,
    "played_dba": 64.82,
    "limited_db": 0.0,
@@ -2119,7 +2119,7 @@
    "correction_db": -0.001,
    "boost": 1.0,
    "limited_samples": 0,
-   "peak_over_db": -14.76,
+   "peak_over_db": -14.73,
    "held_db": 0.0,
    "played_dba": 70.84,
    "limited_db": 0.0,
@@ -2137,7 +2137,7 @@
    "correction_db": -0.0,
    "boost": 1.0,
    "limited_samples": 0,
-   "peak_over_db": -8.74,
+   "peak_over_db": -8.71,
    "held_db": 0.0,
    "played_dba": 76.86,
    "limited_db": 0.0,
@@ -2155,7 +2155,7 @@
    "correction_db": 0.001,
    "boost": 1.0,
    "limited_samples": 0,
-   "peak_over_db": -2.72,
+   "peak_over_db": -2.69,
    "held_db": 0.0,
    "played_dba": 82.88,
    "limited_db": 0.0,
@@ -2172,12 +2172,12 @@
    "law_dba": 88.9,
    "correction_db": 0.001,
    "boost": 1.0,
-   "limited_samples": 1220,
-   "peak_over_db": 3.3,
+   "limited_samples": 1227,
+   "peak_over_db": 3.33,
    "held_db": 0.0,
    "played_dba": 88.23,
    "limited_db": 0.67,
-   "distortion": 0.013
+   "distortion": 0.014
   },
   {
    "file": "touchdown_nose_g0_squeal_40kt_0.25fps_cockpit.wav",
@@ -3151,11 +3151,11 @@
    "correction_db": -0.001,
    "boost": 1.0,
    "limited_samples": 0,
-   "peak_over_db": -27.3,
+   "peak_over_db": -27.26,
    "held_db": 0.0,
    "played_dba": 58.62,
    "limited_db": 0.0,
-   "distortion": 0.0
+   "distortion": -0.0
   },
   {
    "file": "touchdown_nose_g0_thump_0.5fps_cockpit.wav",
@@ -3169,11 +3169,11 @@
    "correction_db": -0.001,
    "boost": 1.0,
    "limited_samples": 0,
-   "peak_over_db": -21.27,
+   "peak_over_db": -21.24,
    "held_db": 0.0,
    "played_dba": 64.64,
    "limited_db": 0.0,
-   "distortion": 0.0
+   "distortion": -0.0
   },
   {
    "file": "touchdown_nose_g0_thump_1fps_cockpit.wav",
@@ -3187,11 +3187,11 @@
    "correction_db": 0.0,
    "boost": 1.0,
    "limited_samples": 0,
-   "peak_over_db": -15.25,
+   "peak_over_db": -15.22,
    "held_db": 0.0,
    "played_dba": 70.66,
    "limited_db": 0.0,
-   "distortion": 0.0
+   "distortion": -0.0
   },
   {
    "file": "touchdown_nose_g0_thump_2fps_cockpit.wav",
@@ -3205,11 +3205,11 @@
    "correction_db": 0.001,
    "boost": 1.0,
    "limited_samples": 0,
-   "peak_over_db": -9.23,
+   "peak_over_db": -9.2,
    "held_db": 0.0,
    "played_dba": 76.68,
    "limited_db": 0.0,
-   "distortion": 0.0
+   "distortion": -0.0
   },
   {
    "file": "touchdown_nose_g0_thump_4fps_cockpit.wav",
@@ -3223,11 +3223,11 @@
    "correction_db": 0.001,
    "boost": 1.0,
    "limited_samples": 0,
-   "peak_over_db": -3.21,
+   "peak_over_db": -3.18,
    "held_db": 0.0,
    "played_dba": 82.7,
    "limited_db": 0.0,
-   "distortion": 0.0
+   "distortion": -0.0
   }
  ],
  "coherence": {

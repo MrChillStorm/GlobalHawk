@@ -2,6 +2,7 @@
 """The aircraft's sounds: every bank made by PyWopWop and put together into GlobalHawk/Sounds.
 
     ~/git/PyWopWop/.venv/bin/python fdm/mksounds.py        a few minutes; needs PyWopWop (github.com/MrChillStorm/PyWopWop)
+    ~/git/PyWopWop/.venv/bin/python fdm/mksounds.py merge  the banks already made, put together again
 
 Banks: the engine (PyWopWop's turbofan: by fan speed, at three altitudes, inside and outside from three directions),
 the wind on the nose bay's wall (by equivalent airspeed; its level and pitch follow the altitude), the tyres rolling
@@ -195,7 +196,8 @@ def body(xml):
     return s.replace('<property>sim/current-view/internal</property>', f'<property>{INSIDE}</property>')
 
 
-def main():
+def build():
+    """every bank, into the work folder; returns the manifests the merge needs"""
     jet = turbofan.load_jet('globalhawk')
     shutil.rmtree(WORK, ignore_errors=True)          # nothing left over from an earlier build
     quiet = lambda *a: None
@@ -219,6 +221,41 @@ def main():
             which = 'outside' if ('_side' in str(e) and 'cockpit' not in str(e)) else 'inside'
             print('  too loud for the %s gain (%s): again %.0f dB quieter' % (which, e, over + 1.5), flush=True)
             peak[which] -= over + 1.5
+    return dict(gains=gains, wind=wnd, tyres=tyr, gear=gr, touchdown=td, airframe=af)
+
+
+def start_layer(engine_xml):
+    """The start, before the fan turns fast enough for its loops (they begin at 660 rpm): the high-pressure rotor
+    comes up first, and its whine is the idle core loop played from the flight model's engine/core-spool, fading
+    as the fan's loops come in. No recording of a Global Hawk's start was found: the lead of the core over the
+    fan is the flight model's assumption, and no starter or igniter is heard."""
+    out = []
+    for where in ('inside', 'outside'):
+        m = re.search(r'\t\t<engine>\n\t\t\t<name>(pww-jet-core-0-[\d.]+-%s)</name>.*?\t\t</engine>\n' % where, engine_xml, re.S)
+        e = m.group(0).replace(m.group(1), 'start-core-' + where)
+        view = '<property>%s</property>' % INSIDE if where == 'inside' else '<not><property>%s</property></not>' % INSIDE
+        fan, core = '<property>/fdm/jsbsim/engine/fan-rpm</property>', '<property>/fdm/jsbsim/engine/core-spool</property>'
+        lo, hi = (float(x) for x in re.findall(r'<value>([\d.]+)</value>', re.search(r'<condition>.*?</condition>', e).group(0))[:2])
+        e = re.sub(r'<condition>.*?</condition>', '<condition><and>%s<greater-than>%s<value>0.03</value></greater-than><less-than>%s<value>%g</value></less-than></and></condition>'
+                   % (view, core, fan, 0.5 * (lo + hi)), e)
+        e = re.sub(r'<volume>.*?</volume>', '<volume><expression><product><value>0.7</value><sqrt><product><clip>%s<clipMin>0</clipMin><clipMax>1</clipMax></clip>'
+                   '<clip><difference><value>1</value><div><difference>%s<value>%g</value></difference><value>%g</value></div></difference><clipMin>0</clipMin><clipMax>1</clipMax></clip>'
+                   '</product></sqrt></product></expression></volume>\n\t\t\t<pitch><property>/fdm/jsbsim/engine/core-spool</property><factor>0.65</factor><offset>0.35</offset></pitch>'
+                   % (core, fan, lo, 0.5 * (hi - lo)), e)
+        out.append(e)
+    return ''.join(out)
+
+
+def main():
+    if 'merge' in sys.argv[1:]:
+        # the banks as they stand in the work folder, put together again (a change to this file's own sounds)
+        load = lambda name, mf='manifest.json': json.load(open(os.path.join(WORK, name, mf)))
+        eng = load('engine')
+        made = dict(gains=dict(cockpit=eng['gain_db']['inside'], exterior=eng['gain_db']['outside']), wind=load('wind'), tyres=load('tyres'), gear=load('gear'),
+                    touchdown=load('touchdown', 'touchdown.json'), airframe=load('airframe'))
+    else:
+        made = build()
+    gains, wnd, tyr, gr, td, af = (made[k] for k in ('gains', 'wind', 'tyres', 'gear', 'touchdown', 'airframe'))
     shutil.rmtree(os.path.join(OUT, 'pywopwop'), ignore_errors=True)
     os.makedirs(os.path.join(OUT, 'pywopwop'))
     n = 0
@@ -230,7 +267,8 @@ def main():
                 n += 1
         mf = 'touchdown.json' if name == 'touchdown' else 'manifest.json'
         shutil.copy(os.path.join(d, mf), os.path.join(OUT, 'pywopwop', name + '-manifest.json'))
-    parts = [body(open(os.path.join(WORK, 'engine', 'pywopwop-jet.xml')).read()), body(open(os.path.join(WORK, 'wind', 'pywopwop-wind.xml')).read()),
+    engine = body(open(os.path.join(WORK, 'engine', 'pywopwop-jet.xml')).read())
+    parts = [engine, start_layer(engine), body(open(os.path.join(WORK, 'wind', 'pywopwop-wind.xml')).read()),
              body(open(os.path.join(WORK, 'tyres', 'pywopwop-tyres.xml')).read()), body(gear_xml(gr)),
              body(open(os.path.join(WORK, 'touchdown', 'pywopwop-touchdown.xml')).read()), body(airframe_xml(af))]
     with open(os.path.join(OUT, 'globalhawk-sound.xml'), 'w') as fh:

@@ -20,6 +20,8 @@
   'use strict';
   const ANSWER_MS = 5000;
   const BEAT_MS = 1000;
+  const CAMERA = '/sim/globalhawk/camera/';
+  const SLEW_MS = 170;
 
   class Link {
     constructor(o) {
@@ -98,6 +100,24 @@
     stick(v) {
       const msg = JSON.stringify({ station: this.station, p: v.p, r: v.r, y: v.y, t: v.t, s: v.s });
       this.later(() => this.t.send('/gcs/up/stick', msg));
+    }
+
+    /** The sensor operator's command to the belly camera ("cross", "nearest", "unlock", "point lat lon", "level",
+     *  "level off"): to the camera itself, not a flight command, so it has no sequence number and no answer. */
+    camera(text) {
+      this.later(() => this.t.send(CAMERA + 'command', text));
+    }
+
+    /** Turn the camera for a moment (right and up, -1 to 1): a nudge of about a tenth of the picture. */
+    cameraSlew(right, up) {
+      this.later(() => {
+        this.t.send(CAMERA + 'slew-right', right);
+        this.t.send(CAMERA + 'slew-up', up);
+      });
+      this.timer(() => {
+        this.t.send(CAMERA + 'slew-right', 0);
+        this.t.send(CAMERA + 'slew-up', 0);
+      }, this.latency + SLEW_MS);
     }
 
     expire() {

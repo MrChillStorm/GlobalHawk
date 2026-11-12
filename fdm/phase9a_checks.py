@@ -151,15 +151,16 @@ def air():
         stop(proc)
         add('F3', 'starts in the air', False, 'FlightGear did not come up with the aircraft in 4 minutes (see fdm/out/fg-air.log)')
         return
-    time.sleep(150)                                                 # let it settle: FlightGear starts it untrimmed, and the speed loop takes two or three swings of about 100 s to come to rest
+    first = (get('/orientation/pitch-deg') or float('nan'), get(J + 'ctl/throttle-norm') or float('nan'))
+    time.sleep(10)                                                  # it starts from a trim now (Nasal/trimtable.nas): no settling time is given it
     keys = dict(alt='/position/altitude-ft', kcas='/velocities/airspeed-kt', roll='/orientation/roll-deg', pitch='/orientation/pitch-deg',
                 hdg='/orientation/heading-deg', thr=J + 'ctl/throttle-norm', gear=J + 'gear/gear-pos-norm', fps='/sim/frame-rate', engaged=J + 'ap/engaged')
     d, sim = watch(120, keys)
     nan = any(math.isnan(v) for k in d for v in d[k])
     dalt, dv = max(d['alt']) - min(d['alt']), max(d['kcas']) - min(d['kcas'])
     add('F3', 'in the air: the laws hold it', not nan and dalt <= 100 and dv <= 3 and max(abs(v) for v in d['roll']) < 2 and d['engaged'][-1] == 1 and min(d['alt']) > 15000,
-        'no NaN: %s; over %.0f s of flight: height %.0f to %.0f ft, %.1f to %.1f KCAS, bank within %.2f deg, heading %.1f to %.1f; throttle %.2f; gear %.2f; errors: %s' % (
-            not nan, sim, min(d['alt']), max(d['alt']), min(d['kcas']), max(d['kcas']), max(abs(v) for v in d['roll']), min(d['hdg']), max(d['hdg']),
+        'no NaN: %s; started at pitch %.2f deg for the trim table\'s %.2f, throttle %.2f for its %.2f; over %.0f s of flight from 10 s after the start: height %.0f to %.0f ft, %.1f to %.1f KCAS, bank within %.2f deg, heading %.1f to %.1f; throttle %.2f; gear %.2f; errors: %s' % (
+            not nan, first[0], get('/sim/globalhawk/trim/alpha-deg') or float('nan'), first[1], get('/sim/globalhawk/trim/throttle') or float('nan'), sim, min(d['alt']), max(d['alt']), min(d['kcas']), max(d['kcas']), max(abs(v) for v in d['roll']), min(d['hdg']), max(d['hdg']),
             d['thr'][-1], d['gear'][-1], errors(log)[:2] or 'none'))
     add('F5', 'frames a second in the air (reported)', True, '%.0f to %.0f' % (min(d['fps']), max(d['fps'])))
     stop(proc)

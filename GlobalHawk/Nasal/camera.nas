@@ -7,7 +7,7 @@
 #
 # Commands: the menu and the dialog call lock_cross(), lock_nearest(), lock_point(lat, lon), unlock(); anything
 # else (a joystick button, the ground station) can write one into /sim/globalhawk/camera/command:
-#   "cross", "nearest", "unlock", "point <lat> <lon> [<elevation ft>]"
+#   "cross", "nearest", "unlock", "point <lat> <lon> [<elevation ft>]", "level", "level off"
 # Slew: /sim/globalhawk/camera/slew-right and slew-up, -1 to 1 (bind a joystick's hat or axes to them); with the
 # belly camera's view up and the aircraft flying itself, the main stick slews too.
 
@@ -15,6 +15,8 @@ var CAM = "/sim/globalhawk/camera/";
 var R_EARTH = 6371000.0;
 var FT2M = 0.3048;
 var VIEW = "Belly Camera";
+var LEVEL_SIGN = -1;            # FlightGear's roll offset turns the picture the way the lean goes, so it is set against it (found by
+                                # trying in a 22 deg banked turn: with +1 the horizon leaned twice as far, with -1 it lay level)
 
 var camera = {
     mode: "",                    # "", "point" or "object"
@@ -22,6 +24,7 @@ var camera = {
     node: nil,                   # the object's property node
     name: "",
     off_h: 0, off_p: 0,          # the aim's offset from a locked object, deg (right, up)
+    level: 1,                    # the picture kept level with the horizon, whatever the aircraft's bank
 
     in_view: func { return (getprop("/sim/current-view/name") or "") == VIEW; },
 
@@ -53,6 +56,15 @@ var camera = {
         var p = (getprop("/sim/current-view/pitch-offset-deg") or 0) * D2R;
         var f = me.to_world([math.cos(p) * math.cos(a), math.cos(p) * math.sin(a), -math.sin(p)]);
         return [math.atan2(f[1], f[0]) / D2R, math.asin(math.max(-1, math.min(1, -f[2]))) / D2R];
+    },
+    # how far the picture leans: the camera's roll about its own line of sight with no roll of its own, deg, right
+    # side down positive (from the aircraft's bank and where the camera is turned)
+    leaning: func {
+        var a = -(getprop("/sim/current-view/heading-offset-deg") or 0) * D2R;
+        var p = (getprop("/sim/current-view/pitch-offset-deg") or 0) * D2R;
+        var r = me.to_world([-math.sin(a), math.cos(a), 0]);
+        var d = me.to_world([math.sin(p) * math.cos(a), math.sin(p) * math.sin(a), math.cos(p)]);
+        return math.atan2(r[2], d[2]) / D2R;
     },
     # turn the camera to a direction in the world
     look: func(hdg, el) {
@@ -209,8 +221,25 @@ var camera = {
             var look = me.looking();
             me.look(look[0] + sr * rate * dt / math.max(math.cos(look[1] * D2R), 0.2), math.max(-89.5, math.min(30, look[1] + su * rate * dt)));
         }
+        # the horizon's stabilisation: the camera rolled about its line of sight against the picture's lean, so the
+        # horizon stays level as the aircraft banks (most real turrets leave it leaning). Looking nearly straight
+        # down there is no horizon to hold: the roll is faded out over the last 10 deg
+        if (view) {
+            var roll = 0;
+            if (me.level) {
+                var steep = math.abs(me.looking()[1]);
+                roll = LEVEL_SIGN * me.leaning() * math.max(0, math.min(1, (88 - steep) / 10));
+            }
+            setprop("/sim/current-view/goal-roll-offset-deg", roll);
+            setprop("/sim/current-view/roll-offset-deg", roll);
+        }
+        setprop(CAM ~ "level", me.level);
         setprop(CAM ~ "lock", me.mode);
         setprop(CAM ~ "name", me.name);
+    },
+    set_level: func(on) {
+        me.level = on ? 1 : 0;
+        me.tell(me.level ? "Camera: the horizon is kept level" : "Camera: the picture leans with the aircraft");
     },
 
     command: func(text) {
@@ -219,6 +248,7 @@ var camera = {
         if (w[0] == "cross") me.lock_cross();
         elsif (w[0] == "nearest") me.lock_nearest();
         elsif (w[0] == "unlock") me.unlock();
+        elsif (w[0] == "level") me.set_level(size(w) < 2 or w[1] != "off");
         elsif (w[0] == "point" and size(w) >= 3 and num(w[1]) != nil and num(w[2]) != nil)
             me.lock_point(num(w[1]), num(w[2]), size(w) > 3 ? num(w[3]) : nil);
         else me.tell("Camera: not understood: " ~ text);

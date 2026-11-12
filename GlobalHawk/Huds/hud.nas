@@ -173,7 +173,7 @@ var HUD = {
 
         # ---- speed on the left, height on the right: a moving scale, the value in a frame, the target as a caret
         me.spd = me.tape(-me.hw * 0.66, -1, 3.2, 5, 10, "%d", 34);
-        me.alt = me.tape(me.hw * 0.66, 1, 0.26, 100, 500, "%d", 34);
+        me.alt = me.tape(me.hw * 0.66, 1, 0.26, 100, 500, "%d", 58);            # five figures: 5 x 14 px and a margin
         me.mach = me.text(g, 14, "left-center").setTranslation(me.spd.x - 62, 128);
         me.spd_target = me.text(g, 14, "left-center").setTranslation(me.spd.x - 62, -128);
         me.alt_target = me.text(g, 14, "right-center").setTranslation(me.alt.x + 74, -128);
@@ -288,7 +288,9 @@ var HUD = {
             .moveTo(bx, -12).lineTo(bx + side * (box_w + 24), -12).lineTo(bx + side * (box_w + 24), 12).lineTo(bx, 12).close();
         me.path(frame, 1.4).moveTo(x + side * 3, 0).lineTo(bx, -7).lineTo(bx, -12).lineTo(bx + side * (box_w + 24), -12)
             .lineTo(bx + side * (box_w + 24), 12).lineTo(bx, 12).lineTo(bx, 7).close();
-        t.value = me.text(frame, 20, side > 0 ? "left-center" : "right-center", MONO).setTranslation(bx + side * 5, 0);
+        # in the frame's middle: the frame is as wide as the longest value (a figure of this font is 14 px wide as
+        # FlightGear draws it; the height's five did not fit a frame made for the speed's three)
+        t.value = me.text(frame, 20, "center-center", MONO).setTranslation(bx + side * (box_w + 24) / 2, 0);
         t.bug = me.flight.createChild("group");
         me.path(t.bug, 1.6).moveTo(x - side * 3, 0).lineTo(x - side * 12, -6).lineTo(x - side * 12, 6).close();
         t.half = half;

@@ -11,6 +11,7 @@
   const APPROACH_KT = 140; // true airspeed down the final, about
   const TAKEOFF = { seconds: 95, fuel_lb: 55, climb_ft: 100 }; // start of the roll to the manager's "airborne": measured in fdm/phase8c_checks.py
   const RESERVE_LB = 765; // 5 % of full tanks
+  const ROLL_MARGIN = 1.15; // runway asked for over the forecast roll: an assumed allowance (no wind, a dry level runway, in the table)
 
   function make(P) {
     const A = P.alt_ft;
@@ -41,9 +42,34 @@
     }
 
     /**
+     * The landing at a weight on a field at a height, from the flight model's own landings: how far past the aiming
+     * point it touches down, how far past it the rollout ends (15 kt, where the taxi begins), and the runway to
+     * have past the aiming point (the rollout with the margin). null if the table has no landings.
+     */
+    function landing(weight, elev) {
+      const L = P.landing;
+      if (!L) return null;
+      const W = L.weight_lb;
+      const E = L.elev_ft;
+      const w = Math.min(Math.max(weight, W[0]), W[W.length - 1]);
+      const e = Math.min(Math.max(elev, E[0]), E[E.length - 1]);
+      let j = 0;
+      while (j < W.length - 2 && w > W[j + 1]) j++;
+      let i = 0;
+      while (i < E.length - 2 && e > E[i + 1]) i++;
+      const fw = (w - W[j]) / (W[j + 1] - W[j]);
+      const fe = (e - E[i]) / (E[i + 1] - E[i]);
+      const at = (T) => (T[i][j] * (1 - fw) + T[i][j + 1] * fw) * (1 - fe) + (T[i + 1][j] * (1 - fw) + T[i + 1][j + 1] * fw) * fe;
+      const slow = at(L.slow_ft);
+      return { weight_lb: weight, touchdown_ft: at(L.touchdown_ft), slow_ft: slow, runway_ft: slow * ROLL_MARGIN };
+    }
+
+    /**
      * legs: [{ dist_ft, alt_ft, kind? }] ('land' flies down to alt_ft at approach speed; 'takeoff' is the fixed
      * allowance). state: { alt_ft, weight_lb, fuel_lb }. Returns { points: [{ t_s, fuel_lb, alt_ft, dist_ft,
      * reached }], total: { t_s, fuel_used_lb, dist_ft }, profile: [[dist_ft, alt_ft, t_s, fuel_lb]], warnings: [text] }.
+     * A 'land' leg's point also has landing: what landing() gives for the weight it arrives with; and if the leg
+     * says how much runway there is past the aiming point (runway_past_aim_ft), too little is a warning.
      */
     function predict(legs, state) {
       let t = 0;
@@ -100,15 +126,23 @@
         }
         const reached = leg.kind === 'land' || Math.abs(alt - leg.alt_ft) <= CAPTURE_FT + 1;
         if (!reached) warnings.push(`${leg.name ? (/^\d+$/.test(leg.name) ? 'point ' + leg.name : 'the ' + leg.name) : 'point ' + (n + 1)}: ${Math.round(leg.alt_ft)} ft is not reached by then (${Math.round(alt / 100) * 100} ft)`);
-        points.push({ t_s: t, fuel_lb: fuel, alt_ft: alt, dist_ft: dist, reached });
+        const pt = { t_s: t, fuel_lb: fuel, alt_ft: alt, dist_ft: dist, reached };
+        if (leg.kind === 'land') {
+          pt.landing = landing(dry + Math.max(fuel, 0), leg.alt_ft);
+          const have = Number(leg.runway_past_aim_ft);
+          if (pt.landing && have > 0 && pt.landing.runway_ft > have) {
+            warnings.push(`the landing at ${Math.round(pt.landing.weight_lb / 100) * 100} lb needs ${Math.round(pt.landing.runway_ft / 100) * 100} ft of runway past the aiming point (the rollout ${Math.round(pt.landing.slow_ft / 100) * 100} ft and 15 % in hand): the plan says there are ${Math.round(have)} ft`);
+          }
+        }
+        points.push(pt);
       });
       if (fuel < RESERVE_LB) warnings.push(fuel <= 0 ? 'the fuel runs out before the end' : `fuel at the end ${Math.round(fuel)} lb: under the reserve of ${RESERVE_LB} lb`);
       return { points, total: { t_s: t, fuel_used_lb: state.fuel_lb - fuel, dist_ft: dist }, profile, warnings };
     }
-    return { predict, ktas, look };
+    return { predict, ktas, look, landing };
   }
 
-  const api = { make, TAKEOFF, RESERVE_LB, NM };
+  const api = { make, TAKEOFF, RESERVE_LB, ROLL_MARGIN, NM };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else (root.GCS = root.GCS || {}).predict = api;
 })(typeof window !== 'undefined' ? window : globalThis);

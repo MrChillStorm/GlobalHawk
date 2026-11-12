@@ -4,8 +4,8 @@
  "sample_rate": 48000.0,
  "exterior_distance_m": 30.0,
  "gain_db": {
-  "cockpit": -26.307,
-  "exterior": -28.96
+  "cockpit": -26.274,
+  "exterior": -28.513
  },
  "legs": [
   {

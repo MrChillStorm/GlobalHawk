@@ -26,4 +26,22 @@ assert.ok(dry.warnings.some((w) => /reserve|runs out/.test(w)));
 // a landing leg ends at the field
 const ld = pr.predict([{ kind: 'land', dist_ft: 16 * NM, alt_ft: 2300 }], { alt_ft: 7500, weight_lb: 15000, fuel_lb: 3550 });
 assert.ok(Math.abs(ld.points[0].alt_ft - 2300) < 60, 'landing ends at ' + ld.points[0].alt_ft);
+// the landing's roll: longer with weight and with the field's height, and the plan's runway held against it
+const light = pr.landing(12500, 0);
+const full = pr.landing(26300, 0);
+assert.ok(light.slow_ft > 3000 && light.slow_ft < 3500 && full.slow_ft > 5500 && full.slow_ft < 6000, `rolls ${light.slow_ft} ${full.slow_ft}`);
+assert.ok(pr.landing(20000, 5000).slow_ft > pr.landing(20000, 0).slow_ft && light.touchdown_ft < light.slow_ft);
+assert.ok(Math.abs(full.runway_ft - full.slow_ft * 1.15) < 1e-6);
+assert.ok(pr.landing(5000, -500).slow_ft === pr.landing(11500, 0).slow_ft, 'held at the edge of the table');
+const st2 = { alt_ft: 7500, weight_lb: 26300, fuel_lb: 14850 };
+const land = (runway) => pr.predict([{ kind: 'land', dist_ft: 16 * NM, alt_ft: 170, runway_past_aim_ft: runway }], st2);
+assert.ok(land(undefined).points[0].landing.slow_ft > 5500 && !land(undefined).warnings.length, 'no runway given: no warning');
+assert.ok(!land(9000).warnings.length);
+assert.ok(/needs 6[0-9]00 ft of runway past the aiming point/.test(land(6000).warnings[0]), land(6000).warnings[0]);
+// through the plan: the field's runway goes with its landings
+const pc = require('../js/plancheck.js');
+const items = [{ kind: 'route', points: [[35, -117, 8000]] }, { kind: 'land', fix: [35.2, -117], aim: [35.4, -117] }];
+assert.strictEqual(pc.legs(items, null, { elev_ft: 100, runway_past_aim_ft: 5000 })[2].runway_past_aim_ft, 5000);
+assert.strictEqual(pc.legs(items, null, { elev_ft: 100 })[2].runway_past_aim_ft, undefined);
+assert.strictEqual(pc.legs(items, null, 100)[2].alt_ft, 100);
 console.log('predict OK');

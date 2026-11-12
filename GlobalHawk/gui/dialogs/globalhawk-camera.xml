@@ -28,6 +28,7 @@
   <button><legend>Lock on these</legend><binding><command>dialog-apply</command></binding><binding><command>nasal</command><script>globalhawk.camera.lock_entered()</script></binding></button>
  </group>
  <text><label>Degrees, south and west negative. Locked on a point, slewing moves the point.</label></text>
+ <checkbox><label>Keep the horizon level</label><property>/sim/globalhawk/camera/level</property><live>true</live><binding><command>nasal</command><script>globalhawk.camera.set_level(!globalhawk.camera.level)</script></binding></checkbox>
  <hrule/>
  <group>
   <layout>table</layout>

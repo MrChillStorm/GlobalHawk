@@ -1,0 +1,2 @@
+<?xml version="1.0"?>
+<PropertyList><name>gh-yellow</name><inherits-from>Effects/model-pbr</inherits-from><parameters><base-color-factor type="vec4d">0.96 0.97 0.06 1</base-color-factor><metallic-factor type="float">0</metallic-factor><roughness-factor type="float">0.35</roughness-factor></parameters></PropertyList>

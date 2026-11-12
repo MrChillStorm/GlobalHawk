@@ -5,7 +5,8 @@
      control station in gcs/ (start FlightGear with its web server on: the httpd option, port 5400). -->
 <PropertyList>
  <sim>
-  <description>Global Hawk, NASA 872 (JSBSim)</description>
+  <description>Global Hawk (JSBSim)</description>
+  <previews><preview><type>exterior</type><splash type="bool">true</splash><path>Previews/globalhawk-0.jpg</path></preview><preview><type>exterior</type><splash type="bool">true</splash><path>Previews/globalhawk-1.jpg</path></preview><preview><type>exterior</type><splash type="bool">true</splash><path>Previews/globalhawk-2.jpg</path></preview></previews>
   <long-description>NASA's high-altitude, long-endurance research aircraft, an RQ-4A, modelled from public data: not made or endorsed by NASA or the manufacturer. It flies itself: its flight laws are on board, and it is supervised from a ground control station in a browser (the gcs folder; start FlightGear with --httpd=5400). There is no cockpit, as on the real one.</long-description>
   <author>JSBSim model, flight laws and ground station from public data</author>
   <aircraft-version>0.1</aircraft-version>
@@ -58,7 +59,9 @@
      <item><label>Belly camera: lock and slew...</label><binding><command>dialog-show</command><dialog-name>globalhawk-camera</dialog-name></binding></item>
      <item><label>Belly camera: lock on the cross</label><binding><command>nasal</command><script>globalhawk.camera.lock_cross()</script></binding></item>
      <item><label>Belly camera: lock on the nearest object</label><binding><command>nasal</command><script>globalhawk.camera.lock_nearest()</script></binding></item>
+     <item><label>Belly camera: level horizon on/off</label><binding><command>nasal</command><script>globalhawk.camera.set_level(!globalhawk.camera.level)</script></binding></item>
      <item><label>Belly camera: unlock</label><binding><command>nasal</command><script>globalhawk.camera.unlock()</script></binding></item>
+     <item><label>Ground to the horizon at height on/off</label><binding><command>property-toggle</command><property>/sim/globalhawk/far-scenery</property></binding></item>
     </menu>
    </default>
   </menubar>
@@ -66,9 +69,12 @@
  </sim>
  <controls>
   <gear><brake-parking type="double">1</brake-parking><gear-down type="bool">true</gear-down></gear>
+  <lighting><nav-lights type="bool">true</nav-lights><strobe type="bool">true</strobe><beacon type="bool">true</beacon></lighting>
   <engines><engine n="0"><throttle type="double">0</throttle></engine></engines>
  </controls>
  <nasal><globalhawk>
+  <file>Aircraft/GlobalHawk/Nasal/defaults.nas</file>
+  <file>Aircraft/GlobalHawk/Nasal/trimtable.nas</file>
   <file>Aircraft/GlobalHawk/Nasal/globalhawk.nas</file>
   <file>Aircraft/GlobalHawk/Nasal/json.nas</file>
   <file>Aircraft/GlobalHawk/Nasal/missionmgr.nas</file>

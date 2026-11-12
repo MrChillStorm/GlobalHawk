@@ -16,8 +16,7 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-COLOURS = {0: (0.93, 0.93, 0.95), 1: (0.66, 0.70, 0.76), 2: (0.28, 0.29, 0.33), 3: (0.07, 0.07, 0.07), 4: (1.0, 0.1, 0.1), 5: (0.1, 1.0, 0.2), 6: (1.0, 1.0, 1.0),
-           7: (0.05, 0.16, 0.42)}
+COLOURS = {0: (0.93, 0.93, 0.95), 1: (0.66, 0.70, 0.76), 2: (0.28, 0.29, 0.33), 3: (0.07, 0.07, 0.07), 4: (0.26, 0.49, 0.75), 5: (0.98, 0.99, 0.27)}
 
 
 def rotation(axis, angle_deg, origin, pts):
@@ -38,7 +37,7 @@ def posed(objs, anims, gear=1.0, aileron=0.0, pitch=0.0, spoiler=0.0, flex=0.0):
             continue
         v = o.mesh.vertices.copy()
         for a in reversed(mine):
-            if a.get('hide_up') or a.get('spin') or a.get('select'):
+            if a.get('hide_up') or a.get('spin'):
                 continue
             if 'table' in a:
                 deg = float(np.interp(gear, [e[0] for e in a['table']], [e[1] for e in a['table']]))

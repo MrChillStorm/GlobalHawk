@@ -1,0 +1,2 @@
+<?xml version="1.0"?>
+<PropertyList><name>gh-badge</name><inherits-from>Effects/model-pbr</inherits-from><parameters><metallic-factor type="float">0</metallic-factor><roughness-factor type="float">0.4</roughness-factor></parameters></PropertyList>

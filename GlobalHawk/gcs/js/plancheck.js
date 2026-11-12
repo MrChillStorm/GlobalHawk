@@ -79,9 +79,13 @@
 
   /**
    * The legs the forecast takes, from a list of items and where it begins ([lat, lon]). Each route point is a leg;
-   * a land is one leg to the fix (level) and one down to the field; taxi is left out.
+   * a land is one leg to the fix (level) and one down to the field; taxi is left out. field: the plan's field, or
+   * just its height; its runway_past_aim_ft, if the plan gives one, goes with every landing (the station's own
+   * note for the forecast: the aircraft does not read it).
    */
-  function legs(items, from, fieldElev) {
+  function legs(items, from, field) {
+    const fieldElev = typeof field === 'object' && field !== null ? field.elev_ft : field;
+    const runway = typeof field === 'object' && field !== null && Number(field.runway_past_aim_ft) > 0 ? Number(field.runway_past_aim_ft) : undefined;
     const out = [];
     let last = from;
     let alt = null;
@@ -97,7 +101,7 @@
         });
       } else if (it.kind === 'land') {
         if (last) out.push({ dist_ft: geo.course(last, it.fix).ft, alt_ft: alt === null ? fieldElev + 4000 : alt, item: it, at: it.fix, label: 'fix', name: 'landing fix' });
-        out.push({ kind: 'land', dist_ft: geo.course(it.fix, it.aim).ft, alt_ft: fieldElev, item: it, at: it.aim, label: 'land' });
+        out.push({ kind: 'land', dist_ft: geo.course(it.fix, it.aim).ft, alt_ft: fieldElev, item: it, at: it.aim, label: 'land', runway_past_aim_ft: runway });
         last = it.aim;
       } else if (it.kind === 'taxi') {
         last = it.points[it.points.length - 1];

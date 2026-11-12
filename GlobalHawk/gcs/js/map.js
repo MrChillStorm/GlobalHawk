@@ -8,7 +8,7 @@
   'use strict';
   const G = root.GCS;
   const geo = G.geo;
-  const COL = { plan: '#c9d1d9', active: '#ff4fd8', lost: '#ffb000', preview: '#3fd0ff', site: '#7ee787', grid: '#1c2530', text: '#9aa7b4', own: '#ffffff', trail: '#5b6b7a' };
+  const COL = { plan: '#c9d1d9', active: '#ff4fd8', lost: '#ffb000', preview: '#3fd0ff', site: '#7ee787', grid: '#1c2530', text: '#9aa7b4', own: '#ffffff', trail: '#5b6b7a', camera: '#39ff14' };
 
   class MapView {
     constructor(canvas) {
@@ -244,6 +244,18 @@
       if (d.reach && this.own) {
         this.circle(this.own.p, d.reach.radiusFt, COL.site, 1, [3, 7]);
         for (const s of d.reach.sites) this.label(s.aim, s.inReach ? `glide: ${Math.round(s.inHand / 100) * 100} ft in hand` : 'glide: OUT OF REACH', s.inReach ? COL.site : '#ff5252', 9, 18);
+      }
+      // what the belly camera is locked on: a cross, and the line of sight from the aircraft
+      if (d.camera) {
+        const q = this.project(d.camera);
+        if (this.own) this.line([this.own.p, d.camera], COL.camera, 1, [2, 4]);
+        x.strokeStyle = COL.camera;
+        x.lineWidth = 2;
+        x.beginPath();
+        x.moveTo(q[0] - 9, q[1]); x.lineTo(q[0] - 3, q[1]); x.moveTo(q[0] + 3, q[1]); x.lineTo(q[0] + 9, q[1]);
+        x.moveTo(q[0], q[1] - 9); x.lineTo(q[0], q[1] - 3); x.moveTo(q[0], q[1] + 3); x.lineTo(q[0], q[1] + 9);
+        x.stroke();
+        this.label(d.camera, 'camera', COL.camera, 11, -8);
       }
       // a command being prepared
       const pv = d.preview;

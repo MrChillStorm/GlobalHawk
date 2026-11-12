@@ -44,10 +44,40 @@ AILERON = dict(inner=0.55, outer=0.95, chord=0.25)
 RUDDERVATOR = dict(chord=0.30)
 SPOILER = dict(inner=0.18, outer=0.50, front=0.62, back=0.76, travel_deg=45.0)
 WHITE, GREY, DARK, TYRE = 0, 1, 2, 3
-RED_LIGHT, GREEN_LIGHT, WHITE_LIGHT = 4, 5, 6      # lamps: they glow by themselves
-BLUE = 7                                         # the stripe
+# The materials for FlightGear's HDR pipeline, physically based: (base colour in linear light or None for a picture's own,
+# metallic, roughness), and the objects each is on by the start of their names. The .ac file's own materials stay for
+# the older pipelines. Values are the usual ones for each stuff; none is measured from the aircraft.
+EFFECTS = {
+    'paint': ((0.86, 0.86, 0.88), 0.0, 0.35, ('airframe', 'wing-', 'aileron-', 'ruddervator-', 'spoiler-', 'details', 'gear-left-fairing', 'gear-right-fairing',
+                                              'gear-left-bay-door', 'gear-right-bay-door', 'gear-nose-door')),          # gloss white polyurethane
+    'blue': ((0.055, 0.21, 0.52), 0.0, 0.35, ('stripe',)),                                                             # FlightGear's blue, as paint
+    'yellow': ((0.96, 0.97, 0.06), 0.0, 0.35, ('stripe-pin',)),
+    'badge': (None, 0.0, 0.40, ('insignia-',)),                                                                         # the painted badge: its picture
+    'steel': ((0.77, 0.78, 0.80), 1.0, 0.30, ('gear-nose', 'gear-left', 'gear-right')),                                 # the legs, axles, hubs and braces: bare machined alloy steel
+    'rubber': ((0.02, 0.02, 0.02), 0.0, 0.85, ('gear-nose-tyres', 'gear-left-tyres', 'gear-right-tyres')),
+    'titanium': ((0.54, 0.50, 0.47), 1.0, 0.35, ('fan',)),                                                              # the fan's blades
+    'spinner': ((0.05, 0.05, 0.06), 0.0, 0.40, ('fan-spinner',)),                                                       # dark painted
+    'black': ((0.01, 0.01, 0.01), 0.0, 1.0, ('fan-backing',)),
+    'hot': ((0.20, 0.18, 0.17), 1.0, 0.60, ('turbine', 'nozzle-lining')),                                               # heat-stained nickel alloy
+    'primer': ((0.10, 0.11, 0.09), 0.0, 0.90, ('nose-gear-well',)),
+}
+
+
+def effect_of(name):
+    """the material an object wears: the longest of the name beginnings that fits"""
+    best = None
+    for eff, (_, _, _, starts) in EFFECTS.items():
+        for st in starts:
+            if name.startswith(st) and (best is None or len(st) > best[1]):
+                best = (eff, len(st))
+    return best[0] if best else None
+
+
+LAMP_AT = {}                                      # where the lamps are, ft (filled by build; fdm/ghlights.py makes them)
+BLUE, YELLOW = 4, 5                              # the stripe: FlightGear's blue, and its yellow under it
+INSIGNIA = dict(x=31.0, z=9.0, size=2.3, out=1.75)   # ft: the badge on each side of the nacelle: its centre, its width, and how far from the centreline the skin it is painted on begins
+#                                        # the stripe
 STRIPE = (4.05, 4.30, 1.0, 40.0)                 # ft: the blue stripe's lower and upper edge and its fore and aft ends
-L = '/sim/model/globalhawk/lights/'               # what switches each lamp (Nasal/globalhawk.nas)
 BAY_X = (22.0, 24.3)                      # ft: the opening in the gear fairing's underside, fore and aft of the wheels
 KNEE = 0.15                               # where the main gear's side brace is jointed, as a fraction of its length from the fuselage
 MAIN_OUT = G['gear']['main_out']           # ft: how much further out the main legs stand than in NASA's model (fdm/geometry.py)
@@ -185,17 +215,19 @@ def gear_fairing(side):
 
 
 class Obj:
-    def __init__(self, name, mesh, mat=WHITE):
+    def __init__(self, name, mesh, mat=WHITE, texture=None, uv=None):
         self.name, self.mesh, self.mat = name, mesh, mat
+        self.texture, self.uv = texture, uv                 # a picture on it, and each vertex's place in the picture
 
     def write(self, fh):
         v, f = self.mesh.vertices, self.mesh.faces
-        fh.write('OBJECT poly\nname "%s"\ncrease 40.0\nnumvert %d\n' % (self.name, len(v)))
+        fh.write('OBJECT poly\nname "%s"\n%screase 40.0\nnumvert %d\n' % (self.name, 'texture "%s"\n' % self.texture if self.texture else '', len(v)))
+        uv = self.uv if self.uv is not None else np.zeros((len(v), 2))
         for x, y, z in v:
             fh.write('%.4f %.4f %.4f\n' % (x * FT, z * FT, -y * FT))
         fh.write('numsurf %d\n' % len(f))
         for a, b, c in f:
-            fh.write('SURF 0x%s\nmat %d\nrefs 3\n%d 0 0\n%d 0 0\n%d 0 0\n' % ('30', self.mat, a, b, c))   # smooth, and drawn from both sides: NASA's pieces don't all face the same way, and one-sided some vanish   # the blades are single sheets: drawn from both sides
+            fh.write('SURF 0x%s\nmat %d\nrefs 3\n%d %.4f %.4f\n%d %.4f %.4f\n%d %.4f %.4f\n' % ('30', self.mat, a, uv[a][0], uv[a][1], b, uv[b][0], uv[b][1], c, uv[c][0], uv[c][1]))   # smooth, and drawn from both sides: NASA's pieces don't all face the same way, and one-sided some vanish   # the blades are single sheets: drawn from both sides
         fh.write('kids 0\n')
 
 
@@ -204,7 +236,7 @@ def plate(name, corners, thick=0.035):
     c = np.array(corners)
     v = np.vstack([c, c + [0, 0, thick]])
     f = [(0, 1, 2), (0, 2, 3), (4, 6, 5), (4, 7, 6), (0, 4, 5), (0, 5, 1), (1, 5, 6), (1, 6, 2), (2, 6, 7), (2, 7, 3), (3, 7, 4), (3, 4, 0)]
-    return Obj(name, trimesh.Trimesh(v, f, process=False), DARK)
+    return Obj(name, trimesh.Trimesh(v, f, process=False), WHITE)             # painted as the wing: stowed, it is the wing's skin
 
 
 def build():
@@ -304,15 +336,12 @@ def build():
             k = max([i for i, c in enumerate(cuts) if c <= stations[n] + 1e-6], default=-1)
             anims.extend(bent(name, k))
             anims.append(dict(obj=name, prop=J + 'ctl/spoiler-norm', factor=SPOILER['travel_deg'], a=np.array(cs[0]), b=np.array(cs[1]), down=-side))
-        # the wing tip's lamps: the navigation light (red on the left, green on the right) and a white strobe behind
-        # it, on the tip's own segment so that they ride the bending wing
+        # the wing tip's lamps (fdm/ghlights.py: the navigation light and a strobe behind it) hang on the tip's own
+        # segment, so that they ride the bending wing
         tipv = airframe.vertices[airframe.vertices[:, 1] * side > HALF - 0.4]
-        at = np.array([np.percentile(tipv[:, 0], 30), side * (HALF + 0.05), tipv[:, 2].mean()])
-        for lamp, dx, mat, switch in (('nav', 0.0, GREEN_LIGHT if side > 0 else RED_LIGHT, 'nav'), ('strobe', 0.9, WHITE_LIGHT, 'strobe')):
-            name = 'light-%s-%s' % (lamp, sn)
-            objs.append(Obj(name, trimesh.creation.icosphere(subdivisions=1, radius=0.13).apply_translation(at + [dx, 0, 0]), mat))
-            anims.extend(bent(name, len(cuts) - 1))
-            anims.append(dict(obj=name, select=L + switch, a=np.zeros(3), b=np.ones(3)))
+        LAMP_AT['tip-' + sn] = np.array([np.percentile(tipv[:, 0], 30), side * (HALF + 0.05), tipv[:, 2].mean()])
+        for lamp in (('nav-green', 'strobe-right') if side > 0 else ('nav-red', 'strobe-left')):
+            anims.extend(bent('light-' + lamp, len(cuts) - 1))
     # the V-tail's ruddervators, cut out of what is left
     t = G['vtail']
     d = math.radians(t['dihedral_deg'])
@@ -369,24 +398,38 @@ def build():
     for sd, nm in ((1.0, 'right'), (-1.0, 'left')):
         door, core = cut_out(core, [((1, 0, 0), (x0, 0, 0)), ((-1, 0, 0), (x1, 0, 0)), ((0, sd, 0), (0, 0, 0)), ((0, -sd, 0), (0, sd * hw, 0)), ((0, 0, -1), (0, 0, 4.3 * KZ))])
         nose_doors[nm] = door
-    # NASA's two Global Hawks are white with one thin dark blue stripe along each side of the fuselage from the nose
-    # to the tail, about where the wing's underside meets it (NASA's photograph of 871 and 872 on the Dryden ramp, "in
-    # their blue-and-white paint scheme"). It is cut out of the skin as a band between two heights. No insignia and
-    # no lettering are drawn (NASA's are not to be used).
+    # The livery is FlightGear's own, on the pattern NASA's two aircraft wear (white, with one thin stripe along each
+    # side of the fuselage from the nose to the tail, about where the wing's underside meets it, and a round badge on
+    # each side of the nacelle): the stripe in FlightGear's blue with its yellow under it, cut out of the skin as
+    # bands between heights, and the badge FlightGear's (fdm/mkinsignia.py), painted on a piece of the nacelle's own
+    # skin. No agency's insignia or lettering.
     sz0, sz1, sx0, sx1 = STRIPE
-    stripe, core = cut_out(core, [((0, 0, 1), (0, 0, sz0)), ((0, 0, -1), (0, 0, sz1)), ((1, 0, 0), (sx0, 0, 0)), ((-1, 0, 0), (sx1, 0, 0))])
+    ends = [((1, 0, 0), (sx0, 0, 0)), ((-1, 0, 0), (sx1, 0, 0))]
+    stripe, core = cut_out(core, [((0, 0, 1), (0, 0, sz0)), ((0, 0, -1), (0, 0, sz1))] + ends)
+    pin, core = cut_out(core, [((0, 0, 1), (0, 0, sz0 - 0.09)), ((0, 0, -1), (0, 0, sz0))] + ends)
+    badges = []
+    q = INSIGNIA
+    for side, sn in ((1, 'right'), (-1, 'left')):
+        piece, core = cut_out(core, [((1, 0, 0), (q['x'] - q['size'] / 2, 0, 0)), ((-1, 0, 0), (q['x'] + q['size'] / 2, 0, 0)),
+                                     ((0, 0, 1), (0, 0, q['z'] - q['size'] / 2)), ((0, 0, -1), (0, 0, q['z'] + q['size'] / 2)), ((0, side, 0), (0, side * q['out'], 0))])
+        if piece is None:
+            continue
+        v = piece.vertices
+        u = (v[:, 0] - (q['x'] - q['size'] / 2)) / q['size']
+        # seen from outside, the nose is to the left on the left side and to the right on the right side
+        uv = np.c_[u if side < 0 else 1.0 - u, (v[:, 2] - (q['z'] - q['size'] / 2)) / q['size']]
+        badges.append(Obj('insignia-' + sn, piece, WHITE, 'insignia.png', np.clip(uv, 0.0, 1.0)))
     objs.insert(0, Obj('airframe', core))
     if stripe is not None:
         objs.append(Obj('stripe', stripe, BLUE))
-    # the white tail light at the fuselage's end, and red beacons on top of the nacelle and under the belly
+    if pin is not None:
+        objs.append(Obj('stripe-pin', pin, YELLOW))
+    objs.extend(badges)
+    # where the other lamps go: the white light at the fuselage's end, red beacons on top of the nacelle and under the belly
     fv = core.vertices[np.abs(core.vertices[:, 1]) < 0.6]
-    tail = fv[np.argmax(fv[:, 0])]
     top = fv[(fv[:, 0] > 29.0) & (fv[:, 0] < 31.0)]
     under = fv[(fv[:, 0] > 13.0) & (fv[:, 0] < 15.0)]
-    for name, at, mat, switch in (('light-tail', tail + [0.05, 0, 0], WHITE_LIGHT, 'nav'), ('light-beacon-top', [30.0, 0.0, top[:, 2].max() + 0.05], RED_LIGHT, 'beacon'),
-                                  ('light-beacon-under', [14.0, 0.0, under[:, 2].min() - 0.05], RED_LIGHT, 'beacon')):
-        objs.append(Obj(name, trimesh.creation.icosphere(subdivisions=1, radius=0.13).apply_translation(np.asarray(at, float)), mat))
-        anims.append(dict(obj=name, select=L + switch, a=np.zeros(3), b=np.ones(3)))
+    LAMP_AT.update(tail=fv[np.argmax(fv[:, 0])] + [0.05, 0, 0], top=np.array([30.0, 0.0, top[:, 2].max() + 0.05]), under=np.array([14.0, 0.0, under[:, 2].min() - 0.05]))
     zb = max(d.vertices[:, 2].max() for d in nose_doors.values())          # above the doors' highest edge: the belly is curved, and a well that began lower stood out of it at the sides
     wv = np.array([(x, y, z) for z in (zb + 0.05, zb + 2.5) for x, y in ((x0, -hw), (x1, -hw), (x1, hw), (x0, hw))]) * [1, 0.97, 1]
     wf = [(4, 5, 6), (4, 6, 7)] + [t for k in range(4) for t in ((k, (k + 1) % 4, 4 + (k + 1) % 4), (k, 4 + (k + 1) % 4, 4 + k))]
@@ -625,9 +668,8 @@ def write(objs, anims):
     os.makedirs(OUT, exist_ok=True)
     with open(os.path.join(OUT, 'GlobalHawk.ac'), 'w') as fh:
         fh.write('AC3Db\n')
-        for rgb, name, spec in (((0.94, 0.94, 0.95), 'white', 0.25), ((0.80, 0.82, 0.84), 'grey', 0.25), ((0.20, 0.21, 0.23), 'dark', 0.1), ((0.05, 0.05, 0.05), 'tyre', 0.02), ((1.0, 0.05, 0.05), 'red lamp', 1.0), ((0.05, 1.0, 0.15), 'green lamp', 1.0), ((1.0, 1.0, 1.0), 'white lamp', 1.0), ((0.05, 0.16, 0.42), 'blue', 0.25)):
-            emis = rgb if 'lamp' in name else (0, 0, 0)
-            fh.write('MATERIAL "%s" rgb %g %g %g  amb %g %g %g  emis %g %g %g  spec %g %g %g  shi 30  trans 0\n' % ((name,) + rgb + rgb + emis + (spec, spec, spec)))
+        for rgb, name, spec in (((0.94, 0.94, 0.95), 'white', 0.25), ((0.80, 0.82, 0.84), 'grey', 0.25), ((0.20, 0.21, 0.23), 'dark', 0.1), ((0.05, 0.05, 0.05), 'tyre', 0.02), ((0.26, 0.49, 0.75), 'blue', 0.25), ((0.98, 0.99, 0.27), 'yellow', 0.25)):
+            fh.write('MATERIAL "%s" rgb %g %g %g  amb %g %g %g  emis 0 0 0  spec %g %g %g  shi 30  trans 0\n' % ((name,) + rgb + rgb + (spec, spec, spec)))
         fh.write('OBJECT world\nkids %d\n' % len(objs))
         for o in objs:
             o.write(fh)
@@ -635,6 +677,28 @@ def write(objs, anims):
          '<!-- Generated by fdm/mkmodel.py from NASA\'s 3-D model of the Global Hawk (NASA 3D Resources), scaled to the published',
          '     length and with the wing stretched to the published span and area. Shape courtesy of NASA; no endorsement implied. -->',
          '<PropertyList>', ' <path>GlobalHawk.ac</path>']
+    # the lamps: models of their own (fdm/ghlights.py), at the places build found
+    import ghlights
+    m = lambda k: tuple(float(c) * FT for c in LAMP_AT[k])
+    ghlights.lights(m('tip-left'), m('tip-right'), m('tail'), m('top'), m('under'))
+    ghlights.install(os.path.join(OUT, '..'))
+    x.append(' ' + ghlights.models().replace('\n', '\n ').rstrip())
+    # the HDR materials: an effect file each, and which objects wear it
+    eff_dir = os.path.join(OUT, 'Effects')
+    os.makedirs(eff_dir, exist_ok=True)
+    wear = {}
+    for o in objs:
+        e = effect_of(o.name)
+        if e is None:
+            raise ValueError('no material for ' + o.name)
+        wear.setdefault(e, []).append(o.name)
+    for e, names in wear.items():
+        base, metal, rough, _ = EFFECTS[e]
+        open(os.path.join(eff_dir, 'gh-%s.eff' % e), 'w').write(
+            '<?xml version="1.0"?>\n<PropertyList><name>gh-%s</name><inherits-from>Effects/model-pbr</inherits-from><parameters>%s'
+            '<metallic-factor type="float">%g</metallic-factor><roughness-factor type="float">%g</roughness-factor></parameters></PropertyList>\n'
+            % (e, '<base-color-factor type="vec4d">%g %g %g 1</base-color-factor>' % base if base else '', metal, rough))
+        x.append(' <effect><inherits-from>Aircraft/GlobalHawk/Models/Effects/gh-%s</inherits-from>%s</effect>' % (e, ''.join('<object-name>%s</object-name>' % n for n in names)))
     hidden = []
     for a in anims:
         p0, p1 = a['a'] * FT, a['b'] * FT
@@ -642,9 +706,6 @@ def write(objs, anims):
             p0[0], p0[1], p0[2], p1[0], p1[1], p1[2])
         if a.get('hide_up'):
             hidden.append((a['obj'], a['hide_up']))
-            continue
-        if a.get('select'):
-            x.append(' <animation><type>select</type><object-name>%s</object-name><condition><property>%s</property></condition></animation>' % (a['obj'], a['select']))
             continue
         if a.get('spin'):
             # drawn slowed (see SHOWN); the property itself keeps the real speed
@@ -693,7 +754,7 @@ def test(objs, anims, airframe):
     need = ['aileron-left-4', 'aileron-right-4', 'ruddervator-left', 'ruddervator-right', 'spoiler-left-0', 'spoiler-right-0', 'wing-left-0', 'wing-right-8', 'gear-nose-tyres', 'gear-left', 'gear-right', 'gear-left-tyres',
             'gear-left-bay-door-fore', 'gear-right-bay-door-aft', 'gear-left-brace-inner', 'gear-right-brace-outer', 'gear-nose-door-left', 'gear-nose-door-right']
     missing = [n for n in need if n not in names]
-    ok &= not missing and all(a['obj'] in names for a in anims)
+    ok &= not missing and all(a['obj'] in names or a['obj'].startswith('light-') for a in anims)
     for n in need[:4]:
         m = next(o.mesh for o in objs if o.name == n)
         print('  %-42s %5d faces, %.1f sq ft in plan' % (n, len(m.faces), m.area / 2))

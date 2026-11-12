@@ -1,0 +1,2 @@
+<?xml version="1.0"?>
+<PropertyList><name>gh-steel</name><inherits-from>Effects/model-pbr</inherits-from><parameters><base-color-factor type="vec4d">0.77 0.78 0.8 1</base-color-factor><metallic-factor type="float">1</metallic-factor><roughness-factor type="float">0.3</roughness-factor></parameters></PropertyList>

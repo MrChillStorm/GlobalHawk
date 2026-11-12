@@ -57,6 +57,14 @@ def offset(p, brg, dist):
     return [p[0] + dist * math.cos(c) / MM.FT_PER_DEG, p[1] + dist * math.sin(c) / (MM.FT_PER_DEG * math.cos(math.radians(p[0])))]
 
 
+
+def model_landing(weight, elev):
+    """The flight model alone, landing at a weight and a field height (the station's own table is made from the
+    same: fdm/gcs_perf.py): how far past the aiming point it is down to 15 kt, ft."""
+    import gcs_perf
+    import harness as H
+    return gcs_perf.landing_roll(H.load(rebuild=False), weight, elev)[1]
+
 def nasal_errors():
     bad = []
     for line in open(LOG, errors='replace'):
@@ -287,8 +295,14 @@ async def flight(smoke):
     p = [get('/position/latitude-deg'), get('/position/longitude-deg')]
     brg, dist = MM.course(aim, p)
     along, across = dist * math.cos(math.radians(brg - hdg)), dist * math.sin(math.radians(brg - hdg))
-    add('N8', 'reported: frames a second; the landing home', True, '%s frames a second at %dx; link stopped: landed %s, "%s", stopped %.0f ft past the aiming point and %.0f ft right of the centreline, %.1f ft above the ground point' % (
-        fps, SPEED, landed, s.get('doing'), along, across, get('/position/altitude-agl-ft') or -1))
+    # the same landing in the flight model alone, at the weight FlightGear's aircraft landed with: where it is down
+    # to 15 kt past the aiming point. A landing soon after takeoff is a heavy one (the approach's speed goes with
+    # the root of the weight, the rollout's length with the weight), so a figure with no weight says nothing.
+    weight = get(J + 'inertia/weight-lbs')
+    model = model_landing(weight, elev)
+    add('N8', 'the landing home, against the flight model alone', bool(landed) and abs(along - model) <= 0.10 * model and abs(across) <= 15,
+        'link stopped: landed %s, "%s", at %.0f lb; under 15 kt %.0f ft past the aiming point (the flight model alone at that weight: %.0f ft, limit 10 %%) and %.0f ft right of the centreline, %.1f ft above the ground point; %s frames a second at %dx (reported)' % (
+            landed, s.get('doing'), weight, along, model, across, get('/position/altitude-agl-ft') or -1, fps, SPEED))
 
     # ---- N7
     src = open(os.path.join(HERE, 'missionmgr.py')).read()

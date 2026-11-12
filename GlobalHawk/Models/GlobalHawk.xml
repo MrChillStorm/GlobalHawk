@@ -3,6 +3,24 @@
      length and with the wing stretched to the published span and area. Shape courtesy of NASA; no endorsement implied. -->
 <PropertyList>
  <path>GlobalHawk.ac</path>
+ <model><name>light-nav-red</name><path>Aircraft/GlobalHawk/Models/Lights/nav-red.xml</path><offsets><x-m>8.001</x-m><y-m>-17.734</y-m><z-m>1.335</z-m></offsets></model>
+ <model><name>light-nav-green</name><path>Aircraft/GlobalHawk/Models/Lights/nav-green.xml</path><offsets><x-m>8.077</x-m><y-m>17.734</y-m><z-m>1.335</z-m></offsets></model>
+ <model><name>light-nav-white</name><path>Aircraft/GlobalHawk/Models/Lights/nav-white.xml</path><offsets><x-m>13.558</x-m><y-m>-0.002</y-m><z-m>1.864</z-m></offsets></model>
+ <model><name>light-strobe-left</name><path>Aircraft/GlobalHawk/Models/Lights/strobe-left.xml</path><offsets><x-m>8.251</x-m><y-m>-17.734</y-m><z-m>1.335</z-m></offsets></model>
+ <model><name>light-strobe-right</name><path>Aircraft/GlobalHawk/Models/Lights/strobe-right.xml</path><offsets><x-m>8.327</x-m><y-m>17.734</y-m><z-m>1.335</z-m></offsets></model>
+ <model><name>light-beacon-top</name><path>Aircraft/GlobalHawk/Models/Lights/beacon-top.xml</path><offsets><x-m>9.144</x-m><y-m>0.000</y-m><z-m>3.409</z-m></offsets></model>
+ <model><name>light-beacon-under</name><path>Aircraft/GlobalHawk/Models/Lights/beacon-under.xml</path><offsets><x-m>4.267</x-m><y-m>0.000</y-m><z-m>0.679</z-m></offsets></model>
+ <effect><inherits-from>Aircraft/GlobalHawk/Models/Effects/gh-paint</inherits-from><object-name>airframe</object-name><object-name>wing-right-0</object-name><object-name>wing-right-1</object-name><object-name>wing-right-2</object-name><object-name>wing-right-3</object-name><object-name>aileron-right-4</object-name><object-name>wing-right-4</object-name><object-name>aileron-right-5</object-name><object-name>wing-right-5</object-name><object-name>aileron-right-6</object-name><object-name>wing-right-6</object-name><object-name>aileron-right-7</object-name><object-name>wing-right-7</object-name><object-name>wing-right-8</object-name><object-name>spoiler-right-0</object-name><object-name>spoiler-right-1</object-name><object-name>spoiler-right-2</object-name><object-name>spoiler-right-3</object-name><object-name>wing-left-0</object-name><object-name>wing-left-1</object-name><object-name>wing-left-2</object-name><object-name>wing-left-3</object-name><object-name>aileron-left-4</object-name><object-name>wing-left-4</object-name><object-name>aileron-left-5</object-name><object-name>wing-left-5</object-name><object-name>aileron-left-6</object-name><object-name>wing-left-6</object-name><object-name>aileron-left-7</object-name><object-name>wing-left-7</object-name><object-name>wing-left-8</object-name><object-name>spoiler-left-0</object-name><object-name>spoiler-left-1</object-name><object-name>spoiler-left-2</object-name><object-name>spoiler-left-3</object-name><object-name>ruddervator-right</object-name><object-name>ruddervator-left</object-name><object-name>gear-nose-door-right</object-name><object-name>gear-nose-door-left</object-name><object-name>gear-left-fairing</object-name><object-name>gear-left-bay-door-fore</object-name><object-name>gear-left-bay-door-aft</object-name><object-name>gear-right-fairing</object-name><object-name>gear-right-bay-door-fore</object-name><object-name>gear-right-bay-door-aft</object-name><object-name>details</object-name></effect>
+ <effect><inherits-from>Aircraft/GlobalHawk/Models/Effects/gh-blue</inherits-from><object-name>stripe</object-name></effect>
+ <effect><inherits-from>Aircraft/GlobalHawk/Models/Effects/gh-yellow</inherits-from><object-name>stripe-pin</object-name></effect>
+ <effect><inherits-from>Aircraft/GlobalHawk/Models/Effects/gh-badge</inherits-from><object-name>insignia-right</object-name><object-name>insignia-left</object-name></effect>
+ <effect><inherits-from>Aircraft/GlobalHawk/Models/Effects/gh-primer</inherits-from><object-name>nose-gear-well</object-name></effect>
+ <effect><inherits-from>Aircraft/GlobalHawk/Models/Effects/gh-black</inherits-from><object-name>fan-backing</object-name></effect>
+ <effect><inherits-from>Aircraft/GlobalHawk/Models/Effects/gh-titanium</inherits-from><object-name>fan</object-name></effect>
+ <effect><inherits-from>Aircraft/GlobalHawk/Models/Effects/gh-spinner</inherits-from><object-name>fan-spinner</object-name></effect>
+ <effect><inherits-from>Aircraft/GlobalHawk/Models/Effects/gh-hot</inherits-from><object-name>turbine</object-name><object-name>nozzle-lining</object-name></effect>
+ <effect><inherits-from>Aircraft/GlobalHawk/Models/Effects/gh-steel</inherits-from><object-name>gear-nose</object-name><object-name>gear-left</object-name><object-name>gear-left-brace-inner</object-name><object-name>gear-left-brace-outer</object-name><object-name>gear-right</object-name><object-name>gear-right-brace-inner</object-name><object-name>gear-right-brace-outer</object-name></effect>
+ <effect><inherits-from>Aircraft/GlobalHawk/Models/Effects/gh-rubber</inherits-from><object-name>gear-nose-tyres</object-name><object-name>gear-left-tyres</object-name><object-name>gear-right-tyres</object-name></effect>
  <animation><type>rotate</type><object-name>wing-right-0</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>0.41088</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>3.0480</y1-m><z1-m>1.3609</z1-m><x2-m>6.4008</x2-m><y2-m>3.0480</y2-m><z2-m>1.3609</z2-m></axis></animation>
@@ -270,34 +288,33 @@
  <animation><type>rotate</type><object-name>spoiler-right-3</object-name>
   <property>fdm/jsbsim/ctl/spoiler-norm</property><factor>-45</factor>
   <axis><x1-m>7.5625</x1-m><y1-m>8.5344</y1-m><z1-m>1.4298</z1-m><x2-m>7.5816</x2-m><y2-m>8.8544</y2-m><z2-m>1.4277</z2-m></axis></animation>
- <animation><type>rotate</type><object-name>light-nav-right</object-name>
+ <animation><type>rotate</type><object-name>light-nav-green</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>0.41088</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>3.0480</y1-m><z1-m>1.3609</z1-m><x2-m>6.4008</x2-m><y2-m>3.0480</y2-m><z2-m>1.3609</z2-m></axis></animation>
- <animation><type>rotate</type><object-name>light-nav-right</object-name>
+ <animation><type>rotate</type><object-name>light-nav-green</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>0.229858</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>4.8768</y1-m><z1-m>1.3626</z1-m><x2-m>6.4008</x2-m><y2-m>4.8768</y2-m><z2-m>1.3626</z2-m></axis></animation>
- <animation><type>rotate</type><object-name>light-nav-right</object-name>
+ <animation><type>rotate</type><object-name>light-nav-green</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>0.232091</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>6.7056</y1-m><z1-m>1.3597</z1-m><x2-m>6.4008</x2-m><y2-m>6.7056</y2-m><z2-m>1.3597</z2-m></axis></animation>
- <animation><type>rotate</type><object-name>light-nav-right</object-name>
+ <animation><type>rotate</type><object-name>light-nav-green</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>0.186001</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>8.5344</y1-m><z1-m>1.3556</z1-m><x2-m>6.4008</x2-m><y2-m>8.5344</y2-m><z2-m>1.3556</z2-m></axis></animation>
- <animation><type>rotate</type><object-name>light-nav-right</object-name>
+ <animation><type>rotate</type><object-name>light-nav-green</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>0.175298</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>9.7399</y1-m><z1-m>1.3536</z1-m><x2-m>6.4008</x2-m><y2-m>9.7399</y2-m><z2-m>1.3536</z2-m></axis></animation>
- <animation><type>rotate</type><object-name>light-nav-right</object-name>
+ <animation><type>rotate</type><object-name>light-nav-green</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>0.211283</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>11.5824</y1-m><z1-m>1.3487</z1-m><x2-m>6.4008</x2-m><y2-m>11.5824</y2-m><z2-m>1.3487</z2-m></axis></animation>
- <animation><type>rotate</type><object-name>light-nav-right</object-name>
+ <animation><type>rotate</type><object-name>light-nav-green</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>0.202698</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>13.4112</y1-m><z1-m>1.3448</z1-m><x2-m>6.4008</x2-m><y2-m>13.4112</y2-m><z2-m>1.3448</z2-m></axis></animation>
- <animation><type>rotate</type><object-name>light-nav-right</object-name>
+ <animation><type>rotate</type><object-name>light-nav-green</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>0.122871</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>15.2400</y1-m><z1-m>1.3406</z1-m><x2-m>6.4008</x2-m><y2-m>15.2400</y2-m><z2-m>1.3406</z2-m></axis></animation>
- <animation><type>rotate</type><object-name>light-nav-right</object-name>
+ <animation><type>rotate</type><object-name>light-nav-green</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>0.0179658</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>16.8234</y1-m><z1-m>1.3365</z1-m><x2-m>6.4008</x2-m><y2-m>16.8234</y2-m><z2-m>1.3365</z2-m></axis></animation>
- <animation><type>select</type><object-name>light-nav-right</object-name><condition><property>/sim/model/globalhawk/lights/nav</property></condition></animation>
  <animation><type>rotate</type><object-name>light-strobe-right</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>0.41088</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>3.0480</y1-m><z1-m>1.3609</z1-m><x2-m>6.4008</x2-m><y2-m>3.0480</y2-m><z2-m>1.3609</z2-m></axis></animation>
@@ -325,7 +342,6 @@
  <animation><type>rotate</type><object-name>light-strobe-right</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>0.0179658</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>16.8234</y1-m><z1-m>1.3365</z1-m><x2-m>6.4008</x2-m><y2-m>16.8234</y2-m><z2-m>1.3365</z2-m></axis></animation>
- <animation><type>select</type><object-name>light-strobe-right</object-name><condition><property>/sim/model/globalhawk/lights/strobe</property></condition></animation>
  <animation><type>rotate</type><object-name>wing-left-0</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>-0.41088</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>-3.0480</y1-m><z1-m>1.3609</z1-m><x2-m>6.4008</x2-m><y2-m>-3.0480</y2-m><z2-m>1.3609</z2-m></axis></animation>
@@ -593,34 +609,33 @@
  <animation><type>rotate</type><object-name>spoiler-left-3</object-name>
   <property>fdm/jsbsim/ctl/spoiler-norm</property><factor>45</factor>
   <axis><x1-m>7.5620</x1-m><y1-m>-8.5344</y1-m><z1-m>1.4298</z1-m><x2-m>7.5811</x2-m><y2-m>-8.8544</y2-m><z2-m>1.4278</z2-m></axis></animation>
- <animation><type>rotate</type><object-name>light-nav-left</object-name>
+ <animation><type>rotate</type><object-name>light-nav-red</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>-0.41088</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>-3.0480</y1-m><z1-m>1.3609</z1-m><x2-m>6.4008</x2-m><y2-m>-3.0480</y2-m><z2-m>1.3609</z2-m></axis></animation>
- <animation><type>rotate</type><object-name>light-nav-left</object-name>
+ <animation><type>rotate</type><object-name>light-nav-red</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>-0.229858</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>-4.8768</y1-m><z1-m>1.3626</z1-m><x2-m>6.4008</x2-m><y2-m>-4.8768</y2-m><z2-m>1.3626</z2-m></axis></animation>
- <animation><type>rotate</type><object-name>light-nav-left</object-name>
+ <animation><type>rotate</type><object-name>light-nav-red</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>-0.232091</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>-6.7056</y1-m><z1-m>1.3597</z1-m><x2-m>6.4008</x2-m><y2-m>-6.7056</y2-m><z2-m>1.3597</z2-m></axis></animation>
- <animation><type>rotate</type><object-name>light-nav-left</object-name>
+ <animation><type>rotate</type><object-name>light-nav-red</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>-0.186001</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>-8.5344</y1-m><z1-m>1.3556</z1-m><x2-m>6.4008</x2-m><y2-m>-8.5344</y2-m><z2-m>1.3556</z2-m></axis></animation>
- <animation><type>rotate</type><object-name>light-nav-left</object-name>
+ <animation><type>rotate</type><object-name>light-nav-red</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>-0.175298</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>-9.7399</y1-m><z1-m>1.3536</z1-m><x2-m>6.4008</x2-m><y2-m>-9.7399</y2-m><z2-m>1.3536</z2-m></axis></animation>
- <animation><type>rotate</type><object-name>light-nav-left</object-name>
+ <animation><type>rotate</type><object-name>light-nav-red</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>-0.211283</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>-11.5824</y1-m><z1-m>1.3487</z1-m><x2-m>6.4008</x2-m><y2-m>-11.5824</y2-m><z2-m>1.3487</z2-m></axis></animation>
- <animation><type>rotate</type><object-name>light-nav-left</object-name>
+ <animation><type>rotate</type><object-name>light-nav-red</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>-0.202698</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>-13.4112</y1-m><z1-m>1.3448</z1-m><x2-m>6.4008</x2-m><y2-m>-13.4112</y2-m><z2-m>1.3448</z2-m></axis></animation>
- <animation><type>rotate</type><object-name>light-nav-left</object-name>
+ <animation><type>rotate</type><object-name>light-nav-red</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>-0.122871</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>-15.2400</y1-m><z1-m>1.3406</z1-m><x2-m>6.4008</x2-m><y2-m>-15.2400</y2-m><z2-m>1.3406</z2-m></axis></animation>
- <animation><type>rotate</type><object-name>light-nav-left</object-name>
+ <animation><type>rotate</type><object-name>light-nav-red</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>-0.0179658</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>-16.8234</y1-m><z1-m>1.3366</z1-m><x2-m>6.4008</x2-m><y2-m>-16.8234</y2-m><z2-m>1.3366</z2-m></axis></animation>
- <animation><type>select</type><object-name>light-nav-left</object-name><condition><property>/sim/model/globalhawk/lights/nav</property></condition></animation>
  <animation><type>rotate</type><object-name>light-strobe-left</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>-0.41088</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>-3.0480</y1-m><z1-m>1.3609</z1-m><x2-m>6.4008</x2-m><y2-m>-3.0480</y2-m><z2-m>1.3609</z2-m></axis></animation>
@@ -648,16 +663,12 @@
  <animation><type>rotate</type><object-name>light-strobe-left</object-name>
   <property>fdm/jsbsim/flex/tip-deflection-ft</property><factor>-0.0179658</factor>
   <axis><x1-m>6.0960</x1-m><y1-m>-16.8234</y1-m><z1-m>1.3366</z1-m><x2-m>6.4008</x2-m><y2-m>-16.8234</y2-m><z2-m>1.3366</z2-m></axis></animation>
- <animation><type>select</type><object-name>light-strobe-left</object-name><condition><property>/sim/model/globalhawk/lights/strobe</property></condition></animation>
  <animation><type>rotate</type><object-name>ruddervator-right</object-name>
   <expression><product><value>1</value><sum><property>fdm/jsbsim/ctl/pitch-deg</property><product><value>-1</value><property>fdm/jsbsim/ctl/yaw-deg</property></product></sum></product></expression>
   <axis><x1-m>12.9898</x1-m><y1-m>1.0835</y1-m><z1-m>2.2795</z1-m><x2-m>13.0780</x2-m><y2-m>2.9077</y2-m><z2-m>4.3185</z2-m></axis></animation>
  <animation><type>rotate</type><object-name>ruddervator-left</object-name>
   <expression><product><value>-1</value><sum><property>fdm/jsbsim/ctl/pitch-deg</property><product><value>1</value><property>fdm/jsbsim/ctl/yaw-deg</property></product></sum></product></expression>
   <axis><x1-m>13.0057</x1-m><y1-m>-1.0994</y1-m><z1-m>2.3831</z1-m><x2-m>13.0833</x2-m><y2-m>-2.8287</y2-m><z2-m>4.4230</z2-m></axis></animation>
- <animation><type>select</type><object-name>light-tail</object-name><condition><property>/sim/model/globalhawk/lights/nav</property></condition></animation>
- <animation><type>select</type><object-name>light-beacon-top</object-name><condition><property>/sim/model/globalhawk/lights/beacon</property></condition></animation>
- <animation><type>select</type><object-name>light-beacon-under</object-name><condition><property>/sim/model/globalhawk/lights/beacon</property></condition></animation>
  <animation><type>spin</type><object-name>fan</object-name><property>fdm/jsbsim/engine/fan-rpm</property><factor>0.004</factor>
   <axis><x1-m>8.2116</x1-m><y1-m>-0.0059</y1-m><z1-m>2.7024</z1-m><x2-m>8.5054</x2-m><y2-m>-0.0059</y2-m><z2-m>2.6214</z2-m></axis></animation>
  <animation><type>spin</type><object-name>fan-spinner</object-name><property>fdm/jsbsim/engine/fan-rpm</property><factor>0.004</factor>

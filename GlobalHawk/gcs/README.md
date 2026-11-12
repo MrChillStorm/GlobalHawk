@@ -91,6 +91,16 @@ delay set, everything you do arrives that much later and what you see is that mu
 hand-flies the real aircraft over a satellite. If the link is lost while flying by hand, the aircraft goes back to
 automatic by itself and flies its lost-link route.
 
+## The belly camera
+
+The Camera panel is the sensor operator's. **Lock on…** and a click on the map keeps the belly camera on that point
+of the ground; **Nearest object** locks it on the nearest aircraft, ship or vehicle FlightGear has; **Unlock** frees
+it. The arrows turn it (or move a locked point, while FlightGear shows the belly camera's view), and **Level
+horizon** keeps the horizon level in the picture as the aircraft banks. What it is locked on is written in the panel
+and drawn on the map as a green cross with the line of sight. These are not flight commands: they need no control
+of the aircraft and get no acknowledgement; they arrive late by the link's delay like everything else. The demo's
+stand-in aircraft has no camera.
+
 ## Editing a plan
 
 **Edit plan** takes the plan the aircraft holds. Choose **Route** or **Lost-link route**; click the map to add a
@@ -106,6 +116,14 @@ at once.
 atmosphere, **no wind, no turns**. Against flights of the model it was within 3 % on time and fuel. Go to and
 Return home show it too: time to get there, fuel on arrival, and for a go to the fuel left on landing if the
 aircraft goes home from there. The aircraft itself does not use the forecast.
+
+**The landing's roll** is forecast too, from the flight model's own landings at each weight (the same table): where
+it touches down past the aiming point, where the rollout ends, and the runway to have past the aiming point (the
+rollout and 15 % in hand, an assumed allowance; no wind, a dry level runway). A landing soon after takeoff is a
+heavy one: about 5,800 ft of rollout with full tanks against 3,100 ft at the end of a long flight. Type how much
+runway there is in **Runway past the aiming point** and too little is a warning, in the editor and before a
+Return home. The figure is kept in the plan (`field.runway_past_aim_ft`) as the station's own note: the aircraft
+does not read it, and lands where it is told.
 
 Every command is shown or described first and goes only on **Send**. It counts only when the aircraft answers.
 
@@ -153,7 +171,7 @@ without the engine. The aircraft refuses a plan with an unknown item, a point of
 
 - `js/link.js`: the station's end of the link (commands and their fates, heartbeat, delay), and the websocket.
 - `js/geo.js`: small-area geometry, as the aircraft does it.
-- `js/controls.js`: gamepad and keys to the stick message. `js/traffic.js`: other aircraft and their alert levels.
+- `js/camera.js`: the belly camera's state and commands. `js/controls.js`: gamepad and keys to the stick message. `js/traffic.js`: other aircraft and their alert levels.
 - `js/demo.js`, `js/demoplan.js`: the demo's stand-in aircraft and its plan.
 - `USER-TEST.md`: how the station is to be tested with people, and the pass mark. Not run yet.
 - `js/alerts.js`: the alert list's order, tones and acknowledging. `js/pfdmath.js`, `js/pfd.js`: the flight display.

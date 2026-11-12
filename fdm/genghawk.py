@@ -19,6 +19,7 @@ Properties of ours live under ctl/ (surfaces), engine/ and fuel/.
 """
 import json
 import os
+import re
 import sys
 
 import numpy as np
@@ -406,6 +407,11 @@ def engine_file():
       <input>engine/spool-target</input>
       <c1>0.12</c1>
     </lag_filter>
+    <lag_filter name="engine/core-spool">
+      <description>the high-pressure rotor, which the starter turns and which leads the fan up on a start: most of the way in about 9 s. For the start's sound only; the time is assumed</description>
+      <input>engine/spool-target</input>
+      <c1>0.35</c1>
+    </lag_filter>
     <fcs_function name="engine/fan-rpm">
       <description>the fan's speed, for the sound and the 3-D model's fan, not used by the flight model. Running: 8,290 rpm times the square root of the thrust's share of the maximum, measured from recordings: 8,290 rpm at take-off (a Global Hawk's take-off pass: the fan's 24th order and its buzz-saw's spacing, less the Doppler shift) and 2,230 to 2,270 rpm at ground idle (two taxiing Global Hawks: the blade passing tone at 891 Hz), which the idle thrust's 7 %% gives as 2,190. It comes up and runs down with engine/spool. Stopped in flight it windmills, 9 rpm per knot (assumed)</description>
       <function>
@@ -620,6 +626,18 @@ def write(out_dir, ref=False):
              'Systems/fuel.xml': fuel_file(), 'Systems/flex.xml': flex_file(), 'Systems/touchdown.xml': touchdown_file(), 'Systems/laws.xml': laws.laws_file()}
     for f, text in files.items():
         open(os.path.join(out_dir, f), 'w').write(text)
+    if os.path.isdir(os.path.join(out_dir, 'Nasal')):
+        # The model's properties that start at something other than zero, for FlightGear. A ground station that is
+        # connected before the flight model has loaded makes the properties it listens to, empty; JSBSim then keeps
+        # them as they are and they never get their value (found: the four navigators' switches, so no navigator,
+        # no attitude for the laws and a pitch swing that grew). Nasal/globalhawk.nas gives the empty ones theirs.
+        rows = []
+        for text in files.values():
+            rows += ['    "%s": %s,' % (name.strip(), value) for value, name in re.findall(r'<property value="([^"]+)">([^<]+)</property>', text) if float(value) != 0.0]
+        open(os.path.join(out_dir, 'Nasal', 'defaults.nas'), 'w').write(
+            '# Written by fdm/genghawk.py: do not edit. The flight model\'s properties that start at a value other than zero.\n'
+            '# Nasal/globalhawk.nas sets those that FlightGear has without a value when the flight model has loaded.\n'
+            'var DEFAULTS = {\n' + '\n'.join(rows) + '\n};\n')
     return out_dir
 
 

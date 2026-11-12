@@ -5,8 +5,8 @@
  "sample_rate": 48000.0,
  "bits": 16,
  "gain_db": {
-  "inside": -26.307,
-  "outside": -28.96
+  "inside": -26.274,
+  "outside": -28.513
  },
  "exterior_distance_m": 50.0,
  "conditions": [
@@ -107,8 +107,8 @@
    "condition": 0,
    "n1": 25.2,
    "observer": "inside",
-   "oaspl_db": 73.55,
-   "dba": 72.28,
+   "oaspl_db": 73.54,
+   "dba": 72.25,
    "state": "N1  25.2 % N2  56.2 %: thrust    525 lbf at Mach 0.00, air   33.7 kg/s, fan pressure ratio 1.103, overall   3.4, T4   567 K, jet   69 m/s at  313 K, fan tip Mach 0.33 (relative 0.35)"
   },
   {
@@ -147,8 +147,8 @@
    "condition": 0,
    "n1": 25.2,
    "observer": "outside",
-   "oaspl_db": 89.21,
-   "dba": 90.04,
+   "oaspl_db": 85.15,
+   "dba": 85.52,
    "state": "N1  25.2 % N2  56.2 %: thrust    525 lbf at Mach 0.00, air   33.7 kg/s, fan pressure ratio 1.103, overall   3.4, T4   567 K, jet   69 m/s at  313 K, fan tip Mach 0.33 (relative 0.35)"
   },
   {
@@ -167,8 +167,8 @@
    "condition": 0,
    "n1": 33.0,
    "observer": "inside",
-   "oaspl_db": 75.55,
-   "dba": 75.29,
+   "oaspl_db": 75.54,
+   "dba": 75.27,
    "state": "N1  33.0 % N2  65.4 %: thrust    900 lbf at Mach 0.00, air   43.7 kg/s, fan pressure ratio 1.124, overall   4.7, T4   660 K, jet   92 m/s at  320 K, fan tip Mach 0.43 (relative 0.46)"
   },
   {
@@ -207,8 +207,8 @@
    "condition": 0,
    "n1": 33.0,
    "observer": "outside",
-   "oaspl_db": 91.23,
-   "dba": 91.85,
+   "oaspl_db": 87.69,
+   "dba": 88.17,
    "state": "N1  33.0 % N2  65.4 %: thrust    900 lbf at Mach 0.00, air   43.7 kg/s, fan pressure ratio 1.124, overall   4.7, T4   660 K, jet   92 m/s at  320 K, fan tip Mach 0.43 (relative 0.46)"
   },
   {
@@ -227,8 +227,8 @@
    "condition": 0,
    "n1": 42.0,
    "observer": "inside",
-   "oaspl_db": 77.93,
-   "dba": 78.18,
+   "oaspl_db": 77.91,
+   "dba": 78.17,
    "state": "N1  42.0 % N2  73.1 %: thrust   1457 lbf at Mach 0.00, air   55.0 kg/s, fan pressure ratio 1.156, overall   6.3, T4   760 K, jet  118 m/s at  327 K, fan tip Mach 0.55 (relative 0.59)"
   },
   {
@@ -267,8 +267,8 @@
    "condition": 0,
    "n1": 42.0,
    "observer": "outside",
-   "oaspl_db": 95.9,
-   "dba": 96.44,
+   "oaspl_db": 91.44,
+   "dba": 92.04,
    "state": "N1  42.0 % N2  73.1 %: thrust   1457 lbf at Mach 0.00, air   55.0 kg/s, fan pressure ratio 1.156, overall   6.3, T4   760 K, jet  118 m/s at  327 K, fan tip Mach 0.55 (relative 0.59)"
   },
   {
@@ -287,8 +287,8 @@
    "condition": 0,
    "n1": 52.0,
    "observer": "inside",
-   "oaspl_db": 80.72,
-   "dba": 81.31,
+   "oaspl_db": 80.71,
+   "dba": 81.3,
    "state": "N1  52.0 % N2  79.7 %: thrust   2234 lbf at Mach 0.00, air   67.3 kg/s, fan pressure ratio 1.201, overall   8.3, T4   866 K, jet  148 m/s at  335 K, fan tip Mach 0.68 (relative 0.73)"
   },
   {
@@ -327,8 +327,8 @@
    "condition": 0,
    "n1": 52.0,
    "observer": "outside",
-   "oaspl_db": 97.8,
-   "dba": 98.0,
+   "oaspl_db": 93.69,
+   "dba": 94.17,
    "state": "N1  52.0 % N2  79.7 %: thrust   2234 lbf at Mach 0.00, air   67.3 kg/s, fan pressure ratio 1.201, overall   8.3, T4   866 K, jet  148 m/s at  335 K, fan tip Mach 0.68 (relative 0.73)"
   },
   {
@@ -347,7 +347,7 @@
    "condition": 0,
    "n1": 62.0,
    "observer": "inside",
-   "oaspl_db": 85.04,
+   "oaspl_db": 85.03,
    "dba": 85.94,
    "state": "N1  62.0 % N2  84.9 %: thrust   3175 lbf at Mach 0.00, air   79.4 kg/s, fan pressure ratio 1.257, overall  10.3, T4   966 K, jet  178 m/s at  342 K, fan tip Mach 0.81 (relative 0.86)"
   },
@@ -387,8 +387,8 @@
    "condition": 0,
    "n1": 62.0,
    "observer": "outside",
-   "oaspl_db": 100.56,
-   "dba": 100.43,
+   "oaspl_db": 96.17,
+   "dba": 96.54,
    "state": "N1  62.0 % N2  84.9 %: thrust   3175 lbf at Mach 0.00, air   79.4 kg/s, fan pressure ratio 1.257, overall  10.3, T4   966 K, jet  178 m/s at  342 K, fan tip Mach 0.81 (relative 0.86)"
   },
   {
@@ -447,8 +447,8 @@
    "condition": 0,
    "n1": 72.0,
    "observer": "outside",
-   "oaspl_db": 102.14,
-   "dba": 101.71,
+   "oaspl_db": 98.36,
+   "dba": 98.66,
    "state": "N1  72.0 % N2  89.3 %: thrust   4282 lbf at Mach 0.00, air   91.4 kg/s, fan pressure ratio 1.326, overall  12.4, T4  1064 K, jet  208 m/s at  348 K, fan tip Mach 0.94 (relative 1.00)"
   },
   {
@@ -467,7 +467,7 @@
    "condition": 0,
    "n1": 82.0,
    "observer": "inside",
-   "oaspl_db": 89.81,
+   "oaspl_db": 89.8,
    "dba": 90.76,
    "state": "N1  82.0 % N2  92.9 %: thrust   5554 lbf at Mach 0.00, air  103.3 kg/s, fan pressure ratio 1.409, overall  14.7, T4  1159 K, jet  239 m/s at  353 K, fan tip Mach 1.07 (relative 1.14)"
   },
@@ -507,8 +507,8 @@
    "condition": 0,
    "n1": 82.0,
    "observer": "outside",
-   "oaspl_db": 103.95,
-   "dba": 103.48,
+   "oaspl_db": 100.85,
+   "dba": 101.33,
    "state": "N1  82.0 % N2  92.9 %: thrust   5554 lbf at Mach 0.00, air  103.3 kg/s, fan pressure ratio 1.409, overall  14.7, T4  1159 K, jet  239 m/s at  353 K, fan tip Mach 1.07 (relative 1.14)"
   },
   {
@@ -527,7 +527,7 @@
    "condition": 0,
    "n1": 90.0,
    "observer": "inside",
-   "oaspl_db": 88.94,
+   "oaspl_db": 88.93,
    "dba": 89.76,
    "state": "N1  90.0 % N2  95.5 %: thrust   6691 lbf at Mach 0.00, air  112.8 kg/s, fan pressure ratio 1.485, overall  16.5, T4  1234 K, jet  264 m/s at  357 K, fan tip Mach 1.18 (relative 1.25)"
   },
@@ -567,8 +567,8 @@
    "condition": 0,
    "n1": 90.0,
    "observer": "outside",
-   "oaspl_db": 104.48,
-   "dba": 103.7,
+   "oaspl_db": 101.32,
+   "dba": 101.67,
    "state": "N1  90.0 % N2  95.5 %: thrust   6691 lbf at Mach 0.00, air  112.8 kg/s, fan pressure ratio 1.485, overall  16.5, T4  1234 K, jet  264 m/s at  357 K, fan tip Mach 1.18 (relative 1.25)"
   },
   {
@@ -587,8 +587,8 @@
    "condition": 0,
    "n1": 95.3,
    "observer": "inside",
-   "oaspl_db": 88.49,
-   "dba": 89.25,
+   "oaspl_db": 88.48,
+   "dba": 89.24,
    "state": "N1  95.3 % N2  97.0 %: thrust   7500 lbf at Mach 0.00, air  119.1 kg/s, fan pressure ratio 1.542, overall  17.8, T4  1282 K, jet  280 m/s at  359 K, fan tip Mach 1.25 (relative 1.32)"
   },
   {
@@ -627,8 +627,8 @@
    "condition": 0,
    "n1": 95.3,
    "observer": "outside",
-   "oaspl_db": 104.77,
-   "dba": 103.81,
+   "oaspl_db": 101.62,
+   "dba": 101.89,
    "state": "N1  95.3 % N2  97.0 %: thrust   7500 lbf at Mach 0.00, air  119.1 kg/s, fan pressure ratio 1.542, overall  17.8, T4  1282 K, jet  280 m/s at  359 K, fan tip Mach 1.25 (relative 1.32)"
   },
   {
@@ -647,8 +647,8 @@
    "condition": 1,
    "n1": 25.2,
    "observer": "inside",
-   "oaspl_db": 60.17,
-   "dba": 58.91,
+   "oaspl_db": 60.16,
+   "dba": 58.9,
    "state": "N1  25.2 % N2  79.9 %: thrust    183 lbf at Mach 0.60, air   38.7 kg/s, fan pressure ratio 1.125, overall  10.3, T4   588 K, jet  203 m/s at  238 K, fan tip Mach 0.37 (relative 0.52)"
   },
   {
@@ -687,8 +687,8 @@
    "condition": 1,
    "n1": 25.2,
    "observer": "outside",
-   "oaspl_db": 79.9,
-   "dba": 80.08,
+   "oaspl_db": 78.91,
+   "dba": 78.87,
    "state": "N1  25.2 % N2  79.9 %: thrust    183 lbf at Mach 0.60, air   38.7 kg/s, fan pressure ratio 1.125, overall  10.3, T4   588 K, jet  203 m/s at  238 K, fan tip Mach 0.37 (relative 0.52)"
   },
   {
@@ -747,8 +747,8 @@
    "condition": 1,
    "n1": 42.0,
    "observer": "outside",
-   "oaspl_db": 84.84,
-   "dba": 85.26,
+   "oaspl_db": 83.41,
+   "dba": 83.91,
    "state": "N1  42.0 % N2  83.7 %: thrust    508 lbf at Mach 0.60, air   42.5 kg/s, fan pressure ratio 1.212, overall  12.6, T4   723 K, jet  235 m/s at  251 K, fan tip Mach 0.62 (relative 0.73)"
   },
   {
@@ -807,8 +807,8 @@
    "condition": 1,
    "n1": 62.0,
    "observer": "outside",
-   "oaspl_db": 89.51,
-   "dba": 89.65,
+   "oaspl_db": 87.96,
+   "dba": 88.43,
    "state": "N1  62.0 % N2  88.3 %: thrust   1108 lbf at Mach 0.60, air   48.0 kg/s, fan pressure ratio 1.373, overall  16.1, T4   922 K, jet  285 m/s at  269 K, fan tip Mach 0.91 (relative 1.02)"
   },
   {
@@ -827,7 +827,7 @@
    "condition": 1,
    "n1": 82.0,
    "observer": "inside",
-   "oaspl_db": 71.53,
+   "oaspl_db": 71.52,
    "dba": 72.33,
    "state": "N1  82.0 % N2  92.1 %: thrust   1938 lbf at Mach 0.60, air   54.0 kg/s, fan pressure ratio 1.606, overall  20.1, T4  1144 K, jet  341 m/s at  286 K, fan tip Mach 1.20 (relative 1.31)"
   },
@@ -867,8 +867,8 @@
    "condition": 1,
    "n1": 82.0,
    "observer": "outside",
-   "oaspl_db": 92.66,
-   "dba": 92.58,
+   "oaspl_db": 91.11,
+   "dba": 91.59,
    "state": "N1  82.0 % N2  92.1 %: thrust   1938 lbf at Mach 0.60, air   54.0 kg/s, fan pressure ratio 1.606, overall  20.1, T4  1144 K, jet  341 m/s at  286 K, fan tip Mach 1.20 (relative 1.31)"
   },
   {
@@ -887,7 +887,7 @@
    "condition": 1,
    "n1": 95.3,
    "observer": "inside",
-   "oaspl_db": 70.68,
+   "oaspl_db": 70.67,
    "dba": 71.3,
    "state": "N1  95.3 % N2  94.3 %: thrust   2617 lbf at Mach 0.60, air   58.3 kg/s, fan pressure ratio 1.809, overall  23.1, T4  1299 K, jet  382 m/s at  297 K, fan tip Mach 1.40 (relative 1.50)"
   },
@@ -927,8 +927,8 @@
    "condition": 1,
    "n1": 95.3,
    "observer": "outside",
-   "oaspl_db": 93.87,
-   "dba": 93.39,
+   "oaspl_db": 92.15,
+   "dba": 92.42,
    "state": "N1  95.3 % N2  94.3 %: thrust   2617 lbf at Mach 0.60, air   58.3 kg/s, fan pressure ratio 1.809, overall  23.1, T4  1299 K, jet  382 m/s at  297 K, fan tip Mach 1.40 (relative 1.50)"
   },
   {
@@ -987,8 +987,8 @@
    "condition": 2,
    "n1": 25.2,
    "observer": "outside",
-   "oaspl_db": 65.99,
-   "dba": 65.87,
+   "oaspl_db": 65.79,
+   "dba": 65.6,
    "state": "N1  25.2 % N2  77.9 %: thrust     46 lbf at Mach 0.60, air    9.5 kg/s, fan pressure ratio 1.128, overall  10.4, T4   562 K, jet  199 m/s at  226 K, fan tip Mach 0.38 (relative 0.53)"
   },
   {
@@ -1047,8 +1047,8 @@
    "condition": 2,
    "n1": 42.0,
    "observer": "outside",
-   "oaspl_db": 70.45,
-   "dba": 70.96,
+   "oaspl_db": 70.18,
+   "dba": 70.69,
    "state": "N1  42.0 % N2  81.8 %: thrust    129 lbf at Mach 0.60, air   10.5 kg/s, fan pressure ratio 1.221, overall  12.8, T4   696 K, jet  232 m/s at  239 K, fan tip Mach 0.63 (relative 0.75)"
   },
   {
@@ -1107,8 +1107,8 @@
    "condition": 2,
    "n1": 62.0,
    "observer": "outside",
-   "oaspl_db": 74.31,
-   "dba": 74.87,
+   "oaspl_db": 74.06,
+   "dba": 74.67,
    "state": "N1  62.0 % N2  86.3 %: thrust    280 lbf at Mach 0.60, air   11.9 kg/s, fan pressure ratio 1.392, overall  16.4, T4   892 K, jet  282 m/s at  256 K, fan tip Mach 0.94 (relative 1.04)"
   },
   {
@@ -1167,8 +1167,8 @@
    "condition": 2,
    "n1": 82.0,
    "observer": "outside",
-   "oaspl_db": 76.86,
-   "dba": 77.57,
+   "oaspl_db": 76.69,
+   "dba": 77.47,
    "state": "N1  82.0 % N2  90.1 %: thrust    490 lbf at Mach 0.60, air   13.4 kg/s, fan pressure ratio 1.641, overall  20.7, T4  1111 K, jet  340 m/s at  273 K, fan tip Mach 1.24 (relative 1.34)"
   },
   {
@@ -1227,8 +1227,8 @@
    "condition": 2,
    "n1": 95.3,
    "observer": "outside",
-   "oaspl_db": 77.6,
-   "dba": 78.26,
+   "oaspl_db": 77.45,
+   "dba": 78.19,
    "state": "N1  95.3 % N2  92.2 %: thrust    662 lbf at Mach 0.60, air   14.5 kg/s, fan pressure ratio 1.859, overall  23.8, T4  1263 K, jet  380 m/s at  283 K, fan tip Mach 1.44 (relative 1.54)"
   },
   {

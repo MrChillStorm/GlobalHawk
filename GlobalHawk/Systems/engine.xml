@@ -357,6 +357,11 @@
       <input>engine/spool-target</input>
       <c1>0.12</c1>
     </lag_filter>
+    <lag_filter name="engine/core-spool">
+      <description>the high-pressure rotor, which the starter turns and which leads the fan up on a start: most of the way in about 9 s. For the start's sound only; the time is assumed</description>
+      <input>engine/spool-target</input>
+      <c1>0.35</c1>
+    </lag_filter>
     <fcs_function name="engine/fan-rpm">
       <description>the fan's speed, for the sound and the 3-D model's fan, not used by the flight model. Running: 8,290 rpm times the square root of the thrust's share of the maximum, measured from recordings: 8,290 rpm at take-off (a Global Hawk's take-off pass: the fan's 24th order and its buzz-saw's spacing, less the Doppler shift) and 2,230 to 2,270 rpm at ground idle (two taxiing Global Hawks: the blade passing tone at 891 Hz), which the idle thrust's 7 % gives as 2,190. It comes up and runs down with engine/spool. Stopped in flight it windmills, 9 rpm per knot (assumed)</description>
       <function>

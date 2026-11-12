@@ -1105,6 +1105,26 @@
 			<reference-dist>50</reference-dist>
 			<max-dist>5000</max-dist>
 		</engine>
+		<engine>
+			<name>start-core-inside</name>
+			<mode>looped</mode>
+			<path>Sounds/pywopwop/engine_core_0ft_25.2_inside.wav</path>
+			<condition><and><property>/sim/sound/pywopwop/inside</property><greater-than><property>/fdm/jsbsim/engine/core-spool</property><value>0.03</value></greater-than><less-than><property>/fdm/jsbsim/engine/fan-rpm</property><value>1764.36</value></less-than></and></condition>
+			<volume><expression><product><value>0.7</value><sqrt><product><clip><property>/fdm/jsbsim/engine/core-spool</property><clipMin>0</clipMin><clipMax>1</clipMax></clip><clip><difference><value>1</value><div><difference><property>/fdm/jsbsim/engine/fan-rpm</property><value>657.72</value></difference><value>1106.64</value></div></difference><clipMin>0</clipMin><clipMax>1</clipMax></clip></product></sqrt></product></expression></volume>
+			<pitch><property>/fdm/jsbsim/engine/core-spool</property><factor>0.65</factor><offset>0.35</offset></pitch>
+		</engine>
+		<engine>
+			<name>start-core-outside</name>
+			<mode>looped</mode>
+			<path>Sounds/pywopwop/engine_core_0ft_25.2_outside.wav</path>
+			<condition><and><not><property>/sim/sound/pywopwop/inside</property></not><greater-than><property>/fdm/jsbsim/engine/core-spool</property><value>0.03</value></greater-than><less-than><property>/fdm/jsbsim/engine/fan-rpm</property><value>1764.36</value></less-than></and></condition>
+			<volume><expression><product><value>0.7</value><sqrt><product><clip><property>/fdm/jsbsim/engine/core-spool</property><clipMin>0</clipMin><clipMax>1</clipMax></clip><clip><difference><value>1</value><div><difference><property>/fdm/jsbsim/engine/fan-rpm</property><value>657.72</value></difference><value>1106.64</value></div></difference><clipMin>0</clipMin><clipMax>1</clipMax></clip></product></sqrt></product></expression></volume>
+			<pitch><property>/fdm/jsbsim/engine/core-spool</property><factor>0.65</factor><offset>0.35</offset></pitch>
+			<position><x>12.17</x><y>0.00</y><z>2.57</z></position>
+			<orientation><x>1</x><y>0</y><z>0</z><inner-angle>120</inner-angle><outer-angle>360</outer-angle><outer-gain>0.32</outer-gain></orientation>
+			<reference-dist>50</reference-dist>
+			<max-dist>5000</max-dist>
+		</engine>
 		<wind>
 			<name>pww-wind-30</name>
 			<mode>looped</mode>
