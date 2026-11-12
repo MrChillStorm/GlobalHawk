@@ -1,0 +1,18 @@
+
+
+     JSBSim Flight Dynamics Model v1.3.3 [GitHub build 2002/commit 66f7fafc07fe13e7ede9db20873030fed2881713] Oct 16 2026 00:38:24
+            [JSBSim-ML v2.0]
+
+JSBSim startup beginning ...
+
+S1  the first station heard holds control    pass  holder LRE; stations heard ['LRE', 'MCE']; MCE's start refused: "LRE has control"
+S2  handover: offer, cancel, offer, accept   pass  offered to MCE, cancelled, offered again, accepted: holder MCE; refused: offer to a station never heard ("station XYZ is not being heard"); accept with nothing offered ("control has not been offered to MCE"); accept after a cancel ("control has not been offered to MCE"); accept by a third station ("control has not been offered to OPS")
+S2  after the handover                       pass  LRE's hold refused ("MCE has control"); MCE's hold accepted
+S2  the lost-link watch follows the holder   pass  the old holder silent for 60 s: no lost link; the new holder silent: lost link after 29.1 s
+S3  taking control                           pass  with the link lost (contingency "link") LRE takes control and its resume is done; MCE's take while LRE is heard is refused: "LRE has control and is being heard"
+S4  by hand through the link                 pass  a watcher's manual refused ("LRE has control") and its stick ignored: True; full back stick 3 s: pitch +6.4 deg; half right stick: bank 10.8 deg (half the limit is 10.8); full back stick 30 s: angle of attack 0.12 deg over its limit at most
+S4  back to automatic                        pass  the aircraft holds: "hold at 20500 ft", 55 ft from the height it had when handed back
+S4  the link lost while flown by hand        pass  automatic again and on the lost-link route 30.0 s after the last uplink: "descend to 6500 ft, leg 1 of 1, 37 nmi to go"
+
+8 checks, 8 pass, 0 miss
+exit 0 after 3 s

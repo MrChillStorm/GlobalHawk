@@ -1,0 +1,13 @@
+
+
+     JSBSim Flight Dynamics Model v1.3.3 [GitHub build 2002/commit 66f7fafc07fe13e7ede9db20873030fed2881713] Oct 16 2026 00:38:24
+            [JSBSim-ML v2.0]
+
+JSBSim startup beginning ...
+
+T2  the server's traffic reaches the page's reader pass  SHUTTLE1 at 20000 ft, 240 kt on 130, HIGH22 at 36000 ft, 420 kt on 090
+D2  the page's demo plan is the mission file       pass  js/demoplan.js equals Missions/demo-local.json: True
+D2  the demo's stand-in against the model          pass  the demo plan, takeoff to touchdown: the stand-in 42.5 min and 566 lb, the model 42.0 min and 607 lb (+1.0 %, -6.7 %)
+
+3 checks, 3 pass, 0 miss
+exit 0 after 8 s

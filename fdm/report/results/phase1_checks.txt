@@ -1,0 +1,22 @@
+check                                                              kind                 value    target   err %  limit
+3-D model scaled by span: length, ft                               measured             57.11     44.40   +28.6    1.0  MISS
+3-D model scaled by span: height, ft                               measured             20.78     15.20   +36.7    3.0  MISS
+3-D model scaled by span: wing area, ft2                           measured            597.80    540.00   +10.7    3.0  MISS
+3-D model scaled by length: span, ft                               measured             90.34    116.20   -22.3    1.0  MISS
+3-D model scaled by length: height, ft                             measured             16.15     15.20    +6.2    3.0  MISS
+3-D model, span by span and chords by length: wing area, ft2       measured            464.70    540.00   -13.9    3.0  MISS
+side view: height, ft (NASA 15.2)                                  measured             14.34     15.20    -5.6    3.0  MISS
+side view: height, ft (Northrop Grumman 14.6)                      measured             14.34     14.60    -1.8    3.0  pass
+wing as built: aspect ratio (Jane's 25.09)                         by construction      25.00     25.09    -0.4    1.0  pass
+wing as built: root chord with fillet against the side view, ft    measured              8.85      7.59   +16.5    5.0  MISS
+weights add up to the published gross, lb                          by construction   26750.00  26750.00    +0.0    0.0  pass
+without fuel: gross less fuel, lb                                  by construction   11450.00  11450.00    +0.0    0.0  pass
+
+not checks, no published figure to compare with (estimates):
+  nose gear load 17.4 to 17.4 % of the weight (looked for: 8 to 20 %)
+  centre of gravity 22.0 to 22.0 % of the mean chord, full to no fuel
+  V-tail volumes: horizontal 0.277, vertical 0.0137
+  the symbol on the side view sits at 51.3 % of the mean chord
+
+12 checks, 4 pass, 8 miss
+exit 0 after 0 s

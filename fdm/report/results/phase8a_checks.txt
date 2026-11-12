@@ -1,0 +1,59 @@
+
+
+     JSBSim Flight Dynamics Model v1.3.3 [GitHub build 2002/commit 66f7fafc07fe13e7ede9db20873030fed2881713] Oct 16 2026 00:38:24
+            [JSBSim-ML v2.0]
+
+JSBSim startup beginning ...
+
+G1  protocol                                       pass  get and addListener: True; a push within 0.5 s: True; websocket set then HTTP GET: 41.5; HTTP POST: abc; a missing property: 404; a flight-model property: 0.0
+G2  a good plan is accepted and comes back         pass  accepted: accepted; items and lost-link route come back identical: True
+G2  five bad plans are each refused with the reason pass  unknown kind: "plan item 3: unknown kind "loiter""; height 70,000 ft: "plan item 3 (route) point 1: height 70000 ft is outside 0 to 65000 ft"; a land 3 nmi from its aim: "plan item 4 (land): the fix is 3.0 nmi from the aiming point, less than 8"; no land in the lost-link route: "lost-link route: it must begin with a route and end in a land"; latitude 95: "plan item 3 (route) point 2: latitude 95 is not on the earth"
+G8  answers at 1x                                  pass  the slowest of 8 answers took 0.023 s
+G3  start: taxi, takeoff, route                    pass  status went taxi ("stopped") -> takeoff ("takeoff") -> route ("climb to 20000 ft, leg 1 of 4, 24 nmi to go"); 8025 ft and climbing 219 s after start
+G4  goto, then hold                                pass  reaches the point within 0.06 nmi; on the circle (2.8 nmi radius) 58 s later, then within 0.24 nmi of it and 12 ft of 18,000 ft for 424 s
+G4  altitude in the hold                           pass  19495 ft 4 minutes after commanding 19,500
+G5  resume: back on the plan                       pass  on the leg within 0.5 nmi and 5 deg of its course; status: "level at 20000 ft, leg 2 of 4, 12 nmi to go"
+G6  commands that must be refused                  pass  goto on the ground: only while enroute; start with no plan: no plan; start twice: the plan has already begun; altitude 70,000 ft: height 70000 ft is outside 0 to 65000 ft; a repeated seq: answered once, done once
+G7  the station goes silent                        pass  lost link flagged 30.0 s after the last heartbeat; status said contingency "link"; landed 24 min later at 1.06 m/s and 2.1 deg, 1380 ft past the aiming point, 6 ft off the centreline
+G5  the plan can complete after a resume           pass  not run to the end here: the lost link takes it home instead (G7); the resumed route was being flown for 120 s
+
+11 checks, 11 pass, 0 miss
+
+what the aircraft noted:
+      0.1 min  CHECK has control
+      0.1 min  plan REJECTED: plan item 3: unknown kind "loiter"
+      0.1 min  plan REJECTED: plan item 3 (route) point 1: height 70000 ft is outside 0 to 65000 ft
+      0.1 min  plan REJECTED: plan item 4 (land): the fix is 3.0 nmi from the aiming point, less than 8
+      0.1 min  plan REJECTED: lost-link route: it must begin with a route and end in a land
+      0.1 min  plan REJECTED: plan item 3 (route) point 2: latitude 95 is not on the earth
+      0.1 min  goto REJECTED: only while enroute
+      0.1 min  start REJECTED: no plan
+      0.1 min  plan accepted
+      0.1 min  begin taxi
+      0.1 min  start accepted
+      0.1 min  start REJECTED: the plan has already begun
+      0.9 min  begin takeoff
+      1.6 min  airborne, climb
+      1.6 min  begin route
+      1.6 min  climb to 20000 ft
+      6.5 min  altitude REJECTED: height 70000 ft is outside 0 to 65000 ft
+      6.5 min  begin route
+      6.5 min  goto accepted
+      7.7 min  level to 18000 ft
+     13.5 min  begin hold
+     21.5 min  altitude accepted
+     21.5 min  climb to 19500 ft
+     22.2 min  level to 19500 ft
+     25.5 min  begin route
+     25.5 min  climb to 20000 ft
+     25.5 min  resume accepted
+     25.5 min  leg 2
+     25.8 min  level to 20000 ft
+     34.0 min  LINK LOST: the contingency route
+     34.0 min  begin route
+     34.0 min  descent to 6500 ft
+     45.6 min  level to 6500 ft
+     50.8 min  begin land
+     54.6 min  glide path
+     58.6 min  rollout over
+exit 0 after 90 s

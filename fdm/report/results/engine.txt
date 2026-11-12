@@ -1,0 +1,44 @@
+AE 3007 reference (fitted to the ICAO takeoff row of the A2): fan pressure ratio 1.758, turbine entry 1380 K, air flow 129.0 kg/s (284 lb/s), polytropic efficiencies 0.918, jet speeds 391 and 312 m/s
+       check                                                model    source   err %  limit
+  C1a  C1 takeoff as a rating: fuel flow, kg/s             0.3308    0.3222    +2.7      5  pass  (predicted)
+  C1b  C1 takeoff as a rating: pressure ratio               15.88     16.58    -4.2      5  pass  (predicted)
+  C1c  C1 takeoff as a rating: bypass ratio                  5.21       5.1    +2.1      5  pass  (predicted)
+  V1   C1 fuel flow at ICAO 85 % thrust, kg/s              0.2858    0.2689    +6.3      5  MISS  (predicted)
+  V2   C1 fuel flow at ICAO 30 % thrust, kg/s              0.1103    0.0991   +11.3     15  pass  (predicted)
+  V3   C1 fuel flow at ICAO 7 % thrust, kg/s              0.05214    0.0418   +24.7      -    (predicted)
+  A2a  A2 fuel flow at ICAO 85 % thrust, kg/s              0.3832     0.388    -1.2      5  pass  (predicted)
+  A2b  A2 fuel flow at ICAO 30 % thrust, kg/s              0.1379     0.138    -0.0     15  pass  (predicted)
+  A2c  A2 fuel flow at ICAO 7 % thrust, kg/s              0.05499     0.055    -0.0      -    (predicted)
+  V4   TSFC at 1,500 ft, M 0.234, lb/h/lbf                 0.4998    0.5309    -5.9      8  pass  (predicted)
+  V5   TSFC at 45,000 ft, M 0.564, lb/h/lbf                0.5653    0.6225    -9.2      8  MISS  (predicted)
+  V7   fan corrected speed, 45,000 ft over 1,500 ft          1.22     1.258    -3.0      5  pass  (predicted)
+  V6b  thrust at 43,835 ft at the fitted limit, lbf          1382      1335    +3.5      2  MISS  (after the fit)
+  installation fit: fuel flow factor 1.062 at 1500 ft, 1.101 at 45000 ft; then:
+       check                                                model    source   err %  limit
+       fuel flow at 2274 ft, M 0.236, lb/h                   2340      2342    -0.1      -    (after the fit)
+       fuel flow at 3051 ft, M 0.241, lb/h                   2303      2307    -0.2      -    (after the fit)
+       fuel flow at 3798 ft, M 0.243, lb/h                   2269      2274    -0.2      -    (after the fit)
+       fuel flow at 43835 ft, M 0.559, lb/h                   826     828.5    -0.3      -    (after the fit)
+       fuel flow at 44012 ft, M 0.562, lb/h                 818.4     821.6    -0.4      -    (after the fit)
+  V6 (a fit): maximum climb at altitude is the fan corrected speed 1.064 of the A2 takeoff; there OPR 23.7, bypass ratio 4.52, turbine entry 1189 K (A2 takeoff 1380 K)
+  at 1,500 ft Ghazi's climb thrust needs fan speed 0.872, turbine entry 1167 K: below both limits, a rating
+
+AE 3007H: the same engine, limited to the turbine temperature of 7500 lbf at sea level: 1254 K (A2 takeoff 1380 K)
+       check                                                model    source   err %  limit
+  H1   OPR at the limit, 60,000 ft, M 0.6                   24.33        23    +5.8     10  pass  (predicted)
+  H2 window: fuel flow at 60,000 ft, M 0.6, 15,000 lb:
+     L/D 25: thrust 600 lbf, fuel 382 lb/h, TSFC 0.637 (window 300 to 600 lb/h); maximum there 662 lbf
+     L/D 30: thrust 500 lbf, fuel 318 lb/h, TSFC 0.635 (window 300 to 600 lb/h); maximum there 662 lbf
+     L/D 35: thrust 429 lbf, fuel 273 lb/h, TSFC 0.638 (window 300 to 600 lb/h); maximum there 662 lbf
+  maximum thrust, lbf (limit):
+          0 ft M 0.00:   7500 lbf,  2972 lb/h, TSFC 0.396, OPR 16.6, BPR 5.13, Tt4 1254 K (temperature)
+      10000 ft M 0.27:   4739 lbf,  2474 lb/h, TSFC 0.522, OPR 18.6, BPR 4.97, Tt4 1254 K (temperature)
+      20000 ft M 0.33:   3734 lbf,  2020 lb/h, TSFC 0.541, OPR 21.5, BPR 4.69, Tt4 1254 K (temperature)
+      30000 ft M 0.42:   2753 lbf,  1569 lb/h, TSFC 0.570, OPR 24.3, BPR 4.47, Tt4 1236 K (fan speed)
+      40000 ft M 0.50:   1709 lbf,  1014 lb/h, TSFC 0.593, OPR 24.3, BPR 4.47, Tt4 1188 K (fan speed)
+      50000 ft M 0.60:   1070 lbf,   684 lb/h, TSFC 0.639, OPR 24.3, BPR 4.47, Tt4 1213 K (fan speed)
+      55000 ft M 0.60:    842 lbf,   538 lb/h, TSFC 0.639, OPR 24.3, BPR 4.47, Tt4 1213 K (fan speed)
+      60000 ft M 0.60:    662 lbf,   423 lb/h, TSFC 0.639, OPR 24.3, BPR 4.47, Tt4 1213 K (fan speed)
+      65000 ft M 0.60:    520 lbf,   333 lb/h, TSFC 0.639, OPR 24.3, BPR 4.47, Tt4 1213 K (fan speed)
+wrote fdm/data/engine.json
+exit 0 after 3 s

@@ -1,0 +1,21 @@
+
+
+     JSBSim Flight Dynamics Model v1.3.3 [GitHub build 2002/commit 66f7fafc07fe13e7ede9db20873030fed2881713] Oct 16 2026 00:38:24
+            [JSBSim-ML v2.0]
+
+JSBSim startup beginning ...
+
+cruise, 15,000 lb: tip +2.57 ft; roll due to sideslip -0.00008 per deg rigid, -0.00114 bent
+   lateral modes, rigid: real -2.6561 /s (time constant 0.4 s); period 8.2 s, damping 0.068; real +0.0099 /s (doubles in 70.1 s)
+   lateral modes, bent : real -2.7044 /s (time constant 0.4 s); period 7.3 s, damping 0.030; real +0.0056 /s (doubles in 123.7 s)
+climb, 26,750 lb: tip +4.30 ft; roll due to sideslip -0.00016 per deg rigid, -0.00195 bent
+   lateral modes, rigid: real -3.7632 /s (time constant 0.3 s); period 6.2 s, damping 0.126; real +0.0220 /s (doubles in 31.6 s)
+   lateral modes, bent : real -3.8385 /s (time constant 0.3 s); period 5.4 s, damping 0.073; real +0.0107 /s (doubles in 64.6 s)
+
+     check                                                   JSBSim      beam    error  limit
+F1   tip deflection at the cruise, 15,000 lb trim, ft         2.570     2.570   -0.00%   3.0%  pass
+F1   tip deflection at the climb, 26,750 lb trim, ft          4.297     4.297   -0.00%   3.0%  pass
+F2   tip deflection standing with full tanks, ft             -1.598    -1.600   -0.13%   3.0%  pass
+F1   the mode 20 s after release at cruise against its settled value, ft     2.569     2.569   +0.00%   1.0%  pass
+4 checks, 4 pass
+exit 0 after 1 s

@@ -1,0 +1,25 @@
+pyCycle design point: thrust 9494 lbf, air flow 276.0 lbm/s (ours 284.4), turbine entry 1667 K (ours 1380), bypass ratio 4.79, pressure ratio 20.10
+pyCycle at Ghazi's 45,000 ft point: pressure ratio 23.6, bypass ratio 4.52, turbine entry 1505 K, fan speed 1.195 of design (the limit, a fit as in our model: 1.064)
+  50000 ft: pyCycle 1033 lbf, TSFC 0.572, OPR 23.7, BPR 4.51, Tt4 1515 K | ours 1035 lbf, TSFC 0.580, OPR 23.7, BPR 4.52, Tt4 1199 K
+  55000 ft: pyCycle 817 lbf, TSFC 0.573, OPR 23.7, BPR 4.51, Tt4 1520 K | ours 814 lbf, TSFC 0.580, OPR 23.7, BPR 4.52, Tt4 1199 K
+  60000 ft: pyCycle 645 lbf, TSFC 0.572, OPR 23.7, BPR 4.51, Tt4 1521 K | ours 640 lbf, TSFC 0.580, OPR 23.7, BPR 4.52, Tt4 1199 K
+  65000 ft: pyCycle 502 lbf, TSFC 0.572, OPR 23.7, BPR 4.51, Tt4 1516 K | ours 503 lbf, TSFC 0.580, OPR 23.7, BPR 4.52, Tt4 1199 K
+       check                                                model    source   err %  limit
+  X0   A2 takeoff (design point): fuel flow, lb/h            3589      3698    -3.0      5  pass  (predicted)
+  X0b  A2 fuel flow at ICAO 85 % thrust, lb/h                2876      3079    -6.6      5  MISS  (predicted)
+  X1a  C1 takeoff as a rating: fuel flow, lb/h               2464      2557    -3.6      5  pass  (predicted)
+  X1b  C1 takeoff as a rating: pressure ratio               15.66     16.58    -5.6      5  MISS  (predicted)
+  X1c  C1 takeoff as a rating: bypass ratio                 5.101       5.1    +0.0      5  pass  (predicted)
+  X2a  TSFC at 1,500 ft, M 0.234, lb/h/lbf                 0.4483    0.5309   -15.6      8  MISS  (predicted)
+  X2b  TSFC at 45,000 ft, M 0.564, lb/h/lbf                0.5562    0.6225   -10.6      8  MISS  (predicted)
+  X3   fan corrected speed, 45,000 ft over 1,500 ft         1.462     1.258   +16.2      5  MISS  (predicted)
+  X4   maximum thrust at 50000 ft, M 0.6, lbf (ours)         1033      1035    -0.2      5  pass  (model against model)
+  X4   bare TSFC at 50000 ft, M 0.6 (ours)                 0.5717    0.5797    -1.4      5  pass  (model against model)
+  X4   maximum thrust at 55000 ft, M 0.6, lbf (ours)          817     814.1    +0.4      5  pass  (model against model)
+  X4   bare TSFC at 55000 ft, M 0.6 (ours)                 0.5726    0.5797    -1.2      5  pass  (model against model)
+  X4   maximum thrust at 60000 ft, M 0.6, lbf (ours)        644.8     640.2    +0.7      5  pass  (model against model)
+  X4   bare TSFC at 60000 ft, M 0.6 (ours)                 0.5717    0.5797    -1.4      5  pass  (model against model)
+  X5   pressure ratio at the limit, 60,000 ft               23.72        23    +3.1     10  pass  (predicted)
+  X4   maximum thrust at 65000 ft, M 0.6, lbf (ours)        502.3     503.4    -0.2      5  pass  (model against model)
+  X4   bare TSFC at 65000 ft, M 0.6 (ours)                 0.5719    0.5797    -1.4      5  pass  (model against model)
+exit 0 after 70 s

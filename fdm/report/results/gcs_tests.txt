@@ -1,0 +1,19 @@
+
+> globalhawk-gcs@0.1.0 test
+> for t in tests/*.test.js; do node $t || exit 1; done
+
+alerts OK
+camera: ok
+controls OK
+  demo plan: 44.6 min in all, 582 lb; forecast from the takeoff 43.0 min, 594 lb
+demo OK
+editor OK
+geo OK
+geo: local plan ok
+link OK
+pfd OK
+plancheck OK
+predict OK
+reach OK
+traffic OK
+exit 0 after 1 s

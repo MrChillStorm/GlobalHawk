@@ -105,6 +105,7 @@ def compare(log):
 
 def report(rows):
     print('  %-4s %-44s %9s %9s %8s %7s' % ('', 'check', 'model', 'measured', 'error', 'limit'))
+    missed = 0
     for tag, name, val, ref, lim, kind in rows:
         if tag == 'P2':
             err, ok, es, ls = val - ref, abs(val - ref) <= lim, '%+6.0f ft' % (val - ref), '%.0f ft' % lim
@@ -112,6 +113,8 @@ def report(rows):
             err = 100 * (val - ref) / ref
             ok, es, ls = abs(err) <= lim, '%+6.1f %%' % err, '%.0f %%' % lim
         print('  %-4s %-44s %9.1f %9.1f %9s %7s  %s  (%s)' % (tag, name, val, ref, es, ls, 'pass' if ok else 'MISS', kind))
+        missed += not ok
+    return missed
 
 
 def misfit(rows):
@@ -171,10 +174,15 @@ if __name__ == '__main__':
                                                                           f['cal/fuel-factor']))
     log = fly(f)
     rows, hours = compare(log)
-    report(rows)
+    missed = report(rows)
     i55 = int(np.argmax(log['alt'] >= 55000))
-    print('  endurance from %.0f lb of fuel to 5 %% remaining: %.1f h (NASA: 31+ h); highest %.0f ft; fuel to 55,000 ft %.0f lb' % (
-        TAKEOFF_FUEL, hours, log['alt'].max(), log['weight'][0] - log['weight'][i55]))
+    # P3, the plan's limit: NASA's "31+ h" taken as 29 to 35 h; the fuel-flow factor that could close it was not used
+    ok = 29.0 <= hours <= 35.0
+    missed += not ok
+    print('  %-4s %-44s %9.1f %9.1f %9s %7s  %s  (%s)' % ('P3', 'endurance, %.0f lb of fuel to 5 %% left, h' % TAKEOFF_FUEL, hours, 31.0, '%+6.1f h' % (hours - 31.0),
+                                                       '29-35 h', 'pass' if ok else 'MISS', 'predicted'))
+    print('  highest %.0f ft; fuel to 55,000 ft %.0f lb' % (log['alt'].max(), log['weight'][0] - log['weight'][i55]))
+    print('\n%d checks, %d pass, %d miss\n' % (len(rows) + 1, len(rows) + 1 - missed, missed))
     for hr in (2, 5, 10, 15, 20, 25, 30):
         if hr * 3600 < log['t'][-1]:
             g = lambda k: float(np.interp(hr * 3600, log['t'], log[k]))

@@ -1,0 +1,32 @@
+
+
+     JSBSim Flight Dynamics Model v1.3.3 [GitHub build 2002/commit 66f7fafc07fe13e7ede9db20873030fed2881713] Oct 16 2026 00:38:24
+            [JSBSim-ML v2.0]
+
+JSBSim startup beginning ...
+
+drag increment 0.00564, fan-speed factor 1.010, fuel factor 1.000
+       check                                            model  measured    error   limit
+  P1b  climb rate 10000 to 20000 ft, ft/min            2341.5    2447.4    -4.3 %    15 %  pass  (after the fit)
+  P1b  climb rate 20000 to 30000 ft, ft/min            1916.4    2037.1    -5.9 %    15 %  pass  (after the fit)
+  P1b  climb rate 30000 to 40000 ft, ft/min            1196.2    1336.4   -10.5 %    15 %  pass  (after the fit)
+  P1b  climb rate 40000 to 50000 ft, ft/min             523.6     524.6    -0.2 %    15 %  pass  (after the fit)
+  P1b  climb rate 50000 to 55000 ft, ft/min             134.2     121.9   +10.1 %    30 %  pass  (after the fit)
+  P1   time from 10,000 to 55,000 ft, s                4452.4    4595.6    -3.1 %     5 %  pass  (after the fit)
+  P2   height 237 min after takeoff, ft               57199.2   57473.4   -274 ft 1000 ft  pass  (predicted in shape)
+  P2   height 404 min after takeoff, ft               58439.2   58836.4   -397 ft 1000 ft  pass  (predicted in shape)
+  P2   height 737 min after takeoff, ft               60910.5   61638.3   -728 ft 1000 ft  pass  (predicted in shape)
+  P2   height 1237 min after takeoff, ft              64617.5   64109.0   +508 ft 1000 ft  pass  (predicted in shape)
+  P3   endurance, 14500 lb of fuel to 5 % left, h        35.4      31.0    +4.4 h 29-35 h  MISS  (predicted)
+  highest 71408 ft; fuel to 55,000 ft 1273 lb
+
+11 checks, 10 pass, 1 miss
+
+     2 h:  56170 ft,  23995 lb,  512 lb/h, Mach 0.600, 344 KTAS, CL 0.964, L/D 30.1, climbing +14.4 ft/min
+     5 h:  57670 ft,  22516 lb,  477 lb/h, Mach 0.600, 344 KTAS, CL 0.972, L/D 30.2, climbing +7.4 ft/min
+    10 h:  59896 ft,  20254 lb,  429 lb/h, Mach 0.600, 344 KTAS, CL 0.972, L/D 30.2, climbing +7.4 ft/min
+    15 h:  62120 ft,  18219 lb,  386 lb/h, Mach 0.600, 344 KTAS, CL 0.973, L/D 30.2, climbing +7.4 ft/min
+    20 h:  64344 ft,  16390 lb,  347 lb/h, Mach 0.600, 344 KTAS, CL 0.973, L/D 30.2, climbing +7.4 ft/min
+    25 h:  66568 ft,  14745 lb,  312 lb/h, Mach 0.600, 344 KTAS, CL 0.973, L/D 30.2, climbing +7.4 ft/min
+    30 h:  68800 ft,  13265 lb,  281 lb/h, Mach 0.600, 345 KTAS, CL 0.973, L/D 30.2, climbing +7.4 ft/min
+exit 0 after 4 s

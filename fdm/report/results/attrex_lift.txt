@@ -1,0 +1,23 @@
+20130119:  0 steady segments, 29 long turns, fuel burned by the model 3573 lb in 6.2 h
+20130205: 23 steady segments, 24 long turns, fuel burned by the model 11767 lb in 24.4 h
+20130209: 21 steady segments, 16 long turns, fuel burned by the model 12181 lb in 23.7 h
+20130214: 28 steady segments, 17 long turns, fuel burned by the model 11939 lb in 24.1 h
+20130221: 24 steady segments, 19 long turns, fuel burned by the model 12729 lb in 24.3 h
+20130226: 23 steady segments, 15 long turns, fuel burned by the model 12768 lb in 24.1 h
+20130301: 25 steady segments, 15 long turns, fuel burned by the model 12120 lb in 23.8 h
+20131220:  0 steady segments, 53 long turns, fuel burned by the model 5808 lb in 6.1 h
+20140116: 30 steady segments,  4 long turns, fuel burned by the model 10290 lb in 19.5 h
+20140212: 18 steady segments, 14 long turns, fuel burned by the model 10751 lb in 16.9 h
+20140216:  0 steady segments, 84 long turns, fuel burned by the model 11023 lb in 17.4 h
+20140304:  6 steady segments, 10 long turns, fuel burned by the model 6879 lb in 12.2 h
+20140306: 12 steady segments, 21 long turns, fuel burned by the model 9518 lb in 17.0 h
+20140309: 11 steady segments, 15 long turns, fuel burned by the model 11587 lb in 19.5 h
+20140311:  7 steady segments, 21 long turns, fuel burned by the model 9062 lb in 15.1 h
+20140313: 21 steady segments,  7 long turns, fuel burned by the model 11186 lb in 19.2 h
+20150226:  3 steady segments, 19 long turns, fuel burned by the model 4765 lb in 6.1 h
+20150305: 27 steady segments, 10 long turns, fuel burned by the model 11659 lb in 20.8 h
+20150310: 16 steady segments, 16 long turns, fuel burned by the model 7085 lb in 11.2 h
+Mach 0.50-0.54: 1 flights, 7 segments: slope 0.1298 per deg (scatter 0.009); CL at zero angle of attack 0.478 (flights 0.478 to 0.478)
+Mach 0.59-0.62: 3 flights, 52 segments: slope 0.1161 per deg (scatter 0.008); CL at zero angle of attack 0.636 (flights 0.582 to 0.671)
+turns: 409 of 90 s or more; bank 15.1 deg on average; measured less predicted -0.06 deg mean, 1.16 deg scatter
+exit 0 after 13 s
