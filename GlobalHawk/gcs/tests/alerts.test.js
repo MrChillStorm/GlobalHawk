@@ -37,7 +37,7 @@ assert.strictEqual(A.items[0].action, 'do engine');
 // nothing heard for 3 s: one warning, the station's own; heard again: the aircraft's list is back
 A.update([al('fuel-low', 'caution')], now - 3001, true);
 assert.deepStrictEqual(ids(), ['no-link']);
-assert.strictEqual(A.tone(), 'warning');
+assert.strictEqual(A.tone(), 'link');       // changed on purpose (Hobbs and Lyall P_1.5.2): the loss of the link has a sound of its own
 A.update([al('fuel-low', 'caution')], now, true);
 assert.deepStrictEqual(ids(), ['fuel-low']);
 // a station that never expected a link does not alarm

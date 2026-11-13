@@ -28,6 +28,7 @@
       <div id="maptools">
         <button id="follow" class="on" title="keep the aircraft in the middle">follow</button>
         <button id="fit" title="show the whole plan">plan</button>
+        <button id="orient" title="which way is up on the map: north, or the way the aircraft is going">north up</button>
       </div>
       <div id="legend">
         <span class="k plan">plan</span><span class="k active">flying now</span><span class="k lost">if the link is lost</span><span class="k preview">not sent yet</span>
@@ -76,6 +77,23 @@
         </div>
         <button id="ctl-take" hidden>Take control: the station that had it is not being heard</button>
       </div>
+      <h2>Station</h2>
+      <table id="station">
+        <tr><td>Name</td><td id="st-name">-</td></tr>
+        <tr><td>Connection</td><td id="st-conn">-</td></tr>
+        <tr><td>Last heard</td><td id="st-heard">-</td></tr>
+        <tr><td>Link delay</td><td><select id="st-delay" title="what this station's link adds each way, to commands and to what comes down: none for a line-of-sight station, about 1.2 s over a satellite"></select></td></tr>
+        <tr><td>Answer time</td><td id="st-answer">-</td></tr>
+        <tr><td>Input</td><td id="st-input">-</td></tr>
+      </table>
+      <div id="messages-box">
+        <h2>Messages</h2>
+        <ol id="msg-log"></ol>
+        <div class="row">
+          <input type="text" id="msg-text" maxlength="200" placeholder="to the other stations" autocomplete="off">
+          <button id="msg-send">Send message</button>
+        </div>
+      </div>
       <h2>By hand</h2>
       <div class="row">
         <button id="m-auto">Automatic</button>
@@ -103,6 +121,7 @@
         <div class="row">
           <button id="c-resume">Resume plan</button>
           <button id="c-home">Return home</button>
+          <button id="c-timeout" title="how long the aircraft goes without hearing the station in control before it leaves its plan for the lost-link route">Link time-out…</button>
         </div>
       </div>
       <h2>Camera</h2>
@@ -157,6 +176,7 @@
   <script src="js/traffic.js"></script>
   <script src="js/controls.js"></script>
   <script src="js/camera.js"></script>
+  <script src="js/linkinfo.js"></script>
   <script src="js/demoplan.js"></script>
   <script src="js/demo.js"></script>
   <script src="js/map.js"></script>

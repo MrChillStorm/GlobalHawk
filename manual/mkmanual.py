@@ -35,6 +35,7 @@ ALERTS = {
     'manual': 'The aircraft is being flown by hand from the station in control.',
     'off-plan': 'The aircraft has left its plan on a command (go to, hold, return home) and stays off it until Resume plan.',
     'no-link': 'This station is not hearing the aircraft. Raised by the station itself.',
+    'link-restored': 'This station has the link again after losing it. Raised by the station; it stands for 20 s.',
     'traffic-warning': 'Another aircraft will be inside 0.75 nmi and 450 ft within 25 s. Raised by the station.',
     'traffic-caution': 'Another aircraft will be inside 0.75 nmi and 450 ft within 55 s. Raised by the station.',
     'traffic-advisory': 'Another aircraft will pass inside 1 nmi and 700 ft. Raised by the station.',
@@ -124,6 +125,9 @@ def alerts():
     js = open(os.path.join(ROOT, 'GlobalHawk', 'gcs', 'js', 'alerts.js'), encoding='utf-8').read()
     m = re.search(r"id: 'no-link', level: '(\w+)', text: '([^']+)', action: '([^']+)'", js)
     rows.append(('no-link', m.group(1), m.group(2), m.group(3)))
+    js = open(os.path.join(ROOT, 'GlobalHawk', 'gcs', 'js', 'main.js'), encoding='utf-8').read()
+    m = re.search(r"id: 'link-restored', level: '(\w+)', text: '([^']+)', action: s && s.link_lost \? '([^']+)'", js)
+    rows.append(('link-restored', m.group(1), m.group(2), m.group(3)))
     js = open(os.path.join(ROOT, 'GlobalHawk', 'gcs', 'js', 'traffic.js'), encoding='utf-8').read()
     for level, text in re.findall(r"id: 'traffic', level: '(\w+)', text: '([^']+)'", js):
         rows.append(('traffic-' + level, level, text, 'Change height or route' if level != 'advisory' else 'Nothing to do yet'))
@@ -171,6 +175,7 @@ def numbers():
     n['ApproachCl'], n['FlarePitch'], n['FlareHeight'], n['Decel'] = '%.3f' % laws.APPROACH_CL, '%.1f' % laws.FLARE_PITCH, '%.0f' % laws.FLARE_HEIGHT, '%.3f' % laws.DECEL_G
     n['ManualPitchRate'], n['ManualBeta'] = '%.0f' % laws.MANUAL_PITCH_RATE, '%.0f' % laws.MANUAL_BETA
     n['GlideRatio'], n['InHand'], n['TurnCost'], n['HoldBank'], n['EntryHeight'] = '%.0f' % MM.GLIDE_RATIO, '{:,.0f}'.format(MM.IN_HAND), '%.0f' % MM.TURN_COST, '%.1f' % MM.HOLD_BANK, '{:,.0f}'.format(MM.ENTRY_HEIGHT)
+    n['LinkTimeoutMin'], n['LinkTimeoutMax'] = '%.0f' % onboard.LINK_TIMEOUT_MIN, '%.0f' % onboard.LINK_TIMEOUT_MAX
     n['FuelLow'], n['OfferSec'], n['MinFinal'], n['MaxLeg'] = '{:,.0f}'.format(onboard.FUEL_LOW_LB), '%.0f' % onboard.OFFER_SEC, '%.0f' % onboard.MIN_FINAL_NM, '{:,.0f}'.format(onboard.MAX_LEG_NM)
     defaults = open(os.path.join(ROOT, 'GlobalHawk', 'Nasal', 'defaults.nas')).read()
     n['LinkTimeout'] = re.search(r'"ap/link-timeout-sec": (\d+)', defaults).group(1)

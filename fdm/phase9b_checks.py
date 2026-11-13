@@ -120,6 +120,9 @@ def cases(plan):
         ('CHECK', 'plan', changed(field=dict(lat=60.0))),
         ('CHECK', 'altitude', dict(alt_ft=9000.0)), ('CHECK', 'hold', {}), ('CHECK', 'home', {}), ('CHECK', 'resume', {}),
         ('CHECK', 'manual', dict(mode=5)), ('CHECK', 'manual', dict(mode=2)), ('CHECK', 'nav', dict(name='gps', on=True)),
+        ('CHECK', 'linktimeout', dict(sec=15)), ('CHECK', 'linktimeout', dict(sec=5)), ('CHECK', 'linktimeout', dict(sec=400)),
+        ('CHECK', 'linktimeout', dict(sec='abc')), ('CHECK', 'linktimeout', {}),      # not sec=True: Nasal's JSON reader reads true as 1 (json.nas), so it refuses it by the bounds, Python as not a number
+        ('OTHER', 'linktimeout', dict(sec=60)), ('CHECK', 'linktimeout', dict(sec=30)),
         ('CHECK', 'control.offer', dict(to='NOBODY')), ('CHECK', 'control.offer', dict(to='CHECK')), ('CHECK', 'control.cancel', {}),
         ('CHECK', 'control.take', {}),
         ('OTHER', 'goto', dict(lat=60.0, lon=25.0, alt_ft=5000.0)), ('OTHER', 'control.accept', {}), ('OTHER', 'control.take', {}),
@@ -171,6 +174,28 @@ async def flight(smoke):
         'status: doing "%s", started %s, %d keys; Nasal errors in the log: %s' % (s.get('doing'), s.get('started'), len(s), bad[:3] or 'none'))
     if not s:
         return
+
+    # ---- N9 messages between two stations through FlightGear's own web server (not through the aircraft's commands)
+    c2 = Station()
+    await c2.connect()
+    c.listen_to('/gcs/chat/line')
+    c2.listen_to('/gcs/chat/line')
+    await asyncio.sleep(0.5)
+
+    async def relay(src, dst, text, n):
+        t0 = time.monotonic()
+        src.send(command='set', node='/gcs/chat/line', value=json.dumps(dict(station='S%d' % n, n=n, text=text, t=n)))
+        while time.monotonic() - t0 < 3.0:
+            v = dst.values.get('/gcs/chat/line')
+            if v and text in v and dst.stamp.get('/gcs/chat/line', 0) >= t0:
+                return time.monotonic() - t0
+            await asyncio.sleep(0.01)
+        return None
+    d1 = await relay(c, c2, 'hold at 18,000 for the tanker', 1)
+    d2 = await relay(c2, c, 'copy, camera is mine', 2)
+    add('N9', 'a message between two stations', d1 is not None and d2 is not None and d1 < 1.0 and d2 < 1.0 and not nasal_errors(),
+        'one station to the other in %s s and back in %s s (limit 1 s); Nasal errors: %s' % (
+            '%.2f' % d1 if d1 is not None else 'never', '%.2f' % d2 if d2 is not None else 'never', nasal_errors()[:2] or 'none'))
 
     # ---- the plan, from where FlightGear put the aircraft
     here = [get('/position/latitude-deg'), get('/position/longitude-deg')]

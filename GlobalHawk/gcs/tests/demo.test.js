@@ -128,4 +128,18 @@ function rig() {
   s = q.run(3);
   assert.ok(s.alerts.some((a) => a.id === 'no-site'));
 }
+// the lost-link time-out set from the station: bounds as the aircraft's, and the loss at the time set
+{
+  const r = rig();
+  assert.strictEqual(r.cmd('plan', copy(plan)).status, 'accepted');
+  assert.strictEqual(r.cmd('start').status, 'accepted');
+  r.run(5);
+  for (const bad of [{ sec: 5 }, { sec: 400 }, { sec: 'abc' }, {}, { sec: NaN }]) assert.strictEqual(r.cmd('linktimeout', bad).status, 'rejected', JSON.stringify(bad));
+  assert.strictEqual(r.cmd('linktimeout', { sec: 15 }, 'OTHER').status, 'rejected');          // not the station in control
+  assert.strictEqual(r.cmd('linktimeout', { sec: 15 }).status, 'accepted');
+  assert.strictEqual(r.run(1).link_timeout, 15);
+  const n = r.until((s) => s.link_lost, 60, true);
+  assert.ok(n >= 14 && n <= 17, 'lost after ' + n + ' s of silence');
+  assert.strictEqual(r.cmd('linktimeout', { sec: 30 }).status, 'accepted');
+}
 console.log('demo OK');

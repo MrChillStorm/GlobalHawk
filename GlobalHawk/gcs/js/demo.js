@@ -24,6 +24,8 @@
   const DRY_LB = 11450;
   const GLIDE_TAN = 0.07782;
   const LINK_TIMEOUT = 30;
+  const LINK_TIMEOUT_MIN = 10; // as the aircraft's (fdm/onboard.py)
+  const LINK_TIMEOUT_MAX = 300;
   const NAVS = ['kna', 'knb', 'lna', 'lnb'];
   const rad = (d) => (d * Math.PI) / 180;
   const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
@@ -52,6 +54,7 @@
       this.stations = {};
       this.linkLast = null;
       this.linkLost = false;
+      this.linkTimeout = LINK_TIMEOUT;
       this.answered = {};
       this.events = [];
       this.paths = [];
@@ -286,6 +289,13 @@
       return null;
     }
 
+    cmd_linktimeout(a) {
+      if (typeof a.sec !== 'number' || !Number.isFinite(a.sec)) return 'the time-out needs a number of seconds';
+      if (a.sec < LINK_TIMEOUT_MIN || a.sec > LINK_TIMEOUT_MAX) return `the time-out is ${LINK_TIMEOUT_MIN} to ${LINK_TIMEOUT_MAX} s`;
+      this.linkTimeout = a.sec;
+      return null;
+    }
+
     cmd_nav(a) {
       if (!NAVS.includes(a.name)) return 'unknown navigator';
       this.nav[a.name] = a.on ? 1 : 0;
@@ -325,7 +335,7 @@
       const s = this.s;
       s.t += dt;
       // the link: silence from the station in control for 30 s is a lost link
-      if (this.linkLast !== null && !this.linkLost && s.t - this.linkLast > LINK_TIMEOUT) {
+      if (this.linkLast !== null && !this.linkLost && s.t - this.linkLast > this.linkTimeout) {
         this.linkLost = true;
         const it = this.item();
         if (this.started && !this.done && this.contingency === null && it && (it.kind === 'route' || it.kind === 'hold') && this.plan.lost_link) {
@@ -525,7 +535,7 @@
       const st = {
         t: Math.round(s.t * 10) / 10, plan: this.plan ? this.plan.id || null : null, started: this.started, item: this.started ? this.i : null, kind,
         doing: !this.plan ? 'no plan' : !this.started ? 'waiting for start' : '', next: '', off_plan: this.off, contingency: this.contingency, alerts: [], hold: null, leg: null,
-        link_lost: this.linkLost, link_age: this.linkLast === null ? null : Math.round((s.t - this.linkLast) * 10) / 10, link_timeout: LINK_TIMEOUT,
+        link_lost: this.linkLost, link_age: this.linkLast === null ? null : Math.round((s.t - this.linkLast) * 10) / 10, link_timeout: this.linkTimeout,
         control: { holder: this.holder, offer_to: null, stations: Object.keys(this.stations).sort().map((n) => ({ name: n, age: Math.round((s.t - this.stations[n]) * 10) / 10 })) },
         manual: 0, target: { alt_ft: Math.round(this.target()), kcas: Math.round(this.get('/velocities/airspeed-kt') * 10) / 10 }, events: this.events.slice(-6),
       };

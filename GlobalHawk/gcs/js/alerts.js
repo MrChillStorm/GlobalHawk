@@ -12,6 +12,7 @@
   const RANK = { warning: 0, caution: 1, advisory: 2 };
   const HELD_BY = { engine: ['aoa', 'off-plan'] };
   const SILENT_MS = 3000;
+  const LINK_IDS = ['no-link', 'link']; // a lost link has a sound of its own, that no other alert uses
 
   class Alerts {
     constructor(now) {
@@ -42,9 +43,10 @@
       return next;
     }
 
-    /** The level of tone due now: 'warning', 'caution' or null. */
+    /** The tone due now: 'link' (for the loss of the link, whatever its level), 'warning', 'caution' or null. */
     tone() {
       const un = this.items.filter((a) => !a.acked);
+      if (un.some((a) => LINK_IDS.includes(a.id))) return 'link';
       return un.some((a) => a.level === 'warning') ? 'warning' : un.some((a) => a.level === 'caution') ? 'caution' : null;
     }
 
@@ -54,7 +56,7 @@
     }
   }
 
-  const api = { Alerts, SILENT_MS };
+  const api = { Alerts, SILENT_MS, LINK_IDS };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else Object.assign((root.GCS = root.GCS || {}), api);
 })(typeof window !== 'undefined' ? window : globalThis);

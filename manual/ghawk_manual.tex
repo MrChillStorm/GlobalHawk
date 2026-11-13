@@ -119,7 +119,8 @@ link is slower. Here they are two names for the same page, \ann{LRE} and \ann{MC
 each way, an assumed figure.
 \begin{warning}
 Close the station's page, or lose its connection, and the aircraft takes it for a lost link: \MLinkTimeout\,s after
-it last heard the station in control it leaves its plan, flies its lost-link route home and lands.
+it last heard the station in control it leaves its plan, flies its lost-link route home and lands. (That is the time-out, which can be
+set from the station: Section~\ref{sec:link}.)
 \end{warning}
 
 \section{What is the simulation's own}
@@ -154,7 +155,7 @@ the link's delay.
 \item \emph{The strip.} \ann{Doing} and \ann{Next}: what the aircraft is doing now and what comes after, in its own
 words. \ann{Altitude} and \ann{Speed}, each with the target the aircraft is flying towards. \ann{Link}: green with
 the station's name when the aircraft is hearing this station; \ann{receiving only} when it shows the aircraft but is
-not the station in control; \ann{NO LINK}. Beside it, the link's delay and what the aircraft will do if the link is lost.
+not the station in control; \ann{NO LINK}. Beside it, the link's delay and what the aircraft will do if the link is lost: route home after a time-out. When the aircraft has gone three seconds without hearing the station in control, this note becomes a count: \ann{the aircraft has not heard this station for 12 s: route home in 18 s}.
 \item \emph{Alerts} (Section~\ref{sec:alerts}).
 \item \emph{The map} (Section~\ref{sec:map}).
 \item \emph{The height profile}: the heights the plan asks for and the height forecast.
@@ -164,7 +165,7 @@ aircraft only on \ann{Send}.
 \item \emph{Aircraft}: heading, Mach, ground speed, climb rate, fuel, throttle. \emph{Engine and fuel}: running or
 failed, thrust, fuel flow, hours left at that flow, the six tanks. \emph{Navigators}: the four attitude sources,
 each with a button that switches it off or on.
-\item \emph{Control}: which station has control, and the handover (Section~\ref{sec:handover}).
+\item \emph{Control}: which station has control, and the handover (Section~\ref{sec:handover}). Under it, \emph{Station} and \emph{Messages} (Section~\ref{sec:link}).
 \item \emph{By hand} (Part~V).
 \item \emph{Commands} and \emph{Camera} (Sections~\ref{sec:commands} and~\ref{sec:camera}).
 \item \emph{The plan editor}, when open (Section~\ref{sec:editor}).
@@ -195,7 +196,8 @@ airborne.
 \item The scale. There is no background map: a grid and a scale.
 \end{enumerate}
 What is being prepared and has not been sent is drawn in blue dashes. The camera's target, when it is locked, is a
-green cross with the line of sight.
+green cross with the line of sight. \ann{north up} turns the map so that the aircraft's track is at the top instead
+(\ann{track up}), which is how a map is read when flying along it; the arrow in the corner always points to north.
 \begin{center}\small\Tab{ctl_map}\end{center}
 
 \section{The flight display}\label{sec:pfd}
@@ -266,6 +268,34 @@ Each page opened with its own station name is a crew position. The aircraft deci
 station it hears. The others watch: the same map and alerts, their commands greyed. The lost-link watch follows the
 station in control, not the watchers.
 \begin{center}\small\Tab{ctl_control}\end{center}
+
+\section{The link, this station and messages}\label{sec:link}
+\paragraph{The time-out.} \ann{Link time-out\ldots} sets how long the aircraft may go without hearing the station in
+control before it leaves its plan for the lost-link route: \MLinkTimeout\,s unless it has been set, and the aircraft
+takes \MLinkTimeoutMin{} to \MLinkTimeoutMax\,s. Only the station in control may set it; like any command it is
+shown in the confirm bar and counts when the aircraft answers. The bounds are assumed: under \MLinkTimeoutMin\,s a
+satellite delay and one missed heartbeat could trigger the loss.
+\begin{caution}
+A short time-out sends the aircraft home on a brief break in the link. A long one lets it fly on for minutes with
+nobody commanding it. Set it for the link in use.
+\end{caution}
+\paragraph{When the link goes and when it comes back.} After three seconds without an uplink from the station in
+control, the strip counts down to the lost-link route. When the link is lost, \ann{NO LINK TO THE AIRCRAFT} (at the
+station that lost it) or \ann{LINK WAS LOST} (from the aircraft, to every station) is raised with a two-note tone that no
+other alert uses, repeating until it is acknowledged. When the link comes back \ann{LINK RESTORED} stands for twenty
+seconds; if the aircraft is still on its lost-link route it says so, and says to \ann{Resume plan} to go on.
+\paragraph{Closing the page.} A station that has control of a flight is asked before its page is closed, because
+closing it cuts the link. A station that is only watching may close its page.
+\begin{center}\small\Tab{ctl_station}\end{center}
+The delay is what this station's link adds each way to commands and to what comes down. It can be changed while the
+page runs; it takes effect on the next message. \ann{Answer time} is measured: how long the aircraft took to answer
+the last commands, so it is about twice the delay plus the aircraft's own time. \ann{Last heard} is how long ago anything
+came down from the aircraft.
+\paragraph{Messages.} A line typed under \ann{Messages} goes to every other station at once, and is shown with who sent
+it and when it arrived. It is text, between the stations of this aircraft only; it is not delayed by the link's delay, as
+the crews of a real aircraft would talk by voice, and the aircraft does not see it. A new message from another station
+sounds once and the heading says how many are new. The demo has one station and no messages.
+\begin{center}\small\Tab{ctl_messages}\end{center}
 
 \section{The belly camera}\label{sec:camera}
 The \ann{Camera} panel is the sensor operator's. Its commands are not flight commands: they need no control of the
@@ -354,7 +384,7 @@ Speed, lower & The angle-of-attack limit: \MAlphaLow$^\circ$ at low Mach numbers
 Bank & \MBankLow$^\circ$ up to \MBankLowTo\,ft, falling to \MBankHigh$^\circ$ from \MBankHighFrom\,ft. Turns are flown at \MBankCmd\,\% of it. \\
 Hold & Circles to the right at \MHoldBank$^\circ$ of bank. \\
 Approach & A \MGlideDeg$^\circ$ glide path at idle thrust, at the speed for a lift coefficient of \MApproachCl{} at the weight; the landing's fix at least \MMinFinal\,nmi out. \\
-Lost link & \MLinkTimeout\,s without the station in control. \\
+Lost link & \MLinkTimeout\,s without the station in control, unless set (\MLinkTimeoutMin{} to \MLinkTimeoutMax\,s, Section~\ref{sec:link}). \\
 Fuel & \ann{FUEL LOW} below \MFuelLow\,lb. \\
 Structure (assumed) & Load factor \MNzMin{} to $+$\MNzMax; \MLimitKeas\,KEAS; Mach~\MLimitMach. Passing one raises \ann{STRUCTURAL LIMIT PASSED}. \\
 Wind, weather & None is allowed for anywhere: no check of the model or the laws was flown in wind, turbulence or icing. \\
@@ -414,12 +444,12 @@ station falls silent. Keep the lost-link route current as the flight moves on: e
 \end{enumerate}
 The checks are the handover's briefing: that both stations show the same plan and position, that the aircraft's state
 and alerts have been told, that no command is waiting for an answer, and that the receiving operator knows the
-station's link delay.
+station's link delay. The briefing itself goes in \ann{Messages}.
 
 \section{Landing}
 The aircraft lands by itself at the end of its plan or of its lost-link route: level in the landing configuration
 until the glide path comes down to it, then down the path on its spoilers at idle thrust, a flare at \MFlareHeight\,ft
-of wheel height, and brakes held to \MDecel\,$g$ on the runway. It touches down 900 to 1500\,ft past the plan's
+of wheel height, and brakes held to \MDecel\,$g$ on the runway. It touches down 800 to 1200\,ft past the plan's
 aiming point, further when heavy (Chapter~\ref{ch:perf}). Before \ann{Return home}, read the landing's forecast in the confirm bar.
 
 % =====================================================================================================================
@@ -429,13 +459,14 @@ In each case the aircraft acts first and by itself. The operator's part is to un
 decide what comes next.
 
 \section{The link is lost}
-\emph{The aircraft:} \MLinkTimeout\,s after it last heard the station in control, leaves its plan for the lost-link
+\emph{The aircraft:} after the time-out (\MLinkTimeout\,s unless set) without hearing the station in control, leaves its plan for the lost-link
 route and lands at its end. It raises \ann{LINK WAS LOST} and stays on that route even when it hears a station again.
+Before that the strip counts down to it.
 
 \emph{The operator:}
 \begin{enumerate}
 \item At the station that lost the link, \ann{NO LINK TO THE AIRCRAFT}: restore the connection.
-\item When \ann{Link} is green again, read \ann{Doing}: the aircraft is on its lost-link route.
+\item When \ann{Link} is green again, \ann{LINK RESTORED} says so. Read \ann{Doing}: the aircraft is on its lost-link route.
 \item To go on with the mission: \ann{Resume plan}, \ann{Send}. To let it come home: nothing.
 \item If the station in control cannot be restored, another station may \ann{Take control}.
 \end{enumerate}
@@ -546,10 +577,12 @@ Hobbs and Lyall's \emph{Human Factors Guidelines for Remotely Piloted Aircraft S
 \MHlPartly{} partly, \MHlNot{} not met, \MHlNa{} that do not apply to a simulation with one simulated link, no radio
 and no flight termination system. The guidelines are shortened here; the study has their full wording.
 
-What it shows: the station does what the guidelines ask about the lost-link route, about who has control and about
-handing it over, and about consumables. It does not do what they ask about the link itself, because the simulated
-link is either there or not: no strength, no coverage, no choice of link. It has no map behind its grid, no airspace
-or weather, and no way for crews to talk to each other or to air traffic control.
+What it shows: the station does what the guidelines ask about the lost-link route (always drawn and distinguishable, its
+time-out shown, set from the station and counted down), about who has control and handing it over (with messages between
+the crews), and about consumables. About the link itself it can only do what the simulated link has: it is there or it is
+not, so nothing about its strength, coverage, interference or choice. It has no map behind its grid, no airspace or
+weather, no radio or air traffic control, and no flight termination. The guidelines that were not met and could have been
+are those that need data this simulation does not have, not ones left undone.
 \par
 {\footnotesize\input{tab/tab_hl.tex}}
 

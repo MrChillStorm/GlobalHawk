@@ -39,7 +39,7 @@
   "code": "T_1.3.1",
   "guideline": "Perform checks on the status of RPS systems",
   "status": "partly",
-  "where": "Only the link's state and the connection line at the foot of the page; a gamepad is named when one is found."
+  "where": "The panel shows the station's state; there is no check to run, and a browser page has little else to check."
  },
  {
   "code": "T_1.3.2",
@@ -56,8 +56,8 @@
  {
   "code": "I_1.3.1",
   "guideline": "Health and status information on the RPS",
-  "status": "partly",
-  "where": "As T_1.3.1."
+  "status": "met",
+  "where": "Station panel: connection and its address, how long ago the aircraft was last heard, the answer time, the input device read for flying by hand."
  },
  {
   "code": "T_1.5.1",
@@ -69,7 +69,7 @@
   "code": "T_1.5.2",
   "guideline": "Select the appropriate communication mode (e.g. terrestrial/satellite, frequency)",
   "status": "partly",
-  "where": "The station's name and delay are chosen in the page's address (LRE: none; MCE: 1.2 s), not while running."
+  "where": "The delay is chosen while the page runs, line of sight or satellite named; there is still only one simulated link, so nothing else is selected."
  },
  {
   "code": "T_1.5.3",
@@ -116,8 +116,8 @@
  {
   "code": "T_1.5.10",
   "guideline": "Maintain awareness of crew actions or control inputs that could interrupt or degrade the link",
-  "status": "partly",
-  "where": "Closing the page is the one crew action that cuts the link, and the manual and the page say what follows."
+  "status": "met",
+  "where": "The one crew action that cuts the link, closing the page, asks first when this station has control of a flight; a station that is only watching may close it."
  },
  {
   "code": "T_1.5.11",
@@ -140,8 +140,8 @@
  {
   "code": "T_1.5.14",
   "guideline": "Define the duration of a loss of link that must occur before the lost link alert is activated, or the RPA enters its lost link procedure",
-  "status": "not met",
-  "where": "The 30 s is shown, not set from the station (it is the flight model's ap/link-timeout-sec)."
+  "status": "met",
+  "where": "Link time-out…: the station in control sets the time-out, 10 to 300 s; tested against the model (phase 8a G9: the loss came 15.0 s after the last heartbeat) and through the page."
  },
  {
   "code": "T_1.5.15",
@@ -158,8 +158,8 @@
  {
   "code": "I_1.5.2",
   "guideline": "Identify which C2 link settings are active (e.g. selected frequency, satellite vs terrestrial)",
-  "status": "partly",
-  "where": "Station name and delay; nothing else to set."
+  "status": "met",
+  "where": "Station panel: the station's name, the connection and its address, the delay."
  },
  {
   "code": "I_1.5.3",
@@ -218,8 +218,8 @@
  {
   "code": "I_1.5.12",
   "guideline": "Where relevant, the RPS should provide the pilot with information on link latency, in milliseconds",
-  "status": "partly",
-  "where": "The delay set for the station is shown in seconds; it is not measured."
+  "status": "met",
+  "where": "Station: Answer time, in milliseconds, the median of the last five commands the aircraft answered; and the delay set, in seconds."
  },
  {
   "code": "I_1.5.13",
@@ -236,8 +236,8 @@
  {
   "code": "I_1.5.15",
   "guideline": "Inform the pilot when a lost link is resumed",
-  "status": "partly",
-  "where": "Link turns green again and NO LINK clears; no separate message says it."
+  "status": "met",
+  "where": "LINK RESTORED, an advisory for 20 s, says so, and says whether the aircraft is still on its lost-link route."
  },
  {
   "code": "C_1.5.1",
@@ -260,7 +260,7 @@
  {
   "code": "C_1.5.4",
   "guideline": "Set the duration of a link outage that must occur before a lost link response is triggered",
-  "status": "not met",
+  "status": "met",
   "where": "As T_1.5.14."
  },
  {
@@ -272,8 +272,8 @@
  {
   "code": "P_1.5.2",
   "guideline": "The aural warning for lost control link should be a unique sound, not also used to signify other conditions",
-  "status": "not met",
-  "where": "The warning tone is the same for every warning."
+  "status": "met",
+  "where": "The loss of the link (at this station or the aircraft's) has a two-note tone that no other alert uses. Tested in the alert logic; the sound itself has not been judged by an operator."
  },
  {
   "code": "P_1.5.3",
@@ -362,8 +362,8 @@
  {
   "code": "T_1.6.8",
   "guideline": "Facilitate a handover briefing between the giving and receiving pilots",
-  "status": "partly",
-  "where": "The ticks are the briefing's headings; the station carries no voice or text between the pilots."
+  "status": "met",
+  "where": "The three checks are the briefing's headings and Messages carries the briefing itself."
  },
  {
   "code": "T_1.6.9",
@@ -392,8 +392,8 @@
  {
   "code": "C_1.6.2",
   "guideline": "There should be a means for the giving and receiving pilots to communicate before, during and after the handover",
-  "status": "not met",
-  "where": "No voice or text between stations."
+  "status": "met",
+  "where": "Messages: a line from one station reaches the others at once, in text, before, during and after a handover."
  },
  {
   "code": "P_1.6.1",
@@ -428,8 +428,8 @@
  {
   "code": "P_2.1.2",
   "guideline": "Map displays should be configurable to North up or Track up",
-  "status": "not met",
-  "where": "North up only."
+  "status": "met",
+  "where": "north up / track up on the map, with an arrow to north."
  },
  {
   "code": "P_2.1.3",
@@ -506,8 +506,8 @@
  {
   "code": "T_2.4.3",
   "guideline": "Select the length of time that must elapse between the onset of a lost link event and the activation of the aircraft’s lost link procedure",
-  "status": "not met",
-  "where": "As T_1.5.14."
+  "status": "met",
+  "where": "As T_1.5.14: it sets the time between the onset of a lost link and the lost-link procedure."
  },
  {
   "code": "I_2.4.1",
@@ -530,8 +530,8 @@
  {
   "code": "I_2.4.4",
   "guideline": "In the event of a lost link, the RPS should display the time remaining until the activation of the aircraft’s lost link procedure",
-  "status": "not met",
-  "where": "A station that has lost the link cannot hear the aircraft's count; it shows the 30 s, not what is left of it."
+  "status": "met",
+  "where": "The strip counts it: \"the aircraft has not heard this station for 12 s: route home in 18 s\", from 3 s of silence; tested in the page with the uplink cut."
  },
  {
   "code": "P_2.4.1",
@@ -650,8 +650,8 @@
  {
   "code": "T_3.2.1",
   "guideline": "Enable the RPAS crewmembers to communicate with each other (co- located or not) in order to perform the necessary flight tasks",
-  "status": "not met",
-  "where": "No voice or text between crew positions."
+  "status": "met",
+  "where": "Messages, as C_1.6.2: text, not voice; between stations of this aircraft only."
  },
  {
   "code": "T_3.2.2",

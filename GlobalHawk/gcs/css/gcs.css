@@ -98,3 +98,12 @@ ol li .st { margin-left: auto; font-weight: 600; white-space: nowrap; }
   #legend { top: auto; bottom: 10px; right: 10px; flex-wrap: wrap; max-width: 60%; }
   #confirm { flex-wrap: wrap; bottom: 190px; }
 }
+
+#station { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; margin-bottom: 4px; }
+#station td { padding: 2px 4px; } #station td:nth-child(odd) { color: var(--dim); } #station td:nth-child(even) { text-align: right; }
+#station select, #msg-text { background: #0b0e12; color: var(--text); border: 1px solid var(--line); border-radius: 3px; padding: 3px 5px; font: inherit; }
+#msg-text { flex: 1; min-width: 0; }
+#msg-log { max-height: 130px; overflow-y: auto; margin-bottom: 6px; }
+#msg-log li.mine span:nth-child(2) b { color: var(--preview); }
+#msg-log li.new { background: rgba(255, 176, 0, .12); }
+#link-note.count { color: var(--lost); font-weight: 700; }

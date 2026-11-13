@@ -46,7 +46,16 @@ whole scenario through the link; `fdm/phase8c_checks.py` holds the forecast and 
 
 - **Doing / Next**: what the aircraft is doing now and what comes after, in its own words.
 - **Altitude and speed** with the target the aircraft is flying towards beside them.
-- **Link**: whether the aircraft is hearing this station, and what it will do if it stops hearing it.
+- **Link**: whether the aircraft is hearing this station, and what it will do if it stops hearing it. After 3 s without an
+  uplink from the station in control the note becomes a count ("the aircraft has not heard this station for 12 s: route home
+  in 18 s"). The loss of the link has a tone of its own, two notes in turn, that no other alert uses; when the link comes back
+  **LINK RESTORED** stands for 20 s. Closing the page asks first when this station has control of a flight.
+- **Station**: its name, the connection and its address, how long ago the aircraft was last heard, the **link delay** (chosen
+  while the page runs: none, 0.6, 1.2 or 2.4 s), the measured **answer time** (the median of the last five commands the
+  aircraft answered, in ms) and the input read for flying by hand.
+- **Messages**: a line of up to 200 characters to the other stations, at once, not delayed by the link and not through the
+  aircraft; the last eight are shown with who sent them and when they arrived. The demo has one station and no messages.
+- **north up / track up** on the map: the arrow in the corner always points to north.
 - **The map**: the plan as the aircraft holds it (white), the leg or hold it is flying (magenta), **the
   lost-link route (amber, dashed), always**, landing sites (green), and in blue dashes whatever you are
   preparing and have not sent.
@@ -140,6 +149,7 @@ Everything goes through FlightGear's web server: the `PropertyListener` websocke
 | `/gcs/down/ack` | aircraft | `{"seq":n,"status":"accepted"` or `"rejected","reason":"…"}` |
 | `/gcs/down/status` | aircraft, twice a second | doing, next, alerts, the leg or hold, targets, its last notes |
 | `/gcs/down/plan` | aircraft | the plan it holds, with its lost-link route and landing sites |
+| `/gcs/chat/line` | any station | `{"station","n","text","t"}`: a message to the other stations. The aircraft does not read it; FlightGear's web server (or the simulator server) hands it to every station listening |
 
 Telemetry is FlightGear's own properties (`/position`, `/orientation`, `/velocities`) and the flight model's
 under `/fdm/jsbsim/`.
@@ -154,6 +164,7 @@ under `/fdm/jsbsim/`.
 | `resume` | | returns to the leg it left | when not off the plan; engine failed |
 | `home` | | flies the lost-link route and lands | with no such route; on the ground |
 | `nav` | `name`, `on` | switches a navigator | unknown name |
+| `linktimeout` | `sec` | sets how long the station in control may be silent before the lost-link route | not a number; under 10 s or over 300 s (assumed bounds) |
 | `manual` | `mode` 0, 1, 2 | automatic, protected or direct flying by hand | 1 and 2 when not enroute |
 | `control.offer` | `to` | offers control to a station it hears | to itself; to a station not heard |
 | `control.cancel` | | withdraws the offer | with none made |
@@ -171,6 +182,7 @@ without the engine. The aircraft refuses a plan with an unknown item, a point of
 
 - `js/link.js`: the station's end of the link (commands and their fates, heartbeat, delay), and the websocket.
 - `js/geo.js`: small-area geometry, as the aircraft does it.
+- `js/linkinfo.js`: the count to the lost-link route, the restored message, the closing warning and the time-out's bounds.
 - `js/camera.js`: the belly camera's state and commands. `js/controls.js`: gamepad and keys to the stick message. `js/traffic.js`: other aircraft and their alert levels.
 - `js/demo.js`, `js/demoplan.js`: the demo's stand-in aircraft and its plan.
 - `USER-TEST.md`: how the station is to be tested with people, and the pass mark. Not run yet.

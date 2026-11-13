@@ -17,6 +17,7 @@
       this.centre = [34.9, -117.88];
       this.ftPerPx = 600;
       this.follow = true;
+      this.up = 0;                      // the compass heading at the top of the map: 0 north up, or the track
       this.trail = [];
       this.onClick = null;
       this.data = {};
@@ -24,7 +25,7 @@
       canvas.addEventListener('pointerdown', (e) => {
         const r = canvas.getBoundingClientRect();
         const h = this.handleAt(e.clientX - r.left, e.clientY - r.top);
-        drag = { x: e.clientX, y: e.clientY, c: this.centre.slice(), moved: false, handle: h };
+        drag = { x: e.clientX, y: e.clientY, moved: false, handle: h, at: [e.clientX - r.left, e.clientY - r.top] };
         canvas.setPointerCapture(e.pointerId);
       });
       canvas.addEventListener('pointermove', (e) => {
@@ -37,7 +38,11 @@
           if (this.onHandle) this.onHandle(drag.handle, this.unproject(e.clientX - r.left, e.clientY - r.top), false);
         } else if (drag.moved) {
           this.follow = false;
-          this.centre = [drag.c[0] + (dy * this.ftPerPx) / geo.FT_PER_DEG, drag.c[1] - (dx * this.ftPerPx) / (geo.FT_PER_DEG * Math.cos((drag.c[0] * Math.PI) / 180))];
+          const r = canvas.getBoundingClientRect();
+          const under = this.unproject(drag.at[0], drag.at[1]);
+          const now = this.unproject(e.clientX - r.left, e.clientY - r.top);
+          this.centre = [this.centre[0] + under[0] - now[0], this.centre[1] + under[1] - now[1]];
+          drag.at = [e.clientX - r.left, e.clientY - r.top];
           this.draw();
         }
       });
@@ -80,13 +85,11 @@
     }
 
     project(p) {
-      const k = Math.cos((this.centre[0] * Math.PI) / 180);
-      return [this.w / 2 + ((p[1] - this.centre[1]) * geo.FT_PER_DEG * k) / this.ftPerPx, this.h / 2 - ((p[0] - this.centre[0]) * geo.FT_PER_DEG) / this.ftPerPx];
+      return geo.toScreen(p, this.centre, this.up, this.ftPerPx, [this.w, this.h]);
     }
 
     unproject(x, y) {
-      const k = Math.cos((this.centre[0] * Math.PI) / 180);
-      return [this.centre[0] - ((y - this.h / 2) * this.ftPerPx) / geo.FT_PER_DEG, this.centre[1] + ((x - this.w / 2) * this.ftPerPx) / (geo.FT_PER_DEG * k)];
+      return geo.fromScreen(x, y, this.centre, this.up, this.ftPerPx, [this.w, this.h]);
     }
 
     /** The index of the editing handle under a point of the canvas, or null. */
@@ -180,22 +183,27 @@
       const nm = this.ftPerPx / geo.NM;
       const steps = [0.1, 0.25, 0.5, 1, 2, 5, 10, 25, 50, 100, 250, 500];
       const step = steps.find((s) => s / nm >= 70) || 1000;
-      const tl = this.unproject(0, 0);
-      const br = this.unproject(this.w, this.h);
+      const corners = [this.unproject(0, 0), this.unproject(this.w, 0), this.unproject(0, this.h), this.unproject(this.w, this.h)];
+      const lat0 = Math.min(...corners.map((q) => q[0]));
+      const lat1 = Math.max(...corners.map((q) => q[0]));
+      const lon0 = Math.min(...corners.map((q) => q[1]));
+      const lon1 = Math.max(...corners.map((q) => q[1]));
       const dLat = (step * geo.NM) / geo.FT_PER_DEG;
       const dLon = dLat / Math.cos((this.centre[0] * Math.PI) / 180);
       x.strokeStyle = COL.grid;
       x.lineWidth = 1;
       x.beginPath();
-      for (let la = Math.floor(br[0] / dLat) * dLat; la <= tl[0]; la += dLat) {
-        const y = this.project([la, 0])[1];
-        x.moveTo(0, y);
-        x.lineTo(this.w, y);
+      for (let la = Math.floor(lat0 / dLat) * dLat; la <= lat1; la += dLat) {
+        const a1 = this.project([la, lon0]);
+        const a2 = this.project([la, lon1]);
+        x.moveTo(a1[0], a1[1]);
+        x.lineTo(a2[0], a2[1]);
       }
-      for (let lo = Math.floor(tl[1] / dLon) * dLon; lo <= br[1]; lo += dLon) {
-        const px = this.project([0, lo])[0];
-        x.moveTo(px, 0);
-        x.lineTo(px, this.h);
+      for (let lo = Math.floor(lon0 / dLon) * dLon; lo <= lon1; lo += dLon) {
+        const a1 = this.project([lat0, lo]);
+        const a2 = this.project([lat1, lo]);
+        x.moveTo(a1[0], a1[1]);
+        x.lineTo(a2[0], a2[1]);
       }
       x.stroke();
       // scale bar
@@ -286,7 +294,7 @@
         const col = lvl === 'warning' ? '#ff3b3b' : lvl ? COL.lost : far ? '#6b7885' : '#e6edf3';
         x.save();
         x.translate(q[0], q[1]);
-        x.rotate((t.hdg * Math.PI) / 180);
+        x.rotate(((t.hdg - this.up) * Math.PI) / 180);
         x.beginPath();
         x.moveTo(0, -8);
         x.lineTo(6, 7);
@@ -308,7 +316,7 @@
         const q = this.project(this.own.p);
         x.save();
         x.translate(q[0], q[1]);
-        x.rotate((this.own.heading * Math.PI) / 180);
+        x.rotate(((this.own.heading - this.up) * Math.PI) / 180);
         x.beginPath(); // a long-winged aircraft seen from above
         x.moveTo(0, -11);
         x.lineTo(2.5, -2);
@@ -331,6 +339,29 @@
         x.stroke();
         x.restore();
       }
+      // which way north is: an arrow that turns as the map does
+      x.save();
+      x.translate(this.w - 30, 62);
+      x.rotate((-this.up * Math.PI) / 180);
+      x.strokeStyle = COL.text;
+      x.fillStyle = COL.text;
+      x.lineWidth = 1.5;
+      x.beginPath();
+      x.moveTo(0, -14);
+      x.lineTo(5, 0);
+      x.lineTo(-5, 0);
+      x.closePath();
+      x.fill();
+      x.beginPath();
+      x.moveTo(0, 0);
+      x.lineTo(0, 12);
+      x.stroke();
+      x.restore();
+      x.font = '11px ui-sans-serif, system-ui, sans-serif';
+      x.fillStyle = COL.text;
+      x.textAlign = 'center';
+      x.fillText('N', this.w - 30 - 11 * Math.sin((this.up * Math.PI) / 180), 62 - 20 * Math.cos((this.up * Math.PI) / 180) + 4);
+      x.textAlign = 'start';
     }
   }
 

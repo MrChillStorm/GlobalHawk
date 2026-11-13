@@ -79,13 +79,13 @@ class Client:
         self.beat_time = t
         self.send(command='set', node='/gcs/up/heartbeat', value=self.beat)
 
-    async def command(self, name, args=None, seq=None, wait=5.0):
+    async def command(self, name, args=None, seq=None, wait=5.0, station='CHECK'):
         """Send a command and wait for its answer. Returns (ack or None, seconds)."""
         if seq is None:
             self.seq += 1
             seq = self.seq
         t0 = time.monotonic()
-        self.send(command='set', node='/gcs/up/cmd', value=json.dumps(dict(seq=seq, station='CHECK', name=name, args=args or {})))
+        self.send(command='set', node='/gcs/up/cmd', value=json.dumps(dict(seq=seq, station=station, name=name, args=args or {})))
         while time.monotonic() - t0 < wait:
             a = self.values.get('/gcs/down/ack')
             if a:
@@ -237,6 +237,28 @@ async def scenario(server):
     add('G4', 'altitude in the hold', a and a['status'] == 'accepted' and abs(f['position/h-sl-ft'] - 19500) <= 200,
         '%.0f ft 4 minutes after commanding 19,500' % f['position/h-sl-ft'])
 
+    # ---- G10 a message from one station reaches the other, and not the aircraft's command log
+    c2 = Client()
+    await c2.connect()
+    c.listen_to('/gcs/chat/line')
+    c2.listen_to('/gcs/chat/line')
+    await asyncio.sleep(0.3)
+
+    async def relay(src, dst, text, n):
+        t0 = time.monotonic()
+        src.send(command='set', node='/gcs/chat/line', value=json.dumps(dict(station='S%d' % n, n=n, text=text, t=n)))
+        while time.monotonic() - t0 < 3.0:
+            v = dst.values.get('/gcs/chat/line')
+            if v and text in v and dst.stamp.get('/gcs/chat/line', 0) >= t0:
+                return time.monotonic() - t0
+            await asyncio.sleep(0.01)
+        return None
+    acks_before = c.values.get('/gcs/down/ack')
+    d1 = await relay(c, c2, 'hold at 18,000 for the tanker', 1)
+    d2 = await relay(c2, c, 'copy, camera is mine', 2)
+    add('G10', 'a message between two stations', d1 is not None and d2 is not None and d1 < 1.0 and d2 < 1.0 and c.values.get('/gcs/down/ack') == acks_before,
+        'one station to the other in %s s and back in %s s (limit 1 s); the aircraft answered nothing: %s' % (
+            '%.2f' % d1 if d1 is not None else 'never', '%.2f' % d2 if d2 is not None else 'never', c.values.get('/gcs/down/ack') == acks_before))
     # ---- G5 resume
     a, _ = await c.command('resume')
     on_leg = await until(lambda: c.status().get('kind') == 'route' and abs(f['ap/leg-xt-ft']) < 0.5 * NM and abs(f['ap/track-error-deg']) < 5, 1500)
@@ -244,11 +266,38 @@ async def scenario(server):
     add('G5', 'resume: back on the plan', a and a['status'] == 'accepted' and on_leg, 'on the leg within 0.5 nmi and 5 deg of its course; status: "%s"' % c.status().get('doing'))
     add('G6', 'commands that must be refused', all(ok for _, ok, _ in refused), '; '.join('%s: %s' % (l, r) for l, _, r in refused))
 
+    # ---- G9 the lost-link time-out set from the station: bounds, who may, and the loss at the time set
+    a15, _ = await c.command('linktimeout', dict(sec=15))
+    await until(lambda: False, 2)
+    shown = c.status().get('link_timeout')
+    refused9 = []
+    for label, args in (('5 s', dict(sec=5)), ('400 s', dict(sec=400)), ('"abc"', dict(sec='abc')), ('no number', {}), ('true', dict(sec=True))):
+        r, _ = await c.command('linktimeout', args)
+        refused9.append((label, bool(r and r['status'] == 'rejected'), r['reason'] if r else 'no answer'))
+    other, _ = await c.command('linktimeout', dict(sec=60), seq=1, station='OTHER')
+    await until(lambda: False, 2)
+    kept = c.status().get('link_timeout')
+    await until(lambda: False, 3)
+    t_quiet = c.beat_time
+    k9 = len(log['t'])
+    lost9 = await until(lambda: f['ap/link-lost'] == 1, 40, beat=False)
+    delay9 = log['t'][k9 + int(np.argmax(np.array(log['lost'][k9:]) > 0))] - t_quiet if lost9 else float('nan')
+    await until(lambda: False, 3)
+    back, _ = await c.command('resume')
+    c30, _ = await c.command('linktimeout', dict(sec=30))
+    await until(lambda: False, 2)
+    add('G9', 'the lost-link time-out set from the station', bool(a15 and a15['status'] == 'accepted' and shown == 15 and all(ok for _, ok, _ in refused9)
+        and other and other['status'] == 'rejected' and kept == 15 and lost9 and 14.5 <= delay9 <= 16.5 and back and back['status'] == 'accepted'
+        and c30 and c30['status'] == 'accepted' and c.status().get('link_timeout') == 30 and not c.status().get('link_lost')),
+        'set to 15 s, the status said %s; refused: %s; a station without control: %s, the time-out stayed %s; with the uplink cut the link was flagged %.1f s after the last heartbeat; '
+        'resume %s, and the time-out put back to 30 s' % (shown, '; '.join('%s: %s' % (l, r) for l, _, r in refused9), other and other.get('reason'), kept, delay9, back and back['status']))
+
     # ---- G7 the station goes silent
     await until(lambda: False, 120)
     t_last = c.beat_time
+    k0 = len(log['t'])
     flagged = await until(lambda: f['ap/link-lost'] == 1, 60, beat=False)
-    i_lost = int(np.argmax(np.array(log['lost']) > 0))
+    i_lost = k0 + int(np.argmax(np.array(log['lost'][k0:]) > 0))
     delay = log['t'][i_lost] - t_last
     await asyncio.sleep(0.3)
     cont = c.status().get('contingency')

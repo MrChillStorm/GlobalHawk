@@ -12,6 +12,7 @@ label in a menu or dialog; the second is what the operator sees.
 | map | the map | The plan the aircraft holds in white, the leg or hold being flown in magenta, the lost-link route in amber dashes, landing sites in green, other aircraft as arrowheads, the camera's target as a green cross, and in blue dashes whatever is being prepared and not yet sent. Drag to move it, the wheel to zoom. A click gives a point to a command that waits for one. |
 | follow | follow | Keeps the aircraft in the middle of the map. Dragging the map switches it off. |
 | fit | plan | Shows the whole plan. |
+| orient | north up / track up | Turns the map: north at the top, or the way the aircraft is going (its track) at the top. The arrow in the corner points to north. |
 | profile | the height profile | Under the map: the heights the plan asks for, dashed, and the height forecast. |
 
 ## Confirming a command
@@ -54,6 +55,20 @@ label in a menu or dialog; the second is what the operator sees.
 | c-alt | Altitude… | Changes the height of the leg or hold being flown. |
 | c-resume | Resume plan | Back to the leg that was left. |
 | c-home | Return home | Flies the lost-link route and lands. |
+| c-timeout | Link time-out… | Sets how long the aircraft may go without hearing the station in control before it leaves its plan for the lost-link route. Only the station in control; the aircraft takes 10 to 300 s. |
+
+## Station
+
+| id | Shown as | What it does |
+|---|---|---|
+| st-delay | Link delay | What this station's link adds each way to commands and to what comes down: none (line of sight), 0.6 s, 1.2 s (satellite) or 2.4 s. Takes effect on the next message. The rows above it say the station's name, the connection and how long ago the aircraft was last heard; the rows below it how long the aircraft takes to answer a command and which input is read for flying by hand. |
+
+## Messages
+
+| id | Shown as | What it does |
+|---|---|---|
+| msg-text | to the other stations | A line of up to 200 characters to the other stations. Enter sends it. |
+| msg-send | Send message | Sends it. It reaches the other stations at once, not delayed by the link, and does not go through the aircraft. |
 
 ## Camera
 

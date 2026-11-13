@@ -21,6 +21,9 @@
   const ANSWER_MS = 5000;
   const BEAT_MS = 1000;
   const CAMERA = '/sim/globalhawk/camera/';
+  const CHAT = '/gcs/chat/line';  // the stations' messages to each other: one property all of them listen to
+  const CHAT_MAX = 200;
+  const CHAT_KEPT = 50;
   const SLEW_MS = 170;
 
   class Link {
@@ -38,7 +41,10 @@
       this.state = { mode: 'idle' };
       this.beating = false;
       this.lastDown = null; // when anything last came down
-      this.t.onValue = (path, value) => this.later(() => this.receive(path, value));
+      this.messages = []; // newest last: { station, n, text, t (ms, the sender's clock), mine }
+      this.chatN = Math.floor(this.now() / 1000) % 1000000000; // never reused after a reload
+      // a message between crews is not a command and not telemetry: the link's delay is not put on it (the crews talk by voice in the real thing)
+      this.t.onValue = (path, value) => (path === CHAT ? this.receiveChat(value) : this.later(() => this.receive(path, value)));
       this.t.onState = (s) => {
         this.state = s;
         this.emit('state');
@@ -60,7 +66,7 @@
 
     /** Start listening to properties and beating. */
     start(paths) {
-      this.t.listen(['/gcs/down/ack', '/gcs/down/status', '/gcs/down/plan'].concat(paths || []));
+      this.t.listen(['/gcs/down/ack', '/gcs/down/status', '/gcs/down/plan', CHAT].concat(paths || []));
       this.beating = true;
       const tick = () => {
         if (!this.beating) return;
@@ -89,6 +95,42 @@
       this.timer(() => this.expire(), ANSWER_MS + 2 * this.latency + 50);
       this.emit('command', c);
       return c;
+    }
+
+    /** Say something to the other stations. Returns the message, or null if it is empty or over 200 characters. */
+    say(text) {
+      text = String(text === undefined || text === null ? '' : text).trim();
+      if (!text || text.length > CHAT_MAX) return null;
+      this.chatN += 1;
+      const m = { station: this.station, n: this.chatN, text, t: this.now() };
+      this.keep(Object.assign({ mine: true }, m));
+      this.t.send(CHAT, JSON.stringify(m)); // straight away: not through the delay
+      return m;
+    }
+
+    receiveChat(value) {
+      let m;
+      try {
+        m = value ? JSON.parse(value) : null;
+      } catch (e) {
+        return;
+      }
+      if (!m || typeof m.station !== 'string' || !Number.isFinite(m.n) || typeof m.text !== 'string' || m.text.length > CHAT_MAX) return;
+      if (this.messages.some((x) => x.station === m.station && x.n === m.n)) return; // our own, coming back, or heard twice
+      this.keep({ station: m.station, n: m.n, text: m.text, t: m.t, mine: false });
+    }
+
+    keep(m) {
+      m.at = this.now(); // when it reached this station: the senders' clocks may differ
+      this.messages.push(m);
+      if (this.messages.length > CHAT_KEPT) this.messages.shift();
+      this.emit('message', m);
+    }
+
+    /** How long the aircraft takes to answer a command, ms: the median of the last five that were answered. Null if none yet. */
+    answerMs() {
+      const d = this.commands.filter((c) => c.answeredAt !== null && c.state !== 'no answer').slice(-5).map((c) => c.answeredAt - c.sentAt).sort((a, b) => a - b);
+      return d.length ? d[Math.floor(d.length / 2)] : null;
     }
 
     /** Does the aircraft say this station holds control? */
@@ -222,7 +264,7 @@
     }
   }
 
-  const api = { Link, WsTransport, ANSWER_MS, BEAT_MS };
+  const api = { Link, WsTransport, ANSWER_MS, BEAT_MS, CHAT, CHAT_MAX };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else Object.assign((root.GCS = root.GCS || {}), api);
 })(typeof window !== 'undefined' ? window : globalThis);

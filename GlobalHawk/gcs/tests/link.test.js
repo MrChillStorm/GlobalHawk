@@ -125,3 +125,61 @@ function rig(opts) {
   assert.ok(seen.includes('status') && seen.includes('plan'));
 }
 console.log('link OK');
+
+// ---- messages between stations and the measured answer time (the station gaps)
+{
+  const { CHAT } = require('../js/link.js');
+  // S8: a message goes out at once, with no delay; the link's own delay is on commands, not on talk between crews
+  const R = rig({ latency: 600 });
+  const m = R.link.say('  hold at 18,000 for the tanker  ');
+  assert.deepStrictEqual([m.station, m.text], ['T', 'hold at 18,000 for the tanker']);
+  assert.strictEqual(R.sent.filter((x) => x.path === CHAT).length, 1, 'sent at once, not after 600 ms');
+  assert.strictEqual(R.link.say('   '), null);
+  assert.strictEqual(R.link.say('x'.repeat(201)), null);
+  assert.ok(R.link.say('x'.repeat(200)));
+  assert.strictEqual(R.link.messages.length, 2);
+  assert.ok(R.link.messages.every((x) => x.mine));
+  // heard from another station at once, and our own coming back is not shown twice
+  const heard = [];
+  R.link.on((what, x) => what === 'message' && heard.push(x));
+  R.transport.onValue(CHAT, JSON.stringify({ station: 'MCE', n: 7, text: 'copy', t: 123 }));
+  assert.strictEqual(heard.length, 1);
+  assert.deepStrictEqual([heard[0].station, heard[0].text, heard[0].mine], ['MCE', 'copy', false]);
+  R.transport.onValue(CHAT, JSON.stringify({ station: 'MCE', n: 7, text: 'copy', t: 123 }));       // twice: once
+  R.transport.onValue(CHAT, JSON.stringify(m));                                                       // our own, echoed
+  assert.strictEqual(heard.length, 1);
+  assert.strictEqual(R.link.messages.length, 3);
+  // not messages: ignored
+  for (const junk of ['', 'not json', '{}', JSON.stringify({ station: 'X', n: 'a', text: 'b' }), JSON.stringify({ station: 'X', n: 1, text: 'y'.repeat(201) })]) R.transport.onValue(CHAT, junk);
+  assert.strictEqual(R.link.messages.length, 3);
+  R.link.start([]);
+  assert.ok(R.transport.paths.includes(CHAT), 'listening to the messages');
+  R.link.stop();
+  // only the last fifty are kept
+  for (let i = 0; i < 60; i++) R.transport.onValue(CHAT, JSON.stringify({ station: 'MCE', n: 100 + i, text: 'm' + i, t: i }));
+  assert.strictEqual(R.link.messages.length, 50);
+  assert.strictEqual(R.link.messages[49].text, 'm59');
+
+  // S5: the answer time is the median of the last five answered commands, ms
+  const Q = rig({ latency: 0 });
+  assert.strictEqual(Q.link.answerMs(), null);
+  for (const wait of [1000, 1100, 5000, 1200, 1300, 1150]) {
+    const c = Q.link.command('hold');
+    Q.advance(wait);
+    if (wait < 5000) Q.ack(c.seq, 'accepted');
+    else Q.advance(1000);                                  // no answer: not counted
+  }
+  const last5 = [1100, 1200, 1300, 1150].sort((a, b) => a - b);
+  assert.ok([1000, ...last5].length >= 5);
+  const med = Q.link.answerMs();
+  assert.ok(med >= 1100 && med <= 1200, 'median of the last answered, got ' + med);
+  // the delay may be changed while running, and takes effect on the next message
+  Q.link.latency = 300;
+  const n0 = Q.cmds().length;
+  Q.link.command('hold');
+  Q.advance(299);
+  assert.strictEqual(Q.cmds().length, n0, 'not yet');
+  Q.advance(2);
+  assert.strictEqual(Q.cmds().length, n0 + 1, 'after the new delay');
+}
+console.log('link messages OK');

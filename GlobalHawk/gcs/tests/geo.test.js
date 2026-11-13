@@ -35,3 +35,38 @@ for (const [at, hdg, elev] of [[[60.3172, 24.9633], 43, 179], [[34.9, -117.88], 
   assert.deepStrictEqual(p.lost_link[1], p.items[2]);
 }
 console.log('geo: local plan ok');
+
+// ---- the map's projection, north up and track up (the station gaps)
+{
+  const centre = [60.3, 25.0];
+  const size = [800, 600];
+  const fpp = 400;
+  for (const up of [0, 37, 90, 180, 271.5, 359]) {
+    for (const p of [[60.3, 25.0], [60.35, 25.1], [60.1, 24.7], [60.45, 25.4]]) {
+      const [x, y] = g.toScreen(p, centre, up, fpp, size);
+      const back = g.fromScreen(x, y, centre, up, fpp, size);
+      const off = g.course(p, back).ft;
+      assert.ok(off < 0.5, `round trip ${up} deg: ${off} ft`);
+    }
+  }
+  // north up: north is up the screen, east is right
+  let [x, y] = g.toScreen([60.31, 25.0], centre, 0, fpp, size);
+  assert.ok(Math.abs(x - 400) < 1e-6 && y < 300);
+  [x, y] = g.toScreen([60.3, 25.01], centre, 0, fpp, size);
+  assert.ok(y === 300 && x > 400);
+  // heading up: a point straight ahead of an aircraft on 090 (east) is straight up the screen, one to its right is to the right
+  [x, y] = g.toScreen([60.3, 25.02], centre, 90, fpp, size);
+  assert.ok(Math.abs(x - 400) < 1e-6 && y < 300, 'ahead is up');
+  [x, y] = g.toScreen([60.28, 25.0], centre, 90, fpp, size);                 // south is to the right of an aircraft flying east
+  assert.ok(Math.abs(y - 300) < 1e-6 && x > 400, 'right is right');
+  // distances on the screen are the same whichever way it is turned
+  const d0 = Math.hypot(...[0, 1].map((i) => g.toScreen([60.4, 25.2], centre, 0, fpp, size)[i] - g.toScreen([60.2, 24.9], centre, 0, fpp, size)[i]));
+  const d1 = Math.hypot(...[0, 1].map((i) => g.toScreen([60.4, 25.2], centre, 123, fpp, size)[i] - g.toScreen([60.2, 24.9], centre, 123, fpp, size)[i]));
+  assert.ok(Math.abs(d0 - d1) < 1e-6);
+  // a click in track up lands where north up puts the same place: the same point of the earth, within a foot
+  const p = [60.37, 25.08];
+  const click = g.toScreen(p, centre, 213, fpp, size);
+  const there = g.fromScreen(click[0], click[1], centre, 213, fpp, size);
+  assert.ok(g.course(p, there).ft < 1);
+}
+console.log('geo: projection ok');

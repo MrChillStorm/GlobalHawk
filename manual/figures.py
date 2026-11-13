@@ -43,7 +43,7 @@ def layout():
              (5, 0, 0, 66, 7, 'Confirm bar: what is about to be sent.   Send   Cancel', '#fdf2c4'),
              (6, 67, 37, 33, 15, 'Flight display', '#dbe7f5'),
              (7, 67, 31, 33, 5.5, 'Aircraft; Engine and fuel; Navigators', '#eeeeee'),
-             (8, 67, 25, 33, 5.5, 'Control (who has it; handing over)', '#eeeeee'),
+             (8, 67, 25, 33, 5.5, 'Control; Station; Messages', '#eeeeee'),
              (9, 67, 19, 33, 5.5, 'By hand', '#eeeeee'),
              (10, 67, 13, 33, 5.5, 'Commands; Camera', '#e3f1e0'),
              (11, 67, 7, 33, 5.5, 'Plan editor (when open)', '#eeeeee'),

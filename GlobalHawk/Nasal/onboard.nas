@@ -15,6 +15,8 @@ var AOA_NEAR_DEG = 0.3;
 var AOA_SEC = 3.0;
 var OFFER_SEC = 120.0;                 # a handover offer lapses after this
 var FREE = ["control.take", "control.accept"];      # commands a station that does not hold control may send
+var LINK_TIMEOUT_MIN = 10.0;                # s, assumed: under 10 a satellite delay and a missed heartbeat could trigger it
+var LINK_TIMEOUT_MAX = 300.0;
 
 var among = func(x, v) {
     if (x == nil or typeof(x) != "scalar") return 0;
@@ -382,6 +384,13 @@ var Onboard = {
             me.off = "manual";
             return nil;
         },
+        "linktimeout": func(a) {
+            var sec = opt(a, "sec", nil);
+            if (!is_num(sec)) return "the time-out needs a number of seconds";
+            if (sec < LINK_TIMEOUT_MIN or sec > LINK_TIMEOUT_MAX) return sprintf("the time-out is %g to %g s", LINK_TIMEOUT_MIN, LINK_TIMEOUT_MAX);
+            fset("ap/link-timeout-sec", sec);
+            return nil;
+        },
         "nav": func(a) {
             if (!among(a["name"], NAVS)) return "unknown navigator";
             fset("nav/" ~ a["name"] ~ "-on", a["on"] ? 1 : 0);
@@ -522,6 +531,7 @@ var onboard = nil;
 var onboard_start = func {
     if (onboard != nil) return;
     foreach (var p; ["heartbeat", "cmd", "stick"]) if (getprop("/gcs/up/" ~ p) == nil) setprop("/gcs/up/" ~ p, "");
+    if (getprop("/gcs/chat/line") == nil) setprop("/gcs/chat/line", "");       # the stations' messages to each other: not the aircraft's business, but the property must exist
     onboard = Onboard.new();
     # a listener must not die: an error in one would stop FlightGear telling it of later commands
     var guarded = func(fn) {

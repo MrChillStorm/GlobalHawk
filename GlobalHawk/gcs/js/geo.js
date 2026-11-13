@@ -76,7 +76,30 @@
     };
   }
 
-  const api = { FT_PER_DEG, NM, course, along, turn, planLines, localPlan };
+  /**
+   * The map's projection: a point [lat, lon] to the screen (x right, y down, in pixels) about a centre, with the
+   * compass heading `up` at the top of the screen (0: north up; the aircraft's track: track up). `size` is [w, h].
+   */
+  function toScreen(p, centre, up, ftPerPx, size) {
+    const dn = (p[0] - centre[0]) * FT_PER_DEG;
+    const de = (p[1] - centre[1]) * FT_PER_DEG * Math.cos(rad(centre[0]));
+    const c = Math.cos(rad(up));
+    const s = Math.sin(rad(up));
+    return [size[0] / 2 + (de * c - dn * s) / ftPerPx, size[1] / 2 - (dn * c + de * s) / ftPerPx];
+  }
+
+  /** The inverse: a point of the screen to [lat, lon]. */
+  function fromScreen(x, y, centre, up, ftPerPx, size) {
+    const right = (x - size[0] / 2) * ftPerPx;
+    const top = (size[1] / 2 - y) * ftPerPx;
+    const c = Math.cos(rad(up));
+    const s = Math.sin(rad(up));
+    const de = right * c + top * s;
+    const dn = top * c - right * s;
+    return [centre[0] + dn / FT_PER_DEG, centre[1] + de / (FT_PER_DEG * Math.cos(rad(centre[0])))];
+  }
+
+  const api = { FT_PER_DEG, NM, course, along, turn, planLines, localPlan, toScreen, fromScreen };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else (root.GCS = root.GCS || {}).geo = api;
 })(typeof window !== 'undefined' ? window : globalThis);

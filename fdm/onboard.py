@@ -17,6 +17,7 @@ FUEL_LOW_LB = 1500.0               # assumed: about an hour and a half at cruise
 AOA_NEAR_DEG, AOA_SEC = 0.3, 3.0
 OFFER_SEC = 120.0                  # a handover offer lapses after this
 FREE = ('control.take', 'control.accept')      # commands a station that does not hold control may send
+LINK_TIMEOUT_MIN, LINK_TIMEOUT_MAX = 10.0, 300.0   # s, assumed: under 10 a satellite delay and a missed heartbeat could trigger it
 
 
 def _num(x):
@@ -382,6 +383,15 @@ class Onboard:
         f['ap/alt-cmd-ft'] = round(f['position/h-sl-ft'] / 100.0) * 100.0
         if self.airborne():
             self.cmd_hold({})
+
+    def cmd_linktimeout(self, a):
+        sec = a.get('sec')
+        if not _num(sec):
+            return 'the time-out needs a number of seconds'
+        if not LINK_TIMEOUT_MIN <= sec <= LINK_TIMEOUT_MAX:
+            return 'the time-out is %g to %g s' % (LINK_TIMEOUT_MIN, LINK_TIMEOUT_MAX)
+        self.f['ap/link-timeout-sec'] = float(sec)
+        return None
 
     def cmd_nav(self, a):
         if a.get('name') not in NAVS:

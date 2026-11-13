@@ -113,6 +113,7 @@
     return mine;
   }
 
+  let inputNow = 'keyboard';
   /* ------------------------------------------------------------- flying by hand: gamepad or keys, sent as the stick */
   let stickNow = null; // { p, r, y, t, s } while the aircraft is flown by hand from this station
   let stickAt = 0;
@@ -139,6 +140,7 @@
     stickAt = now;
     const pads = navigator.getGamepads ? [...navigator.getGamepads()].filter((p) => p && p.connected) : [];
     const pad = pads[0];
+    inputNow = pad ? 'gamepad: ' + pad.id.slice(0, 28) : 'keyboard';
     stickNow = pad && !keysDown.size ? G.controls.fromGamepad(pad.axes, pad.buttons, stickNow, dt) : G.controls.fromKeys(keysDown, stickNow, dt);
     link.stick(stickNow);
     const x = $('stick').getContext('2d');
@@ -170,11 +172,22 @@
   }, { once: false });
   function beep(level) {
     if (!audio || audio.state !== 'running') return;
-    const n = level === 'warning' ? 3 : 1;
+    // the loss of the link: two notes in turn, which no other alert uses; a warning three high beeps; a caution one low
+    const n = level === 'link' ? 4 : level === 'warning' ? 3 : 1;
+    if (level === 'message') {
+      const o = audio.createOscillator();
+      const g = audio.createGain();
+      o.frequency.value = 660;
+      g.gain.value = 0.04;
+      o.connect(g).connect(audio.destination);
+      o.start(audio.currentTime);
+      o.stop(audio.currentTime + 0.09);
+      return;
+    }
     for (let i = 0; i < n; i++) {
       const o = audio.createOscillator();
       const g = audio.createGain();
-      o.frequency.value = level === 'warning' ? 880 : 520;
+      o.frequency.value = level === 'link' ? (i % 2 ? 392 : 740) : level === 'warning' ? 880 : 520;
       g.gain.value = 0.08;
       o.connect(g).connect(audio.destination);
       o.start(audio.currentTime + i * 0.18);
@@ -212,7 +225,14 @@
         armed.alt = Number($('alt-in').value);
         renderConfirm();
       });
-    } else if (!armed.altField) extra.innerHTML = '';
+    } else if (armed.secField && !extra.firstChild) {
+      extra.innerHTML = 'time-out <input type="number" id="sec-in" step="5" min="10" max="300"> s';
+      $('sec-in').value = armed.sec;
+      $('sec-in').addEventListener('input', () => {
+        armed.sec = Number($('sec-in').value);
+        renderConfirm();
+      });
+    } else if (!armed.altField && !armed.secField) extra.innerHTML = '';
     $('confirm-yes').disabled = !armed.ready();
     map.data.preview = armed.preview ? armed.preview() : null;
     map.draw();
@@ -307,6 +327,15 @@
     text: () => `Hold here at ${fmtAlt(targetAlt())} ft: a right-hand circle starting from the present position`,
     preview: () => (here() ? { circle: { centre: geo.along(here(), tel.hdg + 90, holdRadius()), radiusFt: holdRadius() } } : null),
   }));
+  $('c-timeout').addEventListener('click', () => {
+    const now = link.status ? link.status.link_timeout : 30;
+    arm({
+      name: 'linktimeout', button: $('c-timeout'), secField: true, sec: now,
+      ready: () => G.linkinfo.validTimeout(armed.sec) !== null,
+      text: () => `Lost-link time-out ${Number.isFinite(armed.sec) ? armed.sec : '?'} s (it is ${now} s now): after that long without hearing the station in control the aircraft leaves its plan and flies its lost-link route home. ${G.linkinfo.validTimeout(armed.sec) === null ? `The aircraft takes ${G.linkinfo.TIMEOUT_MIN} to ${G.linkinfo.TIMEOUT_MAX} s.` : ''}`,
+      args: () => ({ sec: armed.sec }),
+    });
+  });
   $('c-alt').addEventListener('click', () => {
     const c = { name: 'altitude', button: $('c-alt'), altField: true, alt: targetAlt() };
     c.ready = () => c.alt >= 0 && c.alt <= 65000;
@@ -600,8 +629,82 @@
     render();
   });
 
+  /* ------------------------------------------------------------- the link, this station, messages, the map's orientation */
+  const restored = new G.linkinfo.Restored();
+  const DELAYS = [[0, 'none (line of sight)'], [600, '0.6 s'], [1200, '1.2 s (satellite)'], [2400, '2.4 s']];
+  const delaySel = $('st-delay');
+  if (!DELAYS.some((d) => d[0] === link.latency)) DELAYS.push([link.latency, `${link.latency} ms (the address's)`]);
+  delaySel.innerHTML = DELAYS.map((d) => `<option value="${d[0]}">${d[1]}</option>`).join('');
+  delaySel.value = String(link.latency);
+  delaySel.addEventListener('change', () => (link.latency = Number(delaySel.value))); // from the next message on
+
+  function renderStation(live) {
+    $('st-name').textContent = link.station;
+    const where = String(link.state.message || '').replace(/^ws:\/\//, '').replace(/\/PropertyListener$/, '');
+    $('st-conn').textContent = demo ? 'in this page (demo)' : `${link.state.mode}${where ? ': ' + where : ''}`;
+    $('st-heard').textContent = link.lastDown === null ? 'never' : `${((Date.now() - link.lastDown) / 1000).toFixed(1)} s ago`;
+    const a = link.answerMs();
+    $('st-answer').textContent = a === null ? 'no command answered yet' : a < 1000 ? `${Math.round(a)} ms` : `${(a / 1000).toFixed(1)} s`;
+    $('st-input').textContent = inputNow;
+  }
+
+  // messages to the other stations: not through the aircraft, not delayed
+  let unread = 0;
+  $('messages-box').hidden = demo; // the demo has one station
+  link.on((what, m) => {
+    if (what === 'message' && !m.mine) {
+      unread += 1;
+      beep('message');
+    }
+  });
+  const sendMessage = () => {
+    if (link.say($('msg-text').value)) $('msg-text').value = '';
+  };
+  $('msg-send').addEventListener('click', sendMessage);
+  $('msg-text').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') sendMessage();
+  });
+  const seen = () => (unread = 0);
+  $('msg-text').addEventListener('focus', seen);
+  $('msg-log').addEventListener('pointerdown', seen);
+  function renderMessages(live) {
+    if (demo) return;
+    $('msg-send').disabled = $('msg-text').disabled = !live;
+    const fresh = unread;
+    const html = link.messages.slice(-8).map((m, i, a) => `<li class="${m.mine ? 'mine' : ''}${!m.mine && i >= a.length - fresh ? ' new' : ''}"><span class="when">${clock(m.at)}</span><span><b>${esc(m.station)}</b> ${esc(m.text)}</span></li>`).join('');
+    if ($('msg-log').dataset.html !== html) {
+      $('msg-log').innerHTML = html;
+      $('msg-log').dataset.html = html;
+      $('msg-log').scrollTop = $('msg-log').scrollHeight;
+    }
+    $('messages-box').querySelector('h2').textContent = fresh ? `Messages (${fresh} new)` : 'Messages';
+  }
+
+  let trackUp = false;
+  function mapUp() {
+    const deg = Number.isFinite(tel.trackRad) && (tel.gs || 0) > 20 ? (tel.trackRad * 180) / Math.PI : tel.hdg;
+    map.up = trackUp && Number.isFinite(deg) ? ((deg % 360) + 360) % 360 : 0;
+  }
+  $('orient').addEventListener('click', () => {
+    trackUp = !trackUp;
+    $('orient').textContent = trackUp ? 'track up' : 'north up';
+    $('orient').classList.toggle('on', trackUp);
+    mapUp();
+    map.draw();
+  });
+
+  // closing the page cuts the link of the station in control of a flight: ask first
+  window.addEventListener('beforeunload', (e) => {
+    const w = G.linkinfo.closingWarning(link.status, link.station);
+    if (!w) return undefined;
+    e.preventDefault();
+    e.returnValue = w;
+    return w;
+  });
+
   /* ------------------------------------------------------------- showing */
   function render() {
+    mapUp();
     const s = link.status;
     const live = link.state.mode === 'live' && link.lastDown !== null && Date.now() - link.lastDown < 3000 + link.latency;
     // only the station that has control commands (before anyone has it, the first to speak gets it)
@@ -619,9 +722,16 @@
     chip.className = 'chip ' + (sending ? 'live' : live || link.state.mode === 'connecting' ? 'connecting' : 'down');
     chip.textContent = sending ? `${link.station} linked` : live ? 'receiving only' : link.state.mode === 'connecting' ? 'connecting' : 'NO LINK';
     const timeout = s ? s.link_timeout : 30;
-    $('link-note').textContent = live
-      ? `${link.latency ? link.latency / 1000 + ' s delay · ' : ''}if lost: route home after ${timeout} s`
-      : s && s.started ? `the aircraft goes home by itself ${timeout} s after the last contact` : '';
+    const count = live ? G.linkinfo.countdown(s) : null; // the aircraft has stopped hearing the station in control: how long, and how long is left
+    $('link-note').classList.toggle('count', !!count);
+    $('link-note').textContent = count
+      ? G.linkinfo.countdownText(count, link.station)
+      : live
+        ? `${link.latency ? link.latency / 1000 + ' s delay · ' : ''}if lost: route home after ${timeout} s`
+        : s && s.started ? `the aircraft goes home by itself ${timeout} s after the last contact` : '';
+    const comeBack = restored.update(sending, Date.now());
+    renderStation(live);
+    renderMessages(live);
     $('n-hdg').textContent = Number.isFinite(tel.hdg) ? String(Math.round(tel.hdg) % 360).padStart(3, '0') + '°' : '-';
     $('n-mach').textContent = Number.isFinite(tel.mach) ? tel.mach.toFixed(3) : '-';
     $('n-gs').textContent = Number.isFinite(tel.gs) ? Math.round(tel.gs) + ' kt' : '-';
@@ -635,14 +745,16 @@
     trafficList.forEach((t) => (t.threat = ownPath ? G.traffic.threat(ownPath, t) : null));
     const trafficAlert = airborneNow ? G.traffic.alert(trafficList) : null;
     map.data.traffic = trafficList;
-    const list = alerts.update(s ? s.alerts : [], link.lastDown, !!(s && s.started) || link.lastDown !== null, trafficAlert ? [trafficAlert] : []);
+    const own = trafficAlert ? [trafficAlert] : [];
+    if (comeBack) own.push({ id: 'link-restored', level: 'advisory', text: 'LINK RESTORED', action: s && s.link_lost ? 'The aircraft is still on its lost-link route: Resume plan to go on with the mission' : '' });
+    const list = alerts.update(s ? s.alerts : [], link.lastDown, !!(s && s.started) || link.lastDown !== null, own);
     const html = list.map((a) => `<div class="alert ${a.level} ${a.acked ? 'acked' : 'new'}"><b>${esc(a.text)}</b><span class="do">${esc(a.action)}</span>${a.acked ? '' : `<button data-ack="${esc(a.id)}">OK</button>`}</div>`).join('');
     if ($('alerts').dataset.html !== html) {
       $('alerts').innerHTML = html;
       $('alerts').dataset.html = html;
     }
     const tone = alerts.tone();
-    if (tone && Date.now() - toneAt > (tone === 'warning' ? 2000 : 5000)) {
+    if (tone && Date.now() - toneAt > (tone === 'warning' ? 2000 : tone === 'link' ? 4000 : 5000)) {
       toneAt = Date.now();
       beep(tone);
     }
@@ -681,6 +793,7 @@
     $('c-goto').disabled = $('c-hold').disabled = $('c-alt').disabled = !(mine && enroute && !byHand);
     $('c-resume').disabled = !(mine && s && s.off_plan && s.contingency !== 'engine' && s.kind !== 'done' && !byHand);
     $('c-home').disabled = !(mine && enroute && link.plan && link.plan.lost_link && !byHand);
+    $('c-timeout').disabled = !(mine && s);
     $('m-auto').disabled = !(mine && byHand);
     $('m-prot').disabled = !(mine && enroute && s.manual !== 1) || demo; // flying by hand needs the flight model
     $('m-direct').disabled = !(mine && enroute && s.manual !== 2) || demo;
