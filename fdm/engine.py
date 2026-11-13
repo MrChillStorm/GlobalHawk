@@ -50,6 +50,7 @@ JET_VELOCITY_RATIO = 0.8         # bypass over core jet speed at the reference p
 # An estimate; no air flow figure is in our sources.
 FAN_FLOW = 129.0                 # kg/s
 FLAT_RATING_LBF = 7500.0         # NASA: "flat rated at 7500 lbs thrust at sea level"
+HPX_PROBE_KW = 20.0              # power taken off the high-pressure spool to measure the sensitivities with (they are linear in it)
 
 
 def isa(alt_ft, dT=0.0):
@@ -121,9 +122,18 @@ class Turbofan:
         byp = V19 + pt19 - V0
         return dict(specific_thrust=(core + a * byp) / (1 + a), V9=V9, V19=V19, M9=M9, M19=M19)
 
-    def run(self, alt, M0, Tt4, dT=0.0):
-        """The engine at a flight condition and turbine entry temperature: thrust N, fuel kg/s and the cycle."""
+    # Power taken off the high-pressure spool for the aircraft's generators and the payload, W, above what the installation
+    # factor (below) already holds. 0 leaves every figure as it was.
+    hpx = 0.0
+
+    def run(self, alt, M0, Tt4, dT=0.0, hpx=None):
+        """The engine at a flight condition and turbine entry temperature: thrust N, fuel kg/s and the cycle.
+        hpx: power extracted from the high-pressure spool, W (default self.hpx). It comes out of the spool's work balance:
+        the compressor gets that much less, so the core's pressure ratio and flow fall at the same turbine entry
+        temperature; held to the same thrust, the engine burns more."""
         r = self.ref
+        hpx = self.hpx if hpx is None else hpx
+        core = 1.0                                          # the core flow over the reference's, from the last pass
         T0, P0 = isa(alt, dT)
         s = dict(M0=M0, T0=T0, P0=P0, Tt4=Tt4)
         s['tau_r'] = 1 + (GC - 1) / 2 * M0 * M0
@@ -132,6 +142,9 @@ class Turbofan:
         alpha, tau_f = r['alpha'], r['tau_f']
         for _ in range(200):
             tau_ch = 1 + (s['tau_l'] / (s['tau_r'] * tau_f)) / (r['tau_l'] / (r['tau_r'] * r['tau_f'])) * (r['tau_ch'] - 1)
+            if hpx:
+                # the extracted power over the core air's enthalpy at the ambient temperature, taken off the compressor's rise
+                tau_ch = max(tau_ch - hpx / (r['mdot_core'] * core * CPC * T0) / (s['tau_r'] * tau_f), 1.01)
             pi_ch = tau_ch ** (GC * E_C / (GC - 1))
             pi_f = tau_f ** (GC * E_F / (GC - 1))
             M19 = nozzle(s['pi_r'] * PI_D * pi_f * PI_FN, 1.0, GC, RC)[0]
@@ -345,6 +358,10 @@ def tables(e):
     idle_thrust_lbf[altitude][mach]        idle, standard day
     fuel_lbh[altitude][mach][fraction]     fuel flow at a fraction of the standard-day maximum thrust, standard day;
                                            off standard the flight model scales it with the square root of temperature
+    hpx_thrust_per_kw[altitude][mach]      the change in maximum thrust, as a fraction of it, for each kW taken off the
+                                           high-pressure spool (HPX_PROBE_KW measured, linear)
+    hpx_fuel_per_kw[altitude][mach][fraction]   the change in fuel flow at the same thrust, as a fraction of it, per kW; the
+                                           ICAO-shaped part-power law has none, so below X_ICAO it takes the value at 0.4
     """
     alts = list(range(0, 70001, 5000))
     machs = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
@@ -366,6 +383,28 @@ def tables(e):
         t['opr_at_max'].append(opr)
         t['idle_thrust_lbf'].append(idle)
         t['fuel_lbh'].append(fuel)
+    # power extraction: the sensitivities, by differences of the cycle with HPX_PROBE_KW taken off
+    t['hpx_probe_kw'] = HPX_PROBE_KW
+    t['hpx_thrust_per_kw'], t['hpx_fuel_per_kw'] = [], []
+    k = fracs.index(0.4)
+    for i, a in enumerate(alts):
+        tr, fu = [], []
+        for j, m in enumerate(machs):
+            o0 = e.maximum(a, m)
+            e.hpx = HPX_PROBE_KW * 1e3
+            try:
+                o1 = e.maximum(a, m)
+                row = []
+                for n, fr in enumerate(fracs):
+                    f0 = t['fuel_lbh'][i][j][n]
+                    row.append(0.0 if fr < 0.4 or f0 <= 0 else (e.at_thrust(a, m, fr * o0['thrust'])['fuel'] / LBH / f0 - 1) / HPX_PROBE_KW)
+            finally:
+                e.hpx = 0.0
+            row = [row[k] if fr < 0.4 else v for fr, v in zip(fracs, row)]
+            tr.append(round((o1['thrust'] / o0['thrust'] - 1) / HPX_PROBE_KW, 6))
+            fu.append([round(v, 6) for v in row])
+        t['hpx_thrust_per_kw'].append(tr)
+        t['hpx_fuel_per_kw'].append(fu)
     return t
 
 
@@ -378,7 +417,19 @@ def main():
     hrows = []
     top = h.maximum(60000, 0.6)
     hrows.append(('H1', 'OPR at the limit, 60,000 ft, M 0.6', top['opr'], 23.0, 10.0, 'predicted'))
+    # H3 power extraction: the heat of combustion of the fuel burned for 20 kW taken off the high-pressure spool, against the
+    # power: the core's thermal efficiency, which cannot be under 0.2 or over 0.6 (limits written before the first run)
+    base = h.at_thrust(60000, 0.6, 15000.0 / 30 * LBF)
+    h.hpx = HPX_PROBE_KW * 1e3
+    try:
+        more = h.at_thrust(60000, 0.6, 15000.0 / 30 * LBF)
+    finally:
+        h.hpx = 0.0
+    eff = HPX_PROBE_KW * 1e3 / ((more['fuel'] - base['fuel']) * HPR)
+    hrows.append(('H3', 'efficiency of the fuel burned for 20 kW off the spool, 60,000 ft', eff, 0.4, 50.0, 'predicted'))
     report(hrows)
+    print('  H3: at the cruise thrust of %.0f lbf the fuel flow goes from %.0f to %.0f lb/h (%+.1f %%) for 20 kW (limit on its efficiency 0.2 to 0.6)' % (
+        base['thrust'] / LBF, base['fuel'] / LBH, more['fuel'] / LBH, 100 * (more['fuel'] / base['fuel'] - 1)))
     print('  H2 window: fuel flow at 60,000 ft, M 0.6, 15,000 lb:')
     for ld in (25, 30, 35):
         o = h.at_thrust(60000, 0.6, 15000.0 / ld * LBF)

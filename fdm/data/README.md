@@ -183,6 +183,23 @@ of wall correction. Limits were written first.
   on angle of attack applies, but lift does grow faster than the simple correction says once the flow over the
   section turns supersonic. The flight data's lift curve will tell.
 
+**Compressibility of the moment, 2026-11-13 (a fit and its evidence; `fdm/section_study.py`).** The table above is what NeuralFoil's
+data gave. Its moment grew 24 % from Mach 0.2 to 0.6 at the tunnel's lift coefficients (Prandtl-Glauert alone is 22 %), the
+tunnel's 15.5 % (14 to 17 %, two Reynolds numbers). XFOIL 6.99 (M. Drela; built here with gfortran, double precision, its plot
+library replaced by empty subroutines; the recipe is in `section_study.py`, the build in the untracked `tools/xfoil-build`), with
+its Karman-Tsien correction, free transition at n_crit 9, gives 19 %, and at Mach 0.2 a moment of -0.1048 where NeuralFoil gives
+-0.1079 and the tunnel -0.0945: the solvers agree with each other, 0.010 to 0.013 more nose-down than the tunnel, which no
+compressibility correction touches. At Mach 0.6 XFOIL stops converging past its first sonic point (six points at Re 1 million,
+eight at 2 million: not a table; its lift slope falls past Mach 0.55, which is not believed). **Fit, one parameter, named:** the wing's
+moment is multiplied by beta^(1-K) with beta = sqrt(1 - M^2), so that it grows as beta^-K; K = 0.651 gives the tunnel's growth,
+`strips.CM_MACH_K = 0.65`. Not applied to lift, drag or the tail. After it the moment misses at Mach 0.2, 0.6 (Re 1, 2 million) by
+-0.0124, -0.0154, -0.0132 (limit 0.02: S2 now passes); S1 and S3 are as they were (S3 at Mach 0.6, Re 2 million stays a miss).
+**What it did that it was not fitted to do:** the bare airframe's speed mode at the cruise (60,000 ft, Mach 0.6, 15,000 lb) was a real
+root doubling in 10.4 s; with each table of the aerodynamic model held at its Mach 0.45 values above that Mach, one at a time, only
+holding the moment's removed it (the lift's and the drag's left it at 8.7 and 11.1 s). With the exponent it is a phugoid of 176 s,
+damping 0.06. The trimmed lift-curve slope is 2.8 and 5.6 % over the flights' (limit 10 %), and the mission's drag increment was
+refitted, 0.00564 to 0.00586, because the time to 55,000 ft had gone to -6.1 % (limit 5 %); the fan-speed factor stays 1.01.
+
 ### Against the Air Force's flight test of the Block 20
 
 Eaton and Woolf (U.S. Air Force Flight Test Center, 2009) compare the RQ-4 Block 20's wind-tunnel model with 40
@@ -328,6 +345,14 @@ What already disagrees with flight data, before any calibration:
   the model. The flat rating or the temperature limit binds harder than Phase 2 has it.
 - **Six degrees of ruddervator in trim** is a lot, and it comes from the wing section's nose-down moment and the
   forward centre of gravity. The real tail will have an incidence that carries this; ours has none yet.
+
+### Frame rate (2026-11-13)
+
+120 Hz, which is FlightGear's. `GH_HZ=240` (480, 960) in the environment runs every check script at that rate (`harness.HZ`);
+`fdm/rate_study.py` flies phase 7b's take-off, three landings and rollouts at 120, 240, 480 and 960 Hz: every check passes at all
+four, lift-off differs by 1 kt and 0.5 deg between 120 and 960 Hz, touchdown by under 0.01 m/s, 0.01 deg and 0.1 kt, the rollout's
+deceleration by none. A frame of the model costs 16 microseconds (the model alone, not the properties FlightGear copies in and out
+each frame), so reduced-rate channels would save nothing worth the complication; the model stays at 120 Hz.
 
 ## Calibration against flight data
 
@@ -892,6 +917,19 @@ Against NASA's whole-aircraft figures (windows, not checks, until the drag model
 a lift-to-drag ratio of 25 to 35 needs 430 to 600 lbf of the 640 available and burns 273 to 382 lb/h; NASA's flights
 average about 470 lb/h over 31 h with the climb in it. Breguet endurance with TSFC 0.637 and all 15,300 lb of fuel
 is 33 h at a lift-to-drag ratio of 25 and 40 h at 30.
+
+### Power taken off the engine (2026-11-13)
+
+Not in the first model; the Air Force's paper names it a condition of the endurance. `Turbofan.run(..., hpx=)` in `fdm/engine.py` takes
+power off the high-pressure spool: the compressor's work balance loses that much, so its pressure ratio and the core's flow fall at the
+same turbine temperature; held to the same thrust, the engine burns more. `tables()` measures two sensitivities with 20 kW
+(`HPX_PROBE_KW`) and writes them into `engine.json` (`hpx_thrust_per_kw[altitude][mach]`, `hpx_fuel_per_kw[altitude][mach][fraction]`,
+linear); the flight model has `engine/extra-power-kw` (0 or more, default 0: **every earlier figure is unchanged**, which the logs show),
+which scales the maximum thrust and the fuel flow. The part-power fuel law of the ICAO points has no extraction in it, so below 0.4 of
+the maximum the sensitivity at 0.4 is used. At 60,000 ft: 20 kW costs +2.1 % fuel at the model's cruise trim (+2.5 % at 500 lbf) and
+-0.5 % maximum thrust; at 10,000 ft +0.6 % fuel at a climb's thrust. The efficiency of the extra fuel is 0.47 (H3, limits 0.2 to 0.6).
+The mission's endurance falls from 34.7 h to 34.0 at 20 kW and 33.2 at 40 kW. **The size of the effect has nothing to be held to**: no
+engine data is in the ATTREX records (their columns are pressure, temperature, speed, wind, position and attitude).
 
 ## How the real aircraft is flown (for the flight laws and the ground station)
 

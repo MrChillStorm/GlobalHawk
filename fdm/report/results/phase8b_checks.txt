@@ -5,7 +5,7 @@
 
 JSBSim startup beginning ...
 
-B2  a normal flight, stand to 15,000 ft  pass  alerts seen in 8 minutes: none; at 18744 ft
+B2  a normal flight, stand to 15,000 ft  pass  alerts seen in 8 minutes: none; at 18684 ft
 B2  off-plan                             pass  raised after 0.0 s: "OFF THE PLAN: HOLD" (); cleared after 0.0 s
 B2  nav-one                              pass  raised after 0.5 s: "ONE NAVIGATOR LEFT" (No cross-check of attitude is left. Switch one on); cleared after 0.5 s
 B2  nav-disagree                         pass  raised after 0.5 s: "NAVIGATORS DISAGREE" (The aircraft is using the one that matches its turn rate. Land); cleared after 0.5 s
@@ -18,4 +18,4 @@ B2  engine: names the site               pass  Gliding to Demo field 04 by itsel
 B2  no-site                              pass  raised after 0.5 s: "NO RUNWAY IN REACH" (Gliding towards the nearest)
 
 11 checks, 11 pass, 0 miss
-exit 0 after 5 s
+exit 0 after 3 s

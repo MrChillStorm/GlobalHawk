@@ -20,6 +20,7 @@
   <property value="0">ap/bias-throttle</property>
   <property value="0">ap/theta-latched-deg</property>
   <property value="0">ap/theta-delta-deg</property>
+  <property value="0">ap/theta-speed-bias-deg</property>
   <property value="0">ap/land-mode</property>
   <property value="0">ap/ground-steer</property>
   <property value="0">ap/taxi-speed-kt</property>
@@ -543,7 +544,7 @@
       <test logic="AND" value="1">
         ap/land-mode == 1
         ap/rollout == 0
-        aero/wheel-height-ft lt 70
+        aero/wheel-height-ft lt 45
       </test>
     </switch>
     <fcs_function name="ap/approach-keas">
@@ -606,9 +607,16 @@
       <trigger>ap/trig-speed</trigger>
       <clipto><min>-20</min><max>20</max></clipto>
     </pid>
+    <switch name="ap/latch-theta-speed-bias">
+      <description>the pitch command's change from the latched attitude, as it was when the speed mode took over</description>
+      <default value="ap/theta-speed-bias-deg"/>
+      <test value="ap/theta-delta-deg">ap/pitch-mode ne 1</test>
+      <test value="ap/theta-delta-deg">ap/engaged == 0</test>
+      <output>ap/theta-speed-bias-deg</output>
+    </switch>
     <fcs_function name="ap/theta-speed-deg">
       <function>
-        <sum><product><value>0.5</value><property>ap/speed-error-kt</property></product><property>ap/theta-speed-i-deg</property></sum>
+        <sum><property>ap/theta-speed-bias-deg</property><product><value>0.5</value><property>ap/speed-error-kt</property></product><property>ap/theta-speed-i-deg</property></sum>
       </function>
       <clipto><min>-20</min><max>20</max></clipto>
     </fcs_function>
@@ -662,11 +670,11 @@
       </function>
     </fcs_function>
     <fcs_function name="ap/theta-takeoff-deg">
-      <description>takeoff: the attitude on the ground until 130 KIAS, then 7 deg</description>
+      <description>takeoff: the attitude on the ground until 120 KIAS, then 6.5 deg</description>
       <function>
         <ifthen>
-          <or><ge><property>velocities/vc-kts</property><value>130</value></ge><gt><property>aero/wheel-height-ft</property><value>3</value></gt></or>
-          <difference><value>7</value><property>ap/theta-latched-deg</property></difference>
+          <or><ge><property>velocities/vc-kts</property><value>120</value></ge><gt><property>aero/wheel-height-ft</property><value>3</value></gt></or>
+          <difference><value>6.5</value><property>ap/theta-latched-deg</property></difference>
           <value>0</value>
         </ifthen>
       </function>
@@ -765,7 +773,7 @@
       </test>
       <test logic="AND" value="0">
         ap/engaged == 1
-        velocities/vc-kts ge 125
+        velocities/vc-kts ge 115
         ap/rollout == 0
       </test>
     </switch>
@@ -1056,15 +1064,15 @@
       <output>ap/spoiler-base</output>
     </switch>
     <fcs_function name="ap/flare-sink-wanted-fps">
-      <description>the sink wanted in the flare: the approach's, falling with height to 2.3 ft/s at the ground</description>
+      <description>the sink wanted in the flare: the approach's, falling with height to 1.6 ft/s at the ground</description>
       <function>
-        <max><value>2.3</value><product><value>0.07782</value><property>velocities/vg-fps</property><quotient><property>aero/wheel-height-ft</property><value>70</value></quotient></product></max>
+        <max><value>1.6</value><product><value>0.07782</value><property>velocities/vg-fps</property><quotient><property>aero/wheel-height-ft</property><value>45</value></quotient></product></max>
       </function>
     </fcs_function>
     <fcs_function name="ap/spoiler-flare">
       <description>in the flare the spoilers work on sink rate alone: they come in as far as the sink needs</description>
       <function>
-        <sum><property>ap/spoiler-base</property><product><value>0.25</value><sum><property>velocities/h-dot-fps</property><property>ap/flare-sink-wanted-fps</property></sum></product></sum>
+        <sum><property>ap/spoiler-base</property><product><value>0.6</value><sum><property>velocities/h-dot-fps</property><property>ap/flare-sink-wanted-fps</property></sum></product></sum>
       </function>
       <clipto><min>0.10</min><max>1</max></clipto>
     </fcs_function>

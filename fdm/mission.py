@@ -26,6 +26,7 @@ import harness as H         # noqa: E402
 CAL = os.path.join(HERE, 'data', 'calibration.json')
 TAKEOFF_WEIGHT, TAKEOFF_FUEL = 25600.0, 14500.0
 FIELD = 2300.0                          # ft: Edwards
+CEILING = 65000.0                       # ft: NASA's maximum height (2008); the laws' and the planner's limit too
 # Pastor and others 2018, tables 2 and 3: seconds from 10,000 ft to the top of each block, two flights
 PASTOR_CLIMB = {20000: (236.4, 254.6), 30000: (542.3, 538.6), 40000: (997.19, 981.8), 50000: (2160.2, 2106.8), 55000: (4607.0, 4584.1)}
 # table 4: minutes after takeoff and height, ft, two flights
@@ -65,14 +66,34 @@ def point(f, alt, weight):
     return roc / (1.0 + t['ktas'] * H.KT / 32.174 * dvdh), t['fuel_flow'], t
 
 
-def fly(f, weight=TAKEOFF_WEIGHT, fuel=TAKEOFF_FUEL, alt=FIELD, reserve=0.05, hours=40.0):
-    """The whole flight. Returns a log of arrays: t (s), alt, weight, roc, flow, mach, ktas, cl, ld."""
+def fly(f, weight=TAKEOFF_WEIGHT, fuel=TAKEOFF_FUEL, alt=FIELD, reserve=0.05, hours=40.0, ceiling=None):
+    """The whole flight. Returns a log of arrays: t (s), alt, weight, roc, flow, mach, ktas, cl, ld.
+
+    ceiling: a height the aircraft may not pass. Once it is there it flies level at it, on the schedule's speed, as
+    the laws do (they refuse a height over 65,000 ft); without one the aircraft goes on climbing as it lightens, to
+    71,000 ft with the tanks nearly dry, which the real aircraft cannot do. A flight that has no thrust for the level
+    flight at the ceiling ends there (log['ended'] says why).
+    """
     log = {k: [] for k in ('t', 'alt', 'weight', 'roc', 'flow', 'mach', 'ktas', 'cl', 'ld')}
-    t, empty = 0.0, weight - fuel
+    t, empty, held, ended = 0.0, weight - fuel, False, 'fuel'
     while weight - empty > reserve * fuel and t < hours * 3600:
-        roc, flow, tr = point(f, alt, weight)
+        if ceiling is not None and (alt >= ceiling or held):
+            held, alt = True, ceiling
+            tr = H.trim(f, alt=alt, weight=weight, **schedule(alt))
+            if not tr['ok'] or tr['throttle'] > 0.999:
+                ended = 'thrust'
+                break
+            roc, flow = 0.0, tr['fuel_flow']
+        else:
+            roc, flow, tr = point(f, alt, weight)
         for k, v in zip(log, (t, alt, weight, roc, flow, tr['mach'], tr['ktas'], tr['CL'], tr['CL'] / tr['CD'])):
             log[k].append(v)
+        if held:
+            dt = 300.0
+            alt += 0.0
+            weight -= flow * dt / 3600.0
+            t += dt
+            continue
         # a step is 500 ft of climb or, once the climb is slow, 5 minutes
         dt = min(300.0, 500.0 / max(abs(roc), 1e-3) * 60.0)
         # second-order: the rate half a step on
@@ -80,7 +101,11 @@ def fly(f, weight=TAKEOFF_WEIGHT, fuel=TAKEOFF_FUEL, alt=FIELD, reserve=0.05, ho
         alt += roc2 * dt / 60.0
         weight -= flow2 * dt / 3600.0
         t += dt
-    return {k: np.array(v) for k, v in log.items()}
+    if t >= hours * 3600:
+        ended = 'time'
+    out = {k: np.array(v) for k, v in log.items()}
+    out['ended'] = ended
+    return out
 
 
 def compare(log):
@@ -172,20 +197,26 @@ if __name__ == '__main__':
         f = H.load()
     print('drag increment %.5f, fan-speed factor %.3f, fuel factor %.3f' % (f['cal/drag-increment'], cal.get('fan_speed_factor', 1.0),
                                                                           f['cal/fuel-factor']))
-    log = fly(f)
+    free = fly(f)                       # no ceiling: what the model does if nothing stops it
+    log = fly(f, ceiling=CEILING)       # the flight as the aircraft may fly it
     rows, hours = compare(log)
     missed = report(rows)
+    _, hours_free = compare(free)
     i55 = int(np.argmax(log['alt'] >= 55000))
-    # P3, the plan's limit: NASA's "31+ h" taken as 29 to 35 h; the fuel-flow factor that could close it was not used
+    # P3, the plan's limit: NASA's "31+ h" taken as 29 to 35 h, flown to the 65,000 ft ceiling (the limit was first met only
+    # by a flight that climbed to 71,000 ft: 35.4 h, a miss; that figure stays below as a reported line). Nothing is fitted.
     ok = 29.0 <= hours <= 35.0
     missed += not ok
     print('  %-4s %-44s %9.1f %9.1f %9s %7s  %s  (%s)' % ('P3', 'endurance, %.0f lb of fuel to 5 %% left, h' % TAKEOFF_FUEL, hours, 31.0, '%+6.1f h' % (hours - 31.0),
                                                        '29-35 h', 'pass' if ok else 'MISS', 'predicted'))
-    print('  highest %.0f ft; fuel to 55,000 ft %.0f lb' % (log['alt'].max(), log['weight'][0] - log['weight'][i55]))
+    print('  P3b  endurance with no ceiling, h                    %9.1f %9.1f %9s %7s  reported  (it climbs to %.0f ft with the tanks nearly dry: past NASA\'s %.0f)' % (
+        hours_free, 31.0, '%+6.1f h' % (hours_free - 31.0), '29-35 h', free['alt'].max(), CEILING))
+    print('  the ceiling reached %.1f h after take-off; ended by %s; highest %.0f ft; fuel to 55,000 ft %.0f lb' % (
+        log['t'][int(np.argmax(log['alt'] >= CEILING))] / 3600 if (log['alt'] >= CEILING).any() else float('nan'), log['ended'], log['alt'].max(), log['weight'][0] - log['weight'][i55]))
     print('\n%d checks, %d pass, %d miss\n' % (len(rows) + 1, len(rows) + 1 - missed, missed))
     for hr in (2, 5, 10, 15, 20, 25, 30):
         if hr * 3600 < log['t'][-1]:
             g = lambda k: float(np.interp(hr * 3600, log['t'], log[k]))
             print('    %2d h: %6.0f ft, %6.0f lb, %4.0f lb/h, Mach %.3f, %3.0f KTAS, CL %.3f, L/D %.1f, climbing %+.1f ft/min' % (
                 hr, g('alt'), g('weight'), g('flow'), g('mach'), g('ktas'), g('cl'), g('ld'), g('roc')))
-    json.dump({k: np.round(v, 3).tolist() for k, v in log.items()}, open(os.path.join(HERE, 'out', 'mission.json'), 'w'))
+    json.dump({k: np.round(v, 3).tolist() for k, v in log.items() if k != 'ended'}, open(os.path.join(HERE, 'out', 'mission.json'), 'w'))

@@ -24,37 +24,43 @@ B3   maximum thrust at 45000 ft, Mach 0.55, lbf                             1358
 B3   its fuel flow, lb/h                                                    839.12     836.52   +0.31%   1.0  pass  (generated)
 B3   maximum thrust at 60000 ft, Mach 0.60, lbf                             667.39     666.73   +0.10%   1.0  pass  (generated)
 B3   its fuel flow, lb/h                                                    426.71     426.28   +0.10%   1.0  pass  (generated)
-B5   ships build trims at cruise                                        pass  (flies: throttle 85 %, ruddervators +0.8 deg, residual 0.0486)
-B2   lift coefficient at the cruise trim                                   0.72456    0.72788   -0.46%   2.0  pass  (generated)
-B2   drag coefficient at the cruise trim                                  0.027852   0.027743   +0.39%   2.0  pass  (generated)
-B6   ships build flies 120 s from the cruise trim                       pass  (flies: height within 5 ft, speed within 0.0 kt (limits 100 ft, 3 kt))
-B5   ships build trims at climb                                         pass  (flies: throttle 14 %, ruddervators +0.5 deg, residual 0.0246)
-B2   lift coefficient at the climb trim                                    0.65232    0.65435   -0.31%   2.0  pass  (generated)
-B2   drag coefficient at the climb trim                                   0.023777   0.023825   -0.20%   2.0  pass  (generated)
+B3x  maximum thrust with 20 kW taken off, at 10000 ft, Mach 0.27: change, %   -0.80875   -0.80981   +0.13%   2.0  pass  (generated)
+B3x  fuel flow at it with 20 kW taken off, at 10000 ft, Mach 0.27: change, %   -0.47178   -0.51432   +8.27%   2.0  MISS  (generated)
+B3x  maximum thrust with 20 kW taken off, at 45000 ft, Mach 0.55: change, %   -0.26602   -0.26675   +0.27%   2.0  pass  (generated)
+B3x  fuel flow at it with 20 kW taken off, at 45000 ft, Mach 0.55: change, %    0.65602    0.65184   +0.64%   2.0  pass  (generated)
+B3x  maximum thrust with 20 kW taken off, at 60000 ft, Mach 0.60: change, %   -0.51658   -0.51698   +0.08%   2.0  pass  (generated)
+B3x  fuel flow at it with 20 kW taken off, at 60000 ft, Mach 0.60: change, %     1.2901     1.2817   +0.65%   2.0  pass  (generated)
+B5   ships build trims at cruise                                        pass  (flies: throttle 86 %, ruddervators +1.7 deg, residual 0.0486)
+B2   lift coefficient at the cruise trim                                   0.72456    0.73061   -0.83%   2.0  pass  (generated)
+B2   drag coefficient at the cruise trim                                  0.028311   0.028057   +0.91%   2.0  pass  (generated)
+B6   ships build flies 120 s from the cruise trim                       pass  (flies: height within 4 ft, speed within 0.0 kt (limits 100 ft, 3 kt))
+B5   ships build trims at climb                                         pass  (flies: throttle 14 %, ruddervators +0.6 deg, residual 0.0246)
+B2   lift coefficient at the climb trim                                    0.65231     0.6543   -0.30%   2.0  pass  (generated)
+B2   drag coefficient at the climb trim                                   0.024012   0.024052   -0.17%   2.0  pass  (generated)
 B6   ships build flies 120 s from the climb trim                        pass  (flies: height within 1 ft, speed within 0.0 kt (limits 100 ft, 3 kt))
-B5   ref build trims at cruise                                          MISS  (flies: throttle 100 %, ruddervators -14.2 deg, residual 0.158)
-B6   ref build flies 120 s from the cruise trim                         MISS  (flies: height within 1500 ft, speed within 20.2 kt (limits 100 ft, 3 kt))
+B5   ref build trims at cruise                                          MISS  (flies: throttle 100 %, ruddervators -14.2 deg, residual 0.168)
+B6   ref build flies 120 s from the cruise trim                         MISS  (flies: height within 1496 ft, speed within 20.2 kt (limits 100 ft, 3 kt))
 B5   ref build trims at climb                                           pass  (flies: throttle 14 %, ruddervators -6.9 deg, residual 0.0246)
 B6   ref build flies 120 s from the climb trim                          pass  (flies: height within 1 ft, speed within 0.0 kt (limits 100 ft, 3 kt))
-B4   fuel gone from the tanks in 10 min against the flow integrated, lb     60.701     60.701   +0.00%   0.5  pass  (generated)
-B4   centre of gravity moved in those 10 min, % MAC                     -2.9214e-05          0   -0.00    0.2  pass  (flies)
+B4   fuel gone from the tanks in 10 min against the flow integrated, lb     61.735     61.734   +0.00%   0.5  pass  (generated)
+B4   centre of gravity moved in those 10 min, % MAC                     -2.9713e-05          0   -0.00    0.2  pass  (flies)
 
-32 checks, 30 pass, 2 miss
+38 checks, 35 pass, 3 miss
 
 B7, reported: the two builds side by side
                             alpha rudderv. thrust lbf    of max fuel lb/h       CL     L/D
-  ships, cruise              0.89    +0.75        573       86%       365    0.725    26.0
-  ships, climb               1.12    +0.50        973       21%       576    0.652    27.4
-  ref, cruise                0.55   -14.18        667      100%       427    0.725    20.1
-  ref, climb                 0.79    -6.89        969       20%       575    0.652    27.5
+  ships, cruise              0.87    +1.74        582       87%       371    0.725    25.6
+  ships, climb               1.12    +0.60        982       21%       580    0.652    27.2
+  ref, cruise                0.55   -14.18        667      100%       427    0.725    20.0
+  ref, climb                 0.79    -6.90        978       21%       579    0.652    27.3
   modes of the bare airframe, controls fixed:
-    ships, cruise  longitudinal  period 4.7 s, damping 0.296; real -0.0721 /s (time constant 13.9 s); real +0.0666 /s (doubles in 10.4 s)
-    ships, cruise  lateral       real -2.7044 /s (time constant 0.4 s); period 7.3 s, damping 0.030; real +0.0056 /s (doubles in 123.7 s)
-    ships, climb   longitudinal  period 3.5 s, damping 0.423; period 38.4 s, damping 0.003
-    ships, climb   lateral       real -3.8385 /s (time constant 0.3 s); period 5.4 s, damping 0.073; real +0.0107 /s (doubles in 64.6 s)
-    ref, cruise    longitudinal  real -2.3575 /s (time constant 0.4 s); real +1.7232 /s (doubles in 0.4 s); period 38.6 s, damping 0.065
+    ships, cruise  longitudinal  period 4.3 s, damping 0.273; period 177.2 s, damping 0.064
+    ships, cruise  lateral       real -2.7062 /s (time constant 0.4 s); period 7.3 s, damping 0.030; real +0.0055 /s (doubles in 125.0 s)
+    ships, climb   longitudinal  period 3.5 s, damping 0.424; period 38.0 s, damping 0.002
+    ships, climb   lateral       real -3.8391 /s (time constant 0.3 s); period 5.4 s, damping 0.073; real +0.0107 /s (doubles in 64.7 s)
+    ref, cruise    longitudinal  real -2.3576 /s (time constant 0.4 s); real +1.7233 /s (doubles in 0.4 s); period 38.6 s, damping 0.065
     ref, cruise    lateral       real -2.7335 /s (time constant 0.4 s); period 6.8 s, damping 0.019; real +0.0054 /s (doubles in 128.2 s)
     ref, climb     longitudinal  period 3.9 s, damping 0.418; period 37.6 s, damping -0.001
     ref, climb     lateral       real -4.3459 /s (time constant 0.2 s); period 6.3 s, damping 0.067; real +0.0064 /s (doubles in 108.9 s)
-  climb at 10,000 ft, 150 KIAS, full weight, maximum thrust: 2480 ft/min by the energy balance (Pastor measured 2,357 to 2,538 between 10,000 and 20,000 ft)
+  climb at 10,000 ft, 150 KIAS, full weight, maximum thrust: 2474 ft/min by the energy balance (Pastor measured 2,357 to 2,538 between 10,000 and 20,000 ft)
 exit 0 after 3 s

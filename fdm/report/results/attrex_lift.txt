@@ -20,4 +20,4 @@
 Mach 0.50-0.54: 1 flights, 7 segments: slope 0.1298 per deg (scatter 0.009); CL at zero angle of attack 0.478 (flights 0.478 to 0.478)
 Mach 0.59-0.62: 3 flights, 52 segments: slope 0.1161 per deg (scatter 0.008); CL at zero angle of attack 0.636 (flights 0.582 to 0.671)
 turns: 409 of 90 s or more; bank 15.1 deg on average; measured less predicted -0.06 deg mean, 1.16 deg scatter
-exit 0 after 13 s
+exit 0 after 11 s

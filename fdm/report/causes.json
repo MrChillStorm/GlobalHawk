@@ -116,7 +116,7 @@
   "tag": "B5",
   "words": "ref build trims at cruise",
   "kind": "other",
-  "cause": "The reference build (AeroSandbox tables) was made before the calibration set the wing's and tail's incidences from flight data; with them it no longer trims at the cruise. Its comparison with the strip model was made before and stands; the build is not used further."
+  "cause": "AeroSandbox's build-up does not carry a V-tail panel's twist into its pitching moment: 3 deg of tail incidence moves its moment by 0.0005, where the strip model's tail moves it by 0.11 (fdm/aero_ref.py; a rotated section was tried and moved it by 0.008). The reference build therefore lacks the tail incidence the calibration set, and at the cruise needs 14 deg of ruddervator and all the thrust. Its comparison with the strip model was made before and stands; the build is not used further."
  },
  {
   "log": "phase3_checks",
@@ -126,31 +126,17 @@
   "cause": "As B5: it starts from a trim that does not exist."
  },
  {
-  "log": "mission",
-  "tag": "P3",
-  "words": "endurance",
-  "kind": "open",
-  "cause": "Four hours long. The cruise lift-to-drag ratio of 30 is too good for NASA's 31 h with this engine's fuel flow; a fuel-flow factor could close it and was not used, because nothing published says which of drag, fuel flow and reserves is off."
- },
- {
-  "log": "phase4_checks",
-  "tag": "S2",
-  "words": "section moment at lift 0.4 to 1.0, Mach 0.6, Re 1 million",
-  "kind": "open",
-  "cause": "The compressibility correction on the section data scales the low-speed moment by 1.25 at Mach 0.6 where the tunnel shows 1.15: the model's wing is more nose-down by about 0.024, about a degree of ruddervator in trim."
- },
- {
-  "log": "phase4_checks",
-  "tag": "S2",
-  "words": "section moment at lift 0.4 to 1.0, Mach 0.6, Re 2 million",
-  "kind": "open",
-  "cause": "As at Re 1 million."
- },
- {
   "log": "phase4_checks",
   "tag": "S3",
   "words": "section maximum lift, Mach 0.6, Re 2 million",
   "kind": "open",
-  "cause": "The section data stops at 1.20, where its correction puts a shock stall; the tunnel reached 1.42. The model stalls early at cruise Mach numbers, on the safe side for the laws' angle-of-attack limit."
+  "cause": "The section data stops at 1.20, where its correction puts a shock stall; the tunnel reached 1.42. XFOIL cannot say: it does not converge past the first sonic point at Mach 0.6. The model stalls early at cruise Mach numbers, on the safe side for the laws' angle-of-attack limit."
+ },
+ {
+  "log": "phase3_checks",
+  "tag": "B3x",
+  "words": "fuel flow at it with 20 kW taken off, at 10000 ft",
+  "kind": "other",
+  "cause": "The limit, 2 % of the change, was written for changes of the size of the thrust's; the fuel flow's change at maximum thrust there nets two opposite effects out to -0.5 %, and the 0.04 points of the fuel flow itself by which the tables' interpolation in Mach number differs from the cycle's are 8 % of it. Kept as a miss; the limit was not changed."
  }
 ]

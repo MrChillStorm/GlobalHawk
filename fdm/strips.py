@@ -53,12 +53,22 @@ WING_INCIDENCE = 2.0
 # deg, each V-tail panel's chord to the same axes, leading edge down negative. A choice: it leaves the ruddervators
 # near neutral in cruise, as a designer would; the real setting isn't known
 TAIL_INCIDENCE = -3.0
+# The wing section's pitching moment grows with Mach number as beta^-K, beta = sqrt(1 - M^2), not as NeuralFoil's
+# Prandtl-Glauert 1/beta (K = 1) with its own transonic growth on top. A fit, of one parameter, to the one measurement of
+# the section: the tunnel's moment (TM 102840) grows 15.5 % from Mach 0.2 to Mach 0.6, the tables' 28 %, XFOIL's
+# (Karman-Tsien) 19 %. K is found by fdm/section_study.py, which also reports what it does to S1-S3 and to the speed mode:
+# the tables' Mach growth of the moment is what made the bare airframe's speed mode unstable at the cruise.
+CM_MACH_K = 0.65
 
 
 def section_tables():
     """cl, cd, cm of the wing and tail sections over angle of attack, Reynolds number and Mach. Cached on disk."""
     if os.path.exists(TABLES):
-        return json.load(open(TABLES))
+        out = json.load(open(TABLES))
+        # the wing's moment: NeuralFoil's, taken from beta^-1 to beta^-K of Mach number (CM_MACH_K above)
+        beta = np.sqrt(1 - np.array(out['mach']) ** 2)
+        out['wing']['cm'] = (np.array(out['wing']['cm']) * (beta ** (1 - CM_MACH_K))[:, None, None]).tolist()
+        return out
     import aerosandbox as asb
     out = dict(alpha=ALPHAS.tolist(), reynolds=REYNOLDS, mach=MACHS,
                source='NeuralFoil (xxlarge) through AeroSandbox %s, n_crit 9, free transition' % asb.__version__)

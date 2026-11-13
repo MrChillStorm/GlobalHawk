@@ -10,14 +10,14 @@ G1   stands 60 s at 26750 lb                                                    
 G1   stands 60 s at 11450 lb                                                                     pass  (flies: moved -0.00 ft, pitch -0.23 deg, bank -0.00 deg)
 G2   taxi to 15 kt, turn 90 deg, stop                                                            pass  (flies: reached phase 2 of 2, bank up to 1.17 deg, heading 94.7 deg, 152 s)
 T1   brake release to 130 KIAS, s                             32.81      37.5  -12.51 %    15 %  pass  (predicted)
-T2   liftoff between 120 and 140 KEAS, pitch under 8 deg                                         pass  (predicted: 134 KEAS, pitch 7.2 deg, angle of attack 5.6 deg, after 4004 ft)
-T3   climb 30-40 s after liftoff inside 2,250-3,650 ft/min                                        pass  (predicted: 2767 ft/min at 152 KEAS, pitch 10.6 deg (ATTREX: 10-14 deg))
-T3   2,500 to 5,000 ft, s                                     54.38        61  -10.85 %    15 %  pass  (predicted)
-L1   2014 approach: angle of attack, deg                      4.785      4.29     +0.50       1  pass  (predicted)
+T2   liftoff between 120 and 140 KEAS, pitch under 8 deg                                         pass  (predicted: 134 KEAS, pitch 7.2 deg, angle of attack 5.7 deg, after 4003 ft)
+T3   climb 30-40 s after liftoff inside 2,250-3,650 ft/min                                        pass  (predicted: 2761 ft/min at 152 KEAS, pitch 10.6 deg (ATTREX: 10-14 deg))
+T3   2,500 to 5,000 ft, s                                     54.53        61  -10.61 %    15 %  pass  (predicted)
+L1   2014 approach: angle of attack, deg                      4.782      4.29     +0.49       1  pass  (predicted)
 L1   2014 approach: throttle between idle and 30 %                                               pass  (predicted: throttle 0 %, left over 0.008 g, ruddervators -0.7 deg)
 L2   touchdown: sink under 1.5 m/s, stays down                                                   pass  (flies: 132 KEAS (measured 130), sink 0.63 m/s (measured 0.66), pitch 0.4 deg (measured 2.4))
-L3   rollout from touchdown to 43 kt, ft                       3579      3485   +2.70 %    15 %  pass  (after setting the deceleration)
-L4   rest to rest without NaN                                                                    pass  (flies: landing run to a stop: 3931 ft)
+L3   rollout from touchdown to 43 kt, ft                       3573      3485   +2.54 %    15 %  pass  (after setting the deceleration)
+L4   rest to rest without NaN                                                                    pass  (flies: landing run to a stop: 3929 ft)
 
 12 checks, 12 pass, 0 miss
-exit 0 after 4 s
+exit 0 after 2 s

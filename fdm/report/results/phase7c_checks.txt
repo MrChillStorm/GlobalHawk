@@ -10,15 +10,15 @@ N1  healthy, two on (Kearfotts off)                      pass     voted roll and
 N2  the 2017 case: one of two ramps to 30 deg            pass     bank stays within 0.93 deg after the failure (the vote is up to 1.5 deg out until the two disagree by 3); miscompare 0.01 s after the error passed 3 deg; height within 0.1 ft over two minutes (the real aircraft reached 152 deg)
 N2  the same failure during a turn                       reported bank between 1.2 and 13.1 deg after the failure (limit 12.9 at this height); voted roll within 1.50 deg of the truth; height within 6 ft
 N3  one of four steps to 60 deg                          pass     bank within 0.926 deg after the step; the vote stays within 0.0000 deg of the truth
-N4  both of two wrong the same way (expected to fail)    reported bank goes to -25.9 deg and stays (the error is 30 deg); no miscompare: none raised; height changes by 25 ft. No voting survives a common error
+N4  both of two wrong the same way (expected to fail)    reported bank goes to -25.9 deg and stays (the error is 30 deg); no miscompare: none raised; height changes by 26 ft. No voting survives a common error
 L1  link lost on the second leg                          pass     the last uplink 7.2 min into the flight; the aircraft left the plan 30.1 s later and landed, 24 min after that
-L1  after the lost link, approach from 3 nmi (part B's M5) pass     glide path within 1.5 ft, speed within 0.07 kt, spoilers 0.67 to 0.69 (inside 0.15-0.95 for 100 % of it), 6.2 ft off the centreline at the flare
-L1  after the lost link, touchdown (part B's M7)         pass     sink 1.08 m/s, pitch 1.91 deg, 131.4 KEAS, spoilers 0.38, 1315 ft past the aiming point
-L1  after the lost link, rollout (part B's M8)           pass     deceleration 0.225 g between 100 and 50 kt, within 5.7 ft of the centreline, down to 15 kt
-E1  engine stopped at 20000 ft, 30 nmi out, flying away  pass     touches down 1614 ft past the aiming point, sinking 0.89 m/s at 124.8 KEAS and 1.9 deg of pitch, 14.6 ft off the centreline; stops (0.0 kt) within 15.3 ft of it, 21.2 min after the failure; thrust all the way 0 lbf
-E3  E1: the planner's book                               reported expected 4658 ft in hand at the entry point, had 8878 ft; glide ratio flown 31.4 (the planner counts on 20); started final 396 ft above the path
-E2  engine stopped at 50000 ft, 100 nmi out, flying away pass     touches down 1603 ft past the aiming point, sinking 0.89 m/s at 124.8 KEAS and 2.1 deg of pitch, 14.6 ft off the centreline; stops (0.0 kt) within 15.3 ft of it, 47.2 min after the failure; thrust all the way 0 lbf
-E3  E2: the planner's book                               reported expected 13174 ft in hand at the entry point, had 21368 ft; glide ratio flown 33.1 (the planner counts on 20); started final 374 ft above the path
+L1  after the lost link, approach from 3 nmi (part B's M5) pass     glide path within 17.3 ft, speed within 0.07 kt, spoilers 0.66 to 0.71 (inside 0.15-0.95 for 100 % of it), 5.7 ft off the centreline at the flare
+L1  after the lost link, touchdown (part B's M7)         pass     sink 0.65 m/s, pitch 2.22 deg, 132.6 KEAS, spoilers 0.36, 1099 ft past the aiming point
+L1  after the lost link, rollout (part B's M8)           pass     deceleration 0.225 g between 100 and 50 kt, within 6.2 ft of the centreline, down to 15 kt
+E1  engine stopped at 20000 ft, 30 nmi out, flying away  pass     touches down 1228 ft past the aiming point, sinking 0.56 m/s at 127.4 KEAS and 2.2 deg of pitch, 14.0 ft off the centreline; stops (0.0 kt) within 15.0 ft of it, 21.2 min after the failure; thrust all the way 0 lbf
+E3  E1: the planner's book                               reported expected 4658 ft in hand at the entry point, had 8817 ft; glide ratio flown 31.1 (the planner counts on 20); started final 389 ft above the path
+E2  engine stopped at 50000 ft, 100 nmi out, flying away pass     touches down 1235 ft past the aiming point, sinking 0.56 m/s at 127.4 KEAS and 2.1 deg of pitch, 14.0 ft off the centreline; stops (0.0 kt) within 15.0 ft of it, 47.3 min after the failure; thrust all the way 0 lbf
+E3  E2: the planner's book                               reported expected 13174 ft in hand at the entry point, had 21121 ft; glide ratio flown 32.7 (the planner counts on 20); started final 364 ft above the path
 E4  no runway in reach (96 nmi from 20,000 ft)           pass     alert: no runway in reach; glides towards the nearest
 
 11 checks, 11 pass, 0 miss; 4 reported
@@ -30,10 +30,10 @@ lost link, as the manager saw it:
       7.7 min  LINK LOST: the contingency route
       7.7 min  begin route
       7.7 min  descent to 6500 ft
-     18.4 min  level to 6500 ft
+     18.3 min  level to 6500 ft
      23.0 min  begin land
      27.5 min  glide path
-     31.3 min  rollout over
+     31.4 min  rollout over
 
 E1, as the manager saw it:
       0.0 min  begin route
@@ -42,8 +42,8 @@ E1, as the manager saw it:
       0.2 min  begin engine_out
       0.2 min  site home: 4658 ft expected in hand at the entry point (home +4658, the far runway -28795)
       0.2 min  glide to home
-     13.9 min  circle right over the entry point, 8878 ft above the glide path there (planner expected 4658)
-     18.7 min  final, 396 ft above the glide path
+     13.9 min  circle right over the entry point, 8817 ft above the glide path there (planner expected 4658)
+     18.7 min  final, 389 ft above the glide path
      21.8 min  rollout over
 
 E2, as the manager saw it:
@@ -53,7 +53,7 @@ E2, as the manager saw it:
       0.2 min  begin engine_out
       0.2 min  site home: 13174 ft expected in hand at the entry point (home +13174, the far runway +1111)
       0.2 min  glide to home
-     34.7 min  circle right over the entry point, 21368 ft above the glide path there (planner expected 13174)
-     44.7 min  final, 374 ft above the glide path
+     34.8 min  circle right over the entry point, 21121 ft above the glide path there (planner expected 13174)
+     44.8 min  final, 364 ft above the glide path
      47.9 min  rollout over
-exit 0 after 16 s
+exit 0 after 15 s

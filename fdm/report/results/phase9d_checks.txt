@@ -1,7 +1,7 @@
-K1  locked on a point through a turn             pass  belly camera is view 9; lock "point" on N 60.33645 E 25.09533; 90 s, heading turned 149 deg, bank to 1; the camera within 0.13 deg of the point (mean 0.04, 95th percentile 0.09)
-K2  locked on a moving object                    pass  lock "object" on "Made-up ship" (it said: Camera locked on Made-up ship); the ship moved 2019 ft in 60 s; the camera within 0.07 deg of it (mean 0.03, 95th percentile 0.04)
-K3  the nearest is taken; unlock frees; the nose is left pass  of two ships the one under the cross was taken: True; after unlock the lock is "" and the view offsets stay ((234.4120862140138, -13.292059016530091), then (234.4120862140138, -13.292059016530091)); the nose camera while locked: (0.0, -4.0)
-K4  slewing                                      pass  free, slew held 2 s: 31.6 deg/s at 40 deg of view, 8.0 at 10 deg (the aircraft was turning too); locked on the cross, slewed up 0.6 s: the point moved 2739 ft and the lock is "point", the camera 0.04 deg from it afterwards
+K1  locked on a point through a turn             pass  belly camera is view 9; lock "point" on N 60.33666 E 25.09568; 90 s, heading turned 149 deg, bank to 1; the camera within 0.12 deg of the point (mean 0.05, 95th percentile 0.09)
+K2  locked on a moving object                    pass  lock "object" on "Made-up ship" (it said: Camera locked on Made-up ship); the ship moved 2023 ft in 60 s; the camera within 0.06 deg of it (mean 0.03, 95th percentile 0.04)
+K3  the nearest is taken; unlock frees; the nose is left pass  of two ships the one under the cross was taken: True; after unlock the lock is "" and the view offsets stay ((234.2560837987664, -13.266209538371124), then (234.2560837987664, -13.266209538371124)); the nose camera while locked: (0.0, -4.0)
+K4  slewing                                      pass  free, slew held 2 s: 31.7 deg/s at 40 deg of view, 7.9 at 10 deg (the aircraft was turning too); locked on the cross, slewed up 0.6 s: the point moved 2891 ft and the lock is "point", the camera 0.01 deg from it afterwards
 K0  no Nasal error of the camera                 pass  none
 5 checks, 5 pass, 0 miss
-exit 0 after 230 s
+exit 0 after 229 s

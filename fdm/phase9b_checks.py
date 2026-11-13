@@ -291,6 +291,10 @@ async def flight(smoke):
     # ---- N8: home by the lost link, to a landing on FlightGear's ground (reported)
     fps = get('/sim/frame-rate')
     landed = await until(lambda: status().get('kind') == 'done' or (get(J + 'ap/rollout') == 1 and (get(J + 'ap/ground-speed-kt') or 99) < 15), 2400, beat=False)
+    # The manager writes 'rollout over' on its next frame after the aircraft is under 15 kt, and at 4x speed and 2 frames a second that
+    # frame can come after this one has read the events: wait for the event (a race that the first full rerun after the section's
+    # moment was corrected lost, with the landing itself the same to 170 ft), so that N7 reads the manager's whole list.
+    await until(lambda: any(e[1].startswith('rollout over') for e in seen), 60, beat=False)
     s = status()
     p = [get('/position/latitude-deg'), get('/position/longitude-deg')]
     brg, dist = MM.course(aim, p)

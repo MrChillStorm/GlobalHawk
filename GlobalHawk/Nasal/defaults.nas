@@ -6,7 +6,7 @@ var DEFAULTS = {
     "engine/running": 1,
     "engine/master": 1,
     "cal/fuel-factor": 1,
-    "cal/drag-increment": 0.00564,
+    "cal/drag-increment": 0.00586,
     "flex/enable": 1,
     "ap/speed-cmd-kcas": 150,
     "ap/speed-schedule": 1,

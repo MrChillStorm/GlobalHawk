@@ -26,6 +26,8 @@ AE 3007 reference (fitted to the ICAO takeoff row of the A2): fan pressure ratio
 AE 3007H: the same engine, limited to the turbine temperature of 7500 lbf at sea level: 1254 K (A2 takeoff 1380 K)
        check                                                model    source   err %  limit
   H1   OPR at the limit, 60,000 ft, M 0.6                   24.33        23    +5.8     10  pass  (predicted)
+  H3   efficiency of the fuel burned for 20 kW off the spool, 60,000 ft    0.4687       0.4   +17.2     50  pass  (predicted)
+  H3: at the cruise thrust of 500 lbf the fuel flow goes from 318 to 326 lb/h (+2.5 %) for 20 kW (limit on its efficiency 0.2 to 0.6)
   H2 window: fuel flow at 60,000 ft, M 0.6, 15,000 lb:
      L/D 25: thrust 600 lbf, fuel 382 lb/h, TSFC 0.637 (window 300 to 600 lb/h); maximum there 662 lbf
      L/D 30: thrust 500 lbf, fuel 318 lb/h, TSFC 0.635 (window 300 to 600 lb/h); maximum there 662 lbf
@@ -41,4 +43,4 @@ AE 3007H: the same engine, limited to the turbine temperature of 7500 lbf at sea
       60000 ft M 0.60:    662 lbf,   423 lb/h, TSFC 0.639, OPR 24.3, BPR 4.47, Tt4 1213 K (fan speed)
       65000 ft M 0.60:    520 lbf,   333 lb/h, TSFC 0.639, OPR 24.3, BPR 4.47, Tt4 1213 K (fan speed)
 wrote fdm/data/engine.json
-exit 0 after 2 s
+exit 0 after 4 s

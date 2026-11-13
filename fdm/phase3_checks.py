@@ -57,6 +57,21 @@ def main():
         o = eng.maximum(hp, mach)
         check('B3', 'maximum thrust at %d ft, Mach %.2f, lbf' % (alt, mach), f['engine/thrust-lbf'], o['thrust'] / E.LBF, 1.0, 'generated')
         check('B3', 'its fuel flow, lb/h', f['engine/fuel-flow-pph'], o['fuel'] / E.LBH, 1.0, 'generated')
+    # B3x power taken off the high-pressure spool (engine/extra-power-kw): the generated channels' change of the maximum
+    # thrust and of the fuel flow there, against the cycle model's, for 20 kW; each within 2 % of the change itself
+    for alt, mach in ((10000, 0.27), (45000, 0.55), (60000, 0.6)):
+        got, want = {}, {}
+        for kw in (0.0, 20.0):
+            f['engine/extra-power-kw'] = kw
+            H.state(f, dict(alt=alt, mach=mach, weight=20000), 2.0, 0.0, 1.0)
+            eng.hpx = kw * 1e3
+            o = eng.maximum(f['engine/pressure-altitude-ft'], mach)
+            eng.hpx = 0.0
+            got[kw], want[kw] = (f['engine/thrust-lbf'], f['engine/fuel-flow-pph']), (o['thrust'] / E.LBF, o['fuel'] / E.LBH)
+        f['engine/extra-power-kw'] = 0.0
+        for i, what in ((0, 'maximum thrust'), (1, 'fuel flow at it')):
+            check('B3x', '%s with 20 kW taken off, at %d ft, Mach %.2f: change, %%' % (what, alt, mach), 100 * (got[20.0][i] / got[0.0][i] - 1),
+                  100 * (want[20.0][i] / want[0.0][i] - 1), 2.0, 'generated')
     ac = strips.Aircraft()
     trims = {}
     for build in ('ships', 'ref'):

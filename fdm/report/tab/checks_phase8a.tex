@@ -1,11 +1,13 @@
 G1 & protocol & D & pass & get and addListener: True; a push within 0.5 s: True; websocket set then HTTP GET: 41.5; HTTP POST: abc; a missing property: 404; a flight-model property: 0.0 \\
 G2 & a good plan is accepted and comes back & D & pass & accepted: accepted; items and lost-link route come back identical: True \\
 G2 & five bad plans are each refused with the reason & D & pass & unknown kind: ''plan item 3: unknown kind ''loiter''''; height 70,000 ft: ''plan item 3 (route) point 1: height 70000 ft is outside 0 to 65000 ft''; a land 3 nmi from its aim: ''plan item 4 (land): the fix is 3.0 nmi from the aiming point, less than 8''; no land in the lost-link route: ''lost-link route: it must begin with a route and end in a land''; latitude 95: ''plan item 3 (route) point 2: latitude 95 is not on the earth'' \\
-G8 & answers at 1x & D & pass & the slowest of 8 answers took 0.024 s \\
-G3 & start: taxi, takeoff, route & D & pass & status went taxi (''stopped'') -\textgreater{} takeoff (''takeoff'') -\textgreater{} route (''climb to 20000 ft, leg 1 of 4, 24 nmi to go''); 8051 ft and climbing 220 s after start \\
-G4 & goto, then hold & D & pass & reaches the point within 0.06 nmi; on the circle (2.8 nmi radius) 58 s later, then within 0.25 nmi of it and 12 ft of 18,000 ft for 424 s \\
+G8 & answers at 1x & D & pass & the slowest of 8 answers took 0.025 s \\
+G3 & start: taxi, takeoff, route & D & pass & status went taxi (''stopped'') -\textgreater{} takeoff (''takeoff'') -\textgreater{} route (''climb to 20000 ft, leg 1 of 4, 24 nmi to go''); 8041 ft and climbing 221 s after start \\
+G4 & goto, then hold & D & pass & reaches the point within 0.03 nmi; on the circle (2.8 nmi radius) 57 s later, then within 0.25 nmi of it and 12 ft of 18,000 ft for 424 s \\
 G4 & altitude in the hold & D & pass & 19495 ft 4 minutes after commanding 19,500 \\
-G5 & resume: back on the plan & D & pass & on the leg within 0.5 nmi and 5 deg of its course; status: ''level at 20000 ft, leg 2 of 4, 12 nmi to go'' \\
+G10 & a message between two stations & D & pass & one station to the other in 0.02 s and back in 0.04 s (limit 1 s); the aircraft answered nothing: True \\
+G5 & resume: back on the plan & D & pass & on the leg within 0.5 nmi and 5 deg of its course; status: ''level at 20000 ft, leg 2 of 4, 13 nmi to go'' \\
 G6 & commands that must be refused & D & pass & goto on the ground: only while enroute; start with no plan: no plan; start twice: the plan has already begun; altitude 70,000 ft: height 70000 ft is outside 0 to 65000 ft; a repeated seq: answered once, done once \\
-G7 & the station goes silent & D & pass & lost link flagged 30.0 s after the last heartbeat; status said contingency ''link''; landed 24 min later at 1.06 m/s and 2.1 deg, 1379 ft past the aiming point, 6 ft off the centreline \\
-G5 & the plan can complete after a resume & D & pass & not run to the end here: the lost link takes it home instead (G7); the resumed route was being flown for 120 s \\
+G9 & the lost-link time-out set from the station & D & pass & set to 15 s, the status said 15.0; refused: 5 s: the time-out is 10 to 300 s; 400 s: the time-out is 10 to 300 s; ''abc'': the time-out needs a number of seconds; no number: the time-out needs a number of seconds; true: the time-out needs a number of seconds; a station without control: CHECK has control, the time-out stayed 15.0; with the uplink cut the link was flagged 15.0 s after the last heartbeat; resume accepted, and the time-out put back to 30 s \\
+G7 & the station goes silent & D & pass & lost link flagged 30.0 s after the last heartbeat; status said contingency ''link''; landed 24 min later at 0.64 m/s and 2.2 deg, 1126 ft past the aiming point, 7 ft off the centreline \\
+G5 & the plan can complete after a resume & D & pass & not run to the end here: the lost link takes it home instead (G7); the resumed route was being flown for 163 s \\

@@ -44,9 +44,11 @@ meteorological system that logged attitude, angle of attack, Mach number and pre
 section data; the engine is a cycle model of the AE~3007 family, proved first on the Citation~X's variant. With the flat rating read as one limit on
 turbine temperature, nothing fitted, the climb from 10\,000 to 40\,000\,ft comes out 4 to 11\,\% slow against the two measured flights; one drag
 increment and a 1\,\% change of the fan-speed limit, fitted to the climb above 40\,000\,ft and the cruise-climb together, put the time to 55\,000\,ft
-within 3.1\,\% and the cruise-climb within 730\,ft for 20 hours. The trimmed lift-curve slope is within 5\,\% of the flights', the take-off within
-13\,\%, and the approach of a second recorded landing is predicted from a spoiler setting fitted on the first. The endurance comes out at 35.4\,h
-against NASA's ``31+'', outside its limit. The flight laws are the author's design and are held to their own requirements only: they fly a mission
+within 2.7\,\% and the cruise-climb within 670\,ft for 20 hours. The trimmed lift-curve slope is within 6\,\% of the flights', the take-off within
+13\,\%, and the approach of a second recorded landing is predicted from a spoiler setting fitted on the first. The endurance, flown to the
+65\,000\,ft that NASA gives as the ceiling, comes out at 34.7\,h against NASA's ``31+'', inside its limit of 29 to 35\,h by 0.3\,h; without the
+ceiling the model climbs past it and reaches 35.5\,h. The wing section's pitching moment grows with Mach number faster in the section data than in the
+tunnel, which one fitted exponent corrects, and with it the bare airframe's speed mode at the cruise becomes stable. The flight laws are the author's design and are held to their own requirements only: they fly a mission
 from stand to stand, the two recorded landings within 5\,KEAS and 0.5\,m/s of the records, a navigator failure of the kind that destroyed an RQ-4B in 2017, a
 lost link, and a landing without the engine. In FlightGear the aircraft is flown through the station's link by the same logic.
 Limits were set before results and not moved: \Npass{} checks pass and \Nmiss{} miss. Only \NFpass{} of the passes are held to flight records, \Nfitted{} of them after
@@ -257,6 +259,15 @@ Above 45\,000\,ft there is nothing to check the engine against. The two models, 
 within 0.7\,\% on thrust and 1.4\,\% on fuel from 50\,000 to 65\,000\,ft; but in constant air temperature any cycle at a fixed corrected speed scales
 its thrust with pressure, so this is weaker evidence than it looks. Neither has the loss of efficiency at low Reynolds number.
 
+\emph{Power taken off the engine.} The Air Force's flight test names the power extracted for the payload as one of the conditions of the endurance
+\cite{sfte}, and the cycle model had no term for it. It has one now: power taken off the high-pressure spool comes out of that spool's work balance, so
+the compressor's pressure ratio and the core's flow fall at the same turbine temperature. The flight model has it as an input,
+\texttt{engine/extra-power-kw}, above what the installation factor already holds (the Citation~X's own generators and bleed), zero at the start, so that
+nothing else changes. At 60\,000\,ft and the cruise thrust, 20\,kW costs 2.5\,\% in fuel flow at 500\,lbf (a lift-to-drag ratio of 30 at 15\,000\,lb), 2.1\,\% at the flight model's cruise trim, and the
+maximum thrust falls 0.5\,\%; at 10\,000\,ft the fuel changes by under 1\,\%. The fuel burned for it carries the power at a thermal efficiency of 0.47, inside
+the 0.2 to 0.6 that any core must have. No data holds the size of the effect to anything: the ATTREX records carry no engine data, so this is a capability, not
+a result. It does bound a suspect: 20 and 40\,kW cut the endurance from 34.7\,h to 34.0 and 33.2, so payload power does not explain NASA's 31.
+
 \subsection{The section against the tunnel}\label{sec:section}
 \begin{figure*}[t]
 \centering\includegraphics[width=\textwidth]{section.pdf}
@@ -264,10 +275,22 @@ its thrust with pressure, so this is weaker evidence than it looks. Neither has 
 \end{figure*}
 Between lift coefficients of 0.4 and 1.0 the section data's drag is 6\,\% over the tunnel's at Mach~0.2 and 13 to 14\,\% under it at Mach~0.6, inside
 the 15\,\% limit but one-sided where the wing cruises (figure~\ref{fig:section}). Wing profile drag is about 45\,\% of the aircraft's drag at cruise, so
-this alone makes the uncalibrated model's lift-to-drag ratio some 6\,\% too good. The moment is 0.013 more nose-down than the tunnel's at Mach~0.2 and
-0.023 to 0.025 at Mach~0.6, the last outside the limit of 0.02: the correction scales the low-speed moment by 1.25 where the tunnel shows 1.15. Maximum
-lift stops at 1.20 at Mach~0.6, where the correction puts a shock stall; the tunnel reached 1.31 and 1.42, the second a miss. The model stalls early at
-cruise Mach numbers.
+this alone makes the uncalibrated model's lift-to-drag ratio some 6\,\% too good.
+
+The moment was the section's weak point. As the data first came from NeuralFoil it was 0.013 more nose-down than the tunnel's at Mach~0.2 and 0.023 to
+0.025 at Mach~0.6, the last outside the limit of 0.02, because it grew 24\,\% from Mach~0.2 to 0.6 (the Prandtl--Glauert factor alone is 22\,\%) where the tunnel's grew 15.5\,\%. XFOIL \cite{xfoil}, built for this report and run on the same section with its
+Kármán--Tsien correction, gives 19\,\% and a moment of $-0.105$ at Mach~0.2 where NeuralFoil gives $-0.108$ and the tunnel $-0.0945$: the two solvers agree
+with each other and lie 0.010 to 0.013 more nose-down than the tunnel at low speed, which no compressibility correction touches. XFOIL cannot be run
+where it matters: past the first sonic point at Mach~0.6 it stops converging, and gives six and eight points only. The growth of the moment was
+therefore fitted, with one parameter, to the tunnel's: the wing's moment goes as $\beta^{-0.65}$ instead of $\beta^{-1}$, $\beta=\sqrt{1-M^2}$ (the
+exponent is that which gives the tunnel's 1.155 between the two Mach numbers, \texttt{strips.CM\_MACH\_K}). The two Mach~0.6 cases now miss by 0.015
+and 0.013, inside the limit, and Mach~0.2 is as it was. The same change made the bare airframe's speed mode at the cruise stable, which was not
+its aim: each table of the aerodynamic model, held at its Mach~0.45 values above that Mach number, was tried, and only the moment's growth with Mach
+number moved the unstable root (a real root doubling in 10\,s; \texttt{fdm/section\_study.py}). The drag increment was refitted afterwards, from 0.00564
+to 0.00586, because the time from 10\,000 to 55\,000\,ft had moved to 6.1\,\% against a limit of 5.
+
+Maximum lift stops at 1.20 at Mach~0.6, where the data puts a shock stall; the tunnel reached 1.31 and 1.42, the second a miss. XFOIL cannot say who is
+right. The model stalls early at cruise Mach numbers, on the side that is safe for the laws.
 
 \subsection{The two aerodynamic models}\label{sec:aero}
 At Mach~0.6 and 2.5$^\circ$ the strips and AeroSandbox's build-up give lift-curve slopes of 0.134 and 0.132 per degree, neutral points at 29.8 and
@@ -279,7 +302,10 @@ longer-winged Block~20 \cite{sfte}, whose figures give slopes but no absolute va
 
 That paper refers the aircraft's performance to a centre of gravity at 31\,\% of the mean chord. Both models put the neutral point at 30 to 33\,\%.
 Either the real neutral point is further aft than both say, or the real aircraft flies with little static margin and leaves stability to its
-control system. The model keeps 22\,\%. It is the largest open question of the aerodynamic model.
+control system. The model keeps 22\,\%, with a static margin of 10\,\% of the chord at the cruise, 8\,\% on the climb and 7\,\% at Mach~0.55 at
+55\,000\,ft (finite differences of the strip model, ruddervators at their trims). At 31\,\% the margin would be 1\,\% at the cruise and $-1$ to
+$-2$\,\% elsewhere: so a centre of gravity at 31\,\% in this model is neutrally stable, and it cannot be moved there without a reason the data does not
+give. It is the largest open question of the aerodynamic model; the paper may also mean only the point its moments are referred to.
 
 \subsection{Climb, cruise-climb and the lift curve in flight}\label{sec:calib}
 \begin{figure*}[t]
@@ -292,20 +318,26 @@ With the engine as section~\ref{sec:engine} left it, the flat rating read as a c
 Pastor measured about 2450. The thrust the measured climb needs at 15\,000\,ft, with the model's drag, is about 4200\,lbf. The turbine temperature at
 which the cycle gives 4200\,lbf there is 1254\,K, and 1254\,K is the temperature at which it gives 7500\,lbf at rest at sea level. The rating is
 therefore read as one limit on turbine temperature, held at every height. Nothing was fitted for it, and the climb rates from 10\,000 to 40\,000\,ft
-then come out 4.3, 5.9 and 10.5\,\% under the measured ones, inside their 15\,\% limits (figure~\ref{fig:calib}).
+then came out 4.3, 5.9 and 10.5\,\% under the measured ones, inside their 15\,\% limits (figure~\ref{fig:calib}); with the drag increment
+of the final fit below, 4.6, 6.3 and 11.2\,\%.
 
 Above 40\,000\,ft two numbers were fitted together, a drag increment and a factor on the fan-speed limit, to the climb rates there and four cruise-climb
-heights. They sit in a shallow valley: fan-speed factors from 1.00 to 1.02 with increments from 0.0046 to 0.0068 fit almost equally. Thrust and drag
-cannot be told apart with this data. After the fit the time from 10\,000 to 55\,000\,ft is 4452\,s against 4596, and the model follows the measured
-cruise-climb within 730\,ft for 20 hours at a lift coefficient of 0.97 and a lift-to-drag ratio of 30. It goes on climbing as it empties, past the
-65\,000\,ft NASA quotes as the maximum, which the laws hold as a limit. Flown in time by the laws, the same climb takes 4354\,s.
+heights. They sit in a shallow valley: fan-speed factors from 1.00 to 1.02 with increments from 0.0048 to 0.0070 fit almost equally. Thrust and drag
+cannot be told apart with this data. After the fit the time from 10\,000 to 55\,000\,ft is 4469\,s against 4596, and the model follows the measured
+cruise-climb within 670\,ft for 20 hours at a lift coefficient of 0.98 and a lift-to-drag ratio of 30. Left alone it goes on climbing as it empties, past the
+65\,000\,ft NASA quotes as the maximum, which the laws hold as a limit. Flown in time by the laws, the same climb takes 4378\,s.
 
-\emph{Endurance} from 14\,500\,lb of fuel to 5\,\% left is 35.4\,h; NASA says ``31+''. The limit was 29 to 35\,h and it misses. A fuel-flow factor was
-allowed for this and not used: a fan-speed factor of 1.04 with twice the drag increment would give 31.4\,h at twice the misfit to the climb, and
-nothing published says which of drag, fuel flow and reserves is off.
+\emph{Endurance} from 14\,500\,lb of fuel to 5\,\% left, with NASA's 65\,000\,ft maximum height held once it is reached (the schedule's Mach number
+kept, the engine throttling back), is 34.7\,h; NASA says ``31+''. The limit was 29 to 35\,h, and it is met, by 0.3\,h. That is so near the edge that it
+says only what the earlier miss was: the quasi-steady mission, with nothing to stop it, climbed on as it emptied to 71\,500\,ft with the tanks nearly dry and
+reached 35.5\,h (35.4 before the section's moment was corrected), a height NASA does not give for any flight. That figure is kept in the log as a reported
+line, and the ceiling is reached 21.4\,h after take-off. Nothing was changed in the model for this, and it is still 3.7\,h above NASA's 31. A fuel-flow
+factor was allowed for and not used: a fan-speed factor of 1.04 with twice the drag increment would give 31.5\,h at twice the misfit to the climb, and a
+change of 10\,\% in fuel flow, well beyond the engine's stated uncertainty of 6\,\%, would be needed with the fit as it is. Nothing published says which of
+drag, fuel flow, payload power and reserves is off.
 
 \emph{Lift curve.} The records' angle of attack is pitch attitude less flight-path angle within 0.2$^\circ$ all flight. In the steady segments of three
-flights at Mach 0.59 to 0.62 the trimmed slope is 0.116 per degree; the model's, from trims over the same weights, is 0.122, 4.9\,\% over. One flight
+flights at Mach 0.59 to 0.62 the trimmed slope is 0.116 per degree; the model's, from trims over the same weights, is 0.123, 5.6\,\% over. One flight
 at Mach 0.50 to 0.54 gives 0.130 against the model's 0.134. The flights' levels differ by 0.09 in lift coefficient, which is 10\,\% of weight or
 0.7$^\circ$ of incidence: the wing's incidence was set to their mean, and only the slope is a prediction. In 409 turns of 90\,s or more the measured
 bank is that which speed times turn rate gives within 0.06$^\circ$ on average.
@@ -319,24 +351,34 @@ steady 0.235\,$g$.}\label{fig:landing}
 From brake release the model reaches 130\,KIAS in 32.8\,s where Pastor's flights took 37 and 38, lifts off at 134\,KEAS where 19 records begin at 121
 to 139, climbs at 2770\,ft/min half a minute later, inside the records' 2250 to 3650, and takes 54\,s from 2500 to 5000\,ft against 59 to 63. It is
 12\,\% quick on the runway and 11\,\% in the first climb, both inside their limits and both the same way: a little too much thrust less drag low down,
-at an assumed weight.
+at an assumed weight. Flown by the laws, which rotate at 120\,KIAS to 6.5$^\circ$ (numbers of the design, set against the records' ranges, not
+fitted to one flight; the first rotation speed was Pastor's 130\,KIAS milestone, which is no rotation speed), the aircraft reaches 130\,KIAS in 32.4\,s,
+13.6\,\% before Pastor's, and lifts off at 138\,KEAS and 6.9$^\circ$, inside the records' 121 to 139\,KEAS and 4.5 to 7$^\circ$ at the top of both.
 
 The two recorded approaches are at 133 and 120\,KEAS. Their ratio is that of the square roots of the two landing weights the fuel model gives within
 half a percent, so the approach is flown at one lift coefficient, and the laws' rule for it picks 132.8 and 120.4\,KEAS. With the spoilers fitted to the
-2013 approach, the 2014 approach trims at idle thrust at an angle of attack of 4.79$^\circ$ against the measured 4.29$^\circ$. Flown by the laws
-(figure~\ref{fig:landing}) the touchdowns come at 128.6 and 117.1\,KEAS and a pitch attitude of 2.1$^\circ$, against 130 and 122\,KEAS and 2.4 and
-2.3$^\circ$, but sinking 1.1\,m/s where the aircraft touched at 0.66 and 0.75, and 1100 to 1300\,ft past the aiming point. The rollout holds 0.22\,$g$.
+2013 approach, the 2014 approach trims at idle thrust at an angle of attack of 4.78$^\circ$ against the measured 4.29$^\circ$. Flown by the laws
+(figure~\ref{fig:landing}) the touchdowns come at 129.7 and 117.9\,KEAS and a pitch attitude of 2.2$^\circ$, against 130 and 122\,KEAS and 2.4 and
+2.3$^\circ$, sinking 0.66 and 0.68\,m/s where the aircraft touched at 0.66 and 0.75, and 970 to 1070\,ft past the aiming point. The rollout holds
+0.22\,$g$. These touchdowns are not predictions: the flare law's four numbers (its height, 45\,ft; its target attitude; the sink it asks for, 1.6\,m/s;
+the spoiler gain) were chosen with the two records' touchdown in view. The first flare the laws had touched down at 1.1\,m/s, which looked like a fault
+in the model and was one in the law; of the candidates tried, this is the one that stayed within five knots of the records' speeds as well as the sink.
+The step of the integration is not what decides them: take-off and landing figures at 240, 480 and 960\,Hz differ from those at 120 by 1\,kt and 0.5$^\circ$
+at most (\texttt{fdm/rate\_study.py}), and a frame costs 16\,$\mu$s.
 
 \subsection{The laws}\label{sec:laws}
 \begin{figure*}[t]
 \centering\includegraphics[width=\textwidth]{laws.pdf}
 \caption{The laws' responses at the three conditions: a pitch step, a bank step to half the bank limit, a heading change of 90$^\circ$.}\label{fig:laws}
 \end{figure*}
-A pitch step of 2$^\circ$ overshoots 8 to 9\,\% and settles in 1.8\,s; a bank step settles in 4 to 7\,s; a heading change of 90$^\circ$ ends within
+A pitch step of 2$^\circ$ overshoots 8 to 9\,\% and settles in 1.9\,s; a bank step settles in 4 to 7\,s; a heading change of 90$^\circ$ ends within
 0.2$^\circ$ at 13$^\circ$ of bank at the cruise and 22 to 24$^\circ$ lower (figure~\ref{fig:laws}). Height is held within 0.5\,ft for 300\,s at the
-cruise and the climb point. A sideslip of 2$^\circ$ is under 0.2$^\circ$ after three periods of the bare airframe's Dutch roll. The bare airframe has
-an unstable aperiodic speed mode at the cruise, doubling in 10\,s, where lift and moment change with Mach number near 0.6; with speed held by the
-elevator it is held. Every gain doubled and every gain halved, the loops stay stable; phase margin was not measured. All 44 checks pass, and all are the
+cruise and the climb point. A sideslip of 2$^\circ$ is under 0.2$^\circ$ after three periods of the bare airframe's Dutch roll. The bare airframe had
+an unstable aperiodic speed mode at the cruise, doubling in 10\,s, where lift and moment change with Mach number near 0.6; its cause was the
+section's moment growing with Mach number faster than the tunnel's (section~\ref{sec:section}), and with that corrected the airframe's long mode is a
+phugoid of 176\,s with a damping ratio of 0.06. Corrected, the cruise trim needs 1.7$^\circ$ of ruddervator where it needed 0.7$^\circ$, which showed
+a fault in the checks: the trim had left its ruddervator command in the stick property, 0.087 of full travel where the protected law's dead band is
+0.05, and the cruise's hands-off test read it as a push on the stick. The checks now start with the stick at neutral. Every gain doubled and every gain halved, the loops stay stable; phase margin was not measured. All 44 checks pass, and all are the
 laws against their own limits: nothing of the real aircraft's response to a control is public to hold them to.
 
 \subsection{A mission, hands off}
@@ -401,6 +443,9 @@ The aircraft starts on a runway in about 20\,s with the flight model at 120\,Hz 
 joins its route, holds within 2\,\% of its circle's radius, is flown by hand and handed back, loses its link, flies the contingency route and lands;
 33 of 33 commands are answered as the Python copy answers them, and the manager's events come in the same order. That landing, at 26\,320\,lb, was
 down to 15\,kt \FgLandPast\,ft past the aiming point, where the flight model alone needs \FgLandModel\,ft (figure~\ref{fig:roll}).
+These runs in FlightGear (phase~9 of the logs) were repeated on this version after the section's moment was corrected and the flare law rewritten:
+all four phases pass (5, 10, 9 and 5 checks). The first repeat of the event-order check missed, because it read the manager's events a frame before the
+manager wrote the last one (at four times speed and two frames a second); the landing itself was the same to 170\,ft, and the check now waits for the event.
 
 The head-up display's horizon lies within \FgHudHorizon$^\circ$ of the scenery's and its figures are the aircraft's within rounding (figure~\ref{fig:hud}); it
 costs no measurable frame rate. The belly camera stays within \FgCamPoint$^\circ$ of a ground point through a 149$^\circ$ turn and within \FgCamShip$^\circ$ of a
@@ -459,17 +504,18 @@ asked to 2\,\%.
 \item \textbf{Sources that cannot all be met.} NASA's and Northrop Grumman's heights; the family's members at 85\,\% thrust; a bare engine against an
 installed one, in both engine models.
 \item \textbf{Another model's own limits.} pyCycle's generic component maps at part power and its fan map past its top speed line; the reference
-build, made before the calibration set the incidences, which no longer trims at the cruise and is not used.
-\item \textbf{Real or open.} The endurance, four hours long; the section data's moment and maximum lift at Mach~0.6; the wing's root chord, 16.5\,\%
+build, which does not carry the V-tail's incidence into its moment, so that it no longer trims at the cruise, and is not used.
+\item \textbf{Real or open.} The section data's maximum lift at Mach~0.6 and Re 2 million; the wing's root chord, 16.5\,\%
 over the drawing's because the chords carry the published area.
 \end{itemize}
 What the model reproduces of the real aircraft is its performance: the climb, unfitted to 40\,000\,ft and fitted above; the cruise-climb; the slope of
-its lift curve; its take-off within 13\,\%; and its approach, from one landing to the other. What it does not reproduce is its endurance.
+its lift curve; its take-off within 13\,\%; and its approach, from one landing to the other. Its endurance, 34.7\,h to NASA's ceiling, is inside the
+limit and still 3.7\,h over NASA's 31, which nothing in the sources can place on drag, fuel flow, payload power or reserves.
 
 What could not be compared at all is most of what makes a flight model: no stability derivative, mode, control power or response of the aircraft is
 public, beyond lift-curve slopes of a longer-winged version. The damping in pitch and yaw differs by a factor of two to three between methods. The
 centre of gravity is a choice that the one published figure contradicts. The laws are a plausible design that flies the way the records show the
-aircraft flying, not the aircraft's laws: their touchdowns are firmer than the recorded ones, their lift-off later, and they read true sideslip,
+aircraft flying, not the aircraft's laws: their touchdowns and rotation are numbers of the design chosen against the records, and they read true sideslip,
 which the aircraft cannot measure. Estimates throughout: the mass breakdown and inertias, the fuel layout, the control surfaces and actuators, the
 gear's springs, the idle thrust and spool times, the bending, the structural limits. Not modelled: wind and turbulence in any check, off-standard
 days, the loss of engine efficiency at low Reynolds number, the bent wing's twist, torsion and flutter, the windmilling engine, sensor and navigator
@@ -481,10 +527,11 @@ with its pass mark, and waits for the operator's manual. This work is not connec
 \item A flight model of the Global Hawk RQ-4A, its wing 80 strips on a lifting line, its engine a cycle model of the AE~3007 family, with a bending
 wing, runs in plain JSBSim at 120\,Hz, generated from published data, and flies in FlightGear.
 \item With the engine's flat rating read as a turbine temperature and nothing fitted, it climbs from 10\,000 to 40\,000\,ft 4 to 11\,\% slower
-than two measured flights. One drag increment and 1\,\% on the fan-speed limit give the time to 55\,000\,ft within 3.1\,\% and the cruise-climb within
-730\,ft over 20 hours; thrust and drag cannot be separated with the data there is.
+than two measured flights. One drag increment and 1\,\% on the fan-speed limit give the time to 55\,000\,ft within 2.7\,\% and the cruise-climb within
+670\,ft over 20 hours; thrust and drag cannot be separated with the data there is.
 \item Its trimmed lift-curve slope is within 5\,\% of three flights', and the second recorded approach follows from the spoilers fitted on the first.
-\item Its endurance is 35.4\,h where NASA gives 31 or more: documented, not tuned away.
+\item Its endurance is 34.7\,h to NASA's 65\,000\,ft ceiling, inside the limit of 29 to 35, and 35.5\,h without a ceiling; NASA gives 31 or more.
+It is not tuned to it. One fitted exponent for the section's moment, set to the tunnel's, made the bare airframe's speed mode at the cruise stable.
 \item Flight laws of the author's design fly a mission from stand to stand, the two recorded landings within 5\,KEAS and half a metre a second of the
 records, a navigator failure of the 2017 kind within a degree of bank, a lost link and a landing without the engine; they are held to their own
 requirements, because nothing of the real laws or of the aircraft's response is public.
@@ -504,6 +551,8 @@ records and \NDpass{} against the design's own requirements.
 \bibitem{glb} NASA 3D Resources, \emph{Global Hawk}, and the side-view drawing of the payload bays in NASA's Global Hawk briefings.
 \bibitem{uthm} A thesis on transient flight analysis, Universiti Tun Hussein Onn Malaysia, 2013, table 2.4, quoting \emph{Jane's All the World's Aircraft}, 1999.
 \bibitem{lrn} R.\,M.\ Hicks and S.\,E.\ Cliff, \emph{An Evaluation of Three Two-Dimensional Computational Fluid Dynamics Codes Including Low Reynolds Numbers and Transonic Mach Numbers}, NASA TM 102840, 1991.
+\bibitem{xfoil} M.\,Drela, XFOIL: an analysis and design system for low Reynolds number airfoils, in \emph{Low Reynolds Number Aerodynamics}, Lecture Notes in
+Engineering~54, Springer, 1989; version 6.99, built here without its display.
 \bibitem{sfte} C.\,M.\ Eaton and R.\,K.\ Woolf, \emph{Flight Test Validation of the RQ-4 Block 20 Global Hawk Aerodynamic and Propulsive Models}, Society of Flight Test Engineers, 2009.
 \bibitem{icao} ICAO, \emph{Aircraft Engine Emissions Databank}, rows of the AE~3007 variants.
 \bibitem{ghazi} G.\ Ghazi, doctoral thesis on a Cessna Citation~X performance model, \'Ecole de technologie sup\'erieure, Montr\'eal, table 2.1.

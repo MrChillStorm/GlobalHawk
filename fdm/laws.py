@@ -28,10 +28,16 @@ FT_PER_DEG = 364567.2            # feet in a degree of latitude
 GLIDE_TAN = 0.07782              # tan of 4.45 deg: the measured approaches
 APPROACH_CL = 0.645              # the measured approaches
 SPOILER_BASE = 0.667             # 30 of 45 deg
-FLARE_HEIGHT = 70.0              # ft of wheel height
+# The flare and the rotation, set against the records on 2026-11-13 (docs/PLAN.md, "FDM issues"): the first design (flare at
+# 70 ft, gain 0.25, 2.3 ft/s wanted) touched down at 1.1 m/s where the two recorded landings had 0.66 and 0.75; at a gain
+# of 0.6, 1.6 ft/s wanted and a flare from 45 ft it is 0.64 to 0.71 m/s from 12,500 to 26,000 lb, at 2.2 deg, with a peak
+# of 1.4 g. The rotation began at 130 KIAS (Pastor's milestone, not a rotation speed) and the aircraft left the ground
+# at 144 KEAS, above the 121 to 139 of the records; from 120 KIAS to 6.5 deg it leaves at 137 KEAS and 6.7 to 6.9 deg (records: 4.5 to 7).
+FLARE_HEIGHT = 45.0              # ft of wheel height
 FLARE_PITCH = 2.4                # deg: the measured touchdowns
-FLARE_SINK = 2.3                 # ft/s wanted at the ground (0.7 m/s)
-ROTATE_KIAS, ROTATE_PITCH = 130.0, 7.0
+FLARE_SINK = 1.6                 # ft/s wanted at the ground (0.5 m/s)
+FLARE_GAIN = 0.6                 # spoiler travel per ft/s of sink error in the flare
+ROTATE_KIAS, ROTATE_PITCH = 120.0, 6.5
 DECEL_G = 0.235                  # the measured rollout
 WING_AREA = 540.0
 
@@ -225,7 +231,7 @@ def laws_file():
         ('engaged', 0), ('pitch-mode', 0), ('roll-mode', 0), ('thrust-mode', 0), ('theta-cmd-deg', 0), ('speed-cmd-kcas', 150),
         ('speed-schedule', 1), ('speed-offset-kcas', 0), ('alt-cmd-ft', 0), ('bank-cmd-deg', 0), ('heading-cmd-deg', 0),
         ('throttle-cmd', 0.5), ('gain-scale', 1), ('bias-pitch-deg', 0), ('bias-yaw-deg', 0), ('bias-throttle', 0),
-        ('theta-latched-deg', 0), ('theta-delta-deg', 0), ('land-mode', 0), ('ground-steer', 0), ('taxi-speed-kt', 0),
+        ('theta-latched-deg', 0), ('theta-delta-deg', 0), ('theta-speed-bias-deg', 0), ('land-mode', 0), ('ground-steer', 0), ('taxi-speed-kt', 0),
         ('spoiler-mode', 0), ('spoiler-cmd', 0), ('rwy-elev-ft', 0), ('leg-lat0-deg', 0), ('leg-lon0-deg', 0), ('leg-lat1-deg', 0.01),
         ('leg-lon1-deg', 0), ('rollout', 0), ('spoiler-base', 0.667), ('link-last-sec', 0), ('link-timeout-sec', 30), ('link-monitor', 0),
         ('link-lost', 0), ('manual', 0), ('direct-pitch-deg', 0), ('direct-roll-deg', 0), ('direct-yaw-deg', 0)))
@@ -345,7 +351,19 @@ def laws_file():
           %s
         </ifthen>''' % (_p('ap/speed-error-kt'), _v(0), _p('ap/alpha-limit-deg'), _p('aero/alpha-deg'), _v(0.3), _v(0), _p('ap/speed-error-kt'))))
     ch.append(_pid('ap/theta-speed-i-deg', 'ap/speed-error-i-kt', 0.0, G['K_v_i'], 'speed', clip=('-20', '20')))
-    ch.append(_fn('ap/theta-speed-deg', '        <sum><product>%s%s</product>%s</sum>' % (_v(G['K_v']), _p('ap/speed-error-kt'), _p('ap/theta-speed-i-deg')),
+    # Entered from another attitude (the take-off's 7 deg at 100 ft), the loop's integral begins at nothing and its output
+    # asks for the attitude latched at engagement: the nose came down from 9 deg to -1 and the speed ran on to 165 KEAS
+    # before it came back. So the change the pitch command had on entry is carried into the loop: it follows the command
+    # while another mode flies and holds from the frame this one takes over. Entered from a trim, the change is nil and
+    # nothing is different.
+    ch.append('''    <switch name="ap/latch-theta-speed-bias">
+      <description>the pitch command's change from the latched attitude, as it was when the speed mode took over</description>
+      <default value="ap/theta-speed-bias-deg"/>
+      <test value="ap/theta-delta-deg">ap/pitch-mode ne 1</test>
+      <test value="ap/theta-delta-deg">ap/engaged == 0</test>
+      <output>ap/theta-speed-bias-deg</output>
+    </switch>''')
+    ch.append(_fn('ap/theta-speed-deg', '        <sum>%s<product>%s%s</product>%s</sum>' % (_p('ap/theta-speed-bias-deg'), _v(G['K_v']), _p('ap/speed-error-kt'), _p('ap/theta-speed-i-deg')),
                   clip=('-20', '20')))
     ch.append(_fn('ap/alt-error-ft', _op('difference', _p('ap/alt-cmd-ft'), _p('position/h-sl-ft')), clip=('-1500', '1500')))
     ch.append(_trigger('alt', 'ap/pitch-mode == 2'))
@@ -563,7 +581,7 @@ def laws_file():
         _v(FLARE_SINK), _v(GLIDE_TAN), _p('velocities/vg-fps'), _p('aero/wheel-height-ft'), _v(FLARE_HEIGHT)),
         'the sink wanted in the flare: the approach\'s, falling with height to %.1f ft/s at the ground' % FLARE_SINK))
     ch.append(_fn('ap/spoiler-flare', '        <sum>%s<product>%s<sum>%s%s</sum></product></sum>' % (
-        _p('ap/spoiler-base'), _v(0.25), _p('velocities/h-dot-fps'), _p('ap/flare-sink-wanted-fps')),
+        _p('ap/spoiler-base'), _v(FLARE_GAIN), _p('velocities/h-dot-fps'), _p('ap/flare-sink-wanted-fps')),
         'in the flare the spoilers work on sink rate alone: they come in as far as the sink needs', clip=('0.10', '1')))
     ch.append('''    <switch name="ap/spoiler-law">
       <default value="ctl/manual-spoiler-norm"/>

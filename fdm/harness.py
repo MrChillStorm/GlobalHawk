@@ -15,7 +15,9 @@ import numpy as np
 from scipy.optimize import least_squares
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-HZ = 120.0
+# Frames per second of simulated time. 120 is what FlightGear runs JSBSim at; GH_HZ=240 (or 480, 960) in the environment
+# runs every check at that rate instead, to see whether a result is the model's or the step's (fdm/rate_study.py)
+HZ = float(os.environ.get('GH_HZ', 120.0))
 KT = 1.6878099
 ACC = ('accelerations/udot-ft_sec2', 'accelerations/vdot-ft_sec2', 'accelerations/wdot-ft_sec2',
        'accelerations/pdot-rad_sec2', 'accelerations/qdot-rad_sec2', 'accelerations/rdot-rad_sec2')
@@ -48,6 +50,39 @@ def load(build='ships', rebuild=True, dt=1 / HZ):
         raise RuntimeError('JSBSim could not load the %s build' % build)
     f.build = build
     f.capacity = [f['propulsion/tank[%d]/contents-lbs' % i] for i in range(N_TANKS)]
+    return f
+
+
+def load_variant(overrides, dt=1 / HZ):
+    """The model generated in this process with module constants changed, in a temporary tree: for trying a design
+    number (overrides = {'laws.FLARE_SINK': 1.5}) without touching the files. Constants other modules copied by value
+    when they were imported are not reached; the ones the generators read at call time are."""
+    import importlib
+    import shutil
+    import tempfile
+    import genghawk
+    saved = {}
+    for key, val in overrides.items():
+        mod, name = key.split('.')
+        m = importlib.import_module(mod)
+        saved[key] = (m, name, getattr(m, name))
+        setattr(m, name, val)
+    tmp = tempfile.mkdtemp(prefix='ghvariant')
+    try:
+        genghawk.write(os.path.join(tmp, 'GlobalHawk'))
+    finally:
+        for m, name, old in saved.values():
+            setattr(m, name, old)
+    f = Sim(None)
+    f.set_debug_level(0)
+    f.set_aircraft_path(os.path.abspath(tmp))
+    f.set_systems_path('Systems')
+    f.set_dt(dt)
+    if not f.load_model('GlobalHawk'):
+        raise RuntimeError('JSBSim could not load the variant')
+    f.build = 'variant'
+    f.capacity = [f['propulsion/tank[%d]/contents-lbs' % i] for i in range(N_TANKS)]
+    shutil.rmtree(tmp, ignore_errors=True)
     return f
 
 
@@ -395,6 +430,12 @@ def engage(f, t, x=None, **ap):
     for k, v in ap.items():
         f['ap/' + k.replace('_', '-')] = v
     f['ap/engaged'] = 1
+    # The trim left the surfaces' commands in the stick properties (the ruddervator's, at the cruise 0.087 of full
+    # travel). The bias latch has them from the frames before this one; a pilot's stick lies at neutral, and left
+    # as it was the protected law (dead band 0.05) reads it as a push on the stick (found when a cruise trim,
+    # after the moment's Mach growth was changed, needed more than the dead band's worth).
+    for k in ('fcs/elevator-cmd-norm', 'fcs/aileron-cmd-norm', 'fcs/rudder-cmd-norm'):
+        f[k] = 0.0
 
 
 def run(f, seconds, every=12, hook=None):
