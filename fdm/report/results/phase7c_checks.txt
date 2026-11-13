@@ -56,4 +56,4 @@ E2, as the manager saw it:
      34.7 min  circle right over the entry point, 21368 ft above the glide path there (planner expected 13174)
      44.7 min  final, 374 ft above the glide path
      47.9 min  rollout over
-exit 0 after 17 s
+exit 0 after 16 s

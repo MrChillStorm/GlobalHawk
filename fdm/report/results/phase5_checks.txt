@@ -20,4 +20,4 @@ L3   rollout from touchdown to 43 kt, ft                       3579      3485   
 L4   rest to rest without NaN                                                                    pass  (flies: landing run to a stop: 3931 ft)
 
 12 checks, 12 pass, 0 miss
-exit 0 after 2 s
+exit 0 after 4 s

@@ -11,4 +11,4 @@ C2  the plan check, ported: 200 damaged plans    pass  the same verdict on 200 o
 C3  glide reach, ported: 50 cases                pass  the largest difference 0.000 ft
 
 4 checks, 4 pass, 0 miss
-exit 0 after 11 s
+exit 0 after 14 s

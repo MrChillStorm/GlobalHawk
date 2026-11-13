@@ -29,4 +29,4 @@ drag increment 0.00564, fan-speed factor 1.010, fuel factor 1.000
     20 h:  64344 ft,  16390 lb,  347 lb/h, Mach 0.600, 344 KTAS, CL 0.973, L/D 30.2, climbing +7.4 ft/min
     25 h:  66568 ft,  14745 lb,  312 lb/h, Mach 0.600, 344 KTAS, CL 0.973, L/D 30.2, climbing +7.4 ft/min
     30 h:  68800 ft,  13265 lb,  281 lb/h, Mach 0.600, 345 KTAS, CL 0.973, L/D 30.2, climbing +7.4 ft/min
-exit 0 after 4 s
+exit 0 after 5 s

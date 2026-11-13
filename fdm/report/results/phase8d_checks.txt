@@ -15,4 +15,4 @@ S4  back to automatic                        pass  the aircraft holds: "hold at 
 S4  the link lost while flown by hand        pass  automatic again and on the lost-link route 30.0 s after the last uplink: "descend to 6500 ft, leg 1 of 1, 37 nmi to go"
 
 8 checks, 8 pass, 0 miss
-exit 0 after 3 s
+exit 0 after 2 s

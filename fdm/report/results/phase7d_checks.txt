@@ -38,4 +38,4 @@ S1  direct, low: dive 6 s, then full back stick    pass     load factor passed 2
 S1  limits/reset                                   reported clears the flags: True
 
 26 checks, 26 pass, 0 miss; 5 reported
-exit 0 after 12 s
+exit 0 after 11 s

@@ -116,6 +116,18 @@ def main(logs, groups):
     fitted = sum(v[2] for v in total.values())
     tests = len(re.findall(r'(?m)\b(?:OK|ok)\s*$', open(os.path.join(RESULTS, 'gcs_tests.txt')).read()))
     stamp = open(os.path.join(RESULTS, 'commit.txt')).read().split('\n')
+    # figures the text quotes from FlightGear runs: read from the logs, so a rerun cannot leave them stale
+    def grab(log, pattern, names):
+        m = re.search(pattern, open(os.path.join(RESULTS, log + '.txt'), errors='replace').read())
+        if not m:
+            problems.append('%s: the text quotes a figure the log no longer has (%s)' % (log, pattern[:50]))
+            return ''
+        return ''.join('\\newcommand{\\%s}{%s}\n' % (n, v) for n, v in zip(names, m.groups()))
+    quoted = (grab('phase9b_checks', r'at (\d+) lb; under 15 kt (\d+) ft past the aiming point \(the flight model alone at that weight: (\d+) ft', ('FgLandWeight', 'FgLandPast', 'FgLandModel'))
+              + grab('phase9d_checks', r'the camera within ([\d.]+) deg of the point', ('FgCamPoint',))
+              + grab('phase9d_checks', r'the camera within ([\d.]+) deg of it', ('FgCamShip',))
+              + grab('phase9a_checks', r'height (\d+) to (\d+) ft, ([\d.]+) to ([\d.]+) KCAS, bank within ([\d.]+) deg', ('FgAirHLo', 'FgAirHHi', 'FgAirVLo', 'FgAirVHi', 'FgAirBank'))
+              + grab('phase9c_checks', r'([\d.]+) deg apart \(12.8 px a deg\)', ('FgHudHorizon',)))
     kinds = {}
     for kind, _ in misses:
         kinds[kind] = kinds.get(kind, 0) + 1
@@ -124,6 +136,7 @@ def main(logs, groups):
             passed, missed, passed + missed, sum(t[2] for t in table), tests, fitted))
         fh.write(''.join('\\newcommand{\\N%spass}{%d}\\newcommand{\\N%smiss}{%d}\n' % (g, total[g][0], g, total[g][1]) for g in order))
         fh.write(''.join('\\newcommand{\\Nkind%s}{%d}\n' % (k, v) for k, v in sorted(kinds.items())))
+        fh.write(quoted)
         fh.write('\\newcommand{\\Ncommit}{%s}\\newcommand{\\Ndate}{%s}\n' % (stamp[0], stamp[1] if len(stamp) > 1 else ''))
     print('%d checks: %d pass (%d of them after a fit), %d miss; %d reported; %d station test files; by group %s; misses by kind %s' % (
         passed + missed, passed, fitted, missed, sum(t[2] for t in table), tests, {g: tuple(total[g]) for g in order}, kinds))

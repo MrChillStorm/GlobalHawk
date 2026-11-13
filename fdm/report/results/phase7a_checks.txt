@@ -51,4 +51,4 @@ A11  bank step and altitude hold at 11800 lb, 62000 ft    pass  overshoot 0 %, s
 A10  climb 10,000 to 55,000 ft hands off                  pass  4354 s against the quasi-steady 4452 s (-2.2 %); speed within 0.54 kt of the schedule, bank within 0.89 deg; Pastor measured 4,596 s
 
 44 checks, 44 pass, 0 miss
-exit 0 after 29 s
+exit 0 after 24 s

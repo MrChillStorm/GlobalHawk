@@ -20,4 +20,4 @@ A1   trimmed lift-curve slope, Mach 0.59 to 0.62, per deg          0.1218    0.1
 A2   bank in 409 long turns less speed times turn rate, deg         15.01     15.07  -0.0567      1  pass  (the data against kinematics, scatter 1.16 deg)
 
 12 checks, 9 pass, 3 miss
-exit 0 after 0 s
+exit 0 after 1 s

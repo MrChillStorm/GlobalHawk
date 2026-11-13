@@ -41,4 +41,4 @@ AE 3007H: the same engine, limited to the turbine temperature of 7500 lbf at sea
       60000 ft M 0.60:    662 lbf,   423 lb/h, TSFC 0.639, OPR 24.3, BPR 4.47, Tt4 1213 K (fan speed)
       65000 ft M 0.60:    520 lbf,   333 lb/h, TSFC 0.639, OPR 24.3, BPR 4.47, Tt4 1213 K (fan speed)
 wrote fdm/data/engine.json
-exit 0 after 3 s
+exit 0 after 2 s

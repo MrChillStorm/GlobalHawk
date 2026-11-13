@@ -1,9 +1,9 @@
 H1 & the aircraft's own HUD, in the nose camera only & D & pass & HUD ''Global Hawk nose camera''; shown at the start 1.0; in an outside view 0.0; back in the nose camera 1.0; switched off 0.0; Nasal errors: none \\
 H3 & the horizon line lies on the horizon (runway) & D & pass & the HUD's horizon at row 268, the scenery's (sky to ground, by brightness) at row 265: 0.26 deg apart (12.8 px a deg) \\
-H4 & one colour & D & pass & 8437 pixels changed by the HUD, 2234 of them at full strength over the dark part of the scene: red/green 0.23 (0.30 wanted), blue/green 0.21 (0.25 wanted); pixels where green is not the strongest: 17 \\
+H4 & one colour & D & pass & 8279 pixels changed by the HUD, 2245 of them at full strength over the dark part of the scene: red/green 0.23 (0.30 wanted), blue/green 0.21 (0.25 wanted); pixels where green is not the strongest: 10 \\
 H7g & no structural alert from standing on the runway & D & pass & the limit flag 0.0 after about a minute on the runway (FlightGear sets the aircraft down with a jolt at the start; the latch is cleared once after it) \\
-H5 & cost in frames a second & D & pass & 31.6 with the HUD, 31.6 without, over 20 s each on the runway \\
-H7 & no structural alert from the start itself & D & pass & load factor over the first 40 s 0.96 to 1.01; the limit flag at the end 0 (it was set at some time: False; cleared once at 5 s) \\
-H2 & shows what the aircraft has (in the air) & D & pass & shown 150 kt, 3010 ft, 040 deg, targets 150 kt 3000 ft; had 150.2 kt, 3005 ft, 40.0 deg, 150.0 kt, 3000 ft | 30 s later shown 150 kt, 2990 ft, 040 deg, targets 150 kt 3000 ft; had 149.8 kt, 2995 ft, 39.9 deg, 150.0 kt, 3000 ft; beyond rounding by: [0, 0, 0, 0, 0] \\
+H5 & cost in frames a second & D & pass & 33.4 with the HUD, 33.5 without, over 20 s each on the runway \\
+H7 & no structural alert from the start itself & D & pass & load factor over the first 40 s 0.97 to 1.01; the limit flag at the end 0 (it was set at some time: False; cleared once at 5 s) \\
+H2 & shows what the aircraft has (in the air) & D & pass & shown 150 kt, 3010 ft, 040 deg, targets 150 kt 3000 ft; had 150.3 kt, 3006 ft, 40.0 deg, 150.0 kt, 3000 ft | 30 s later shown 150 kt, 2990 ft, 040 deg, targets 150 kt 3000 ft; had 149.8 kt, 2994 ft, 39.9 deg, 150.0 kt, 3000 ft; beyond rounding by: [0, 0, 0, 0, 0] \\
 H3b & the horizon in a banked turn (by eye, screenshot) & D & pass & fdm/out/hud-air-turn.png, bank 22.1 deg, pitch 1.4 deg: to be looked at \\
 H1b & no Nasal error in the air & D & pass & none \\

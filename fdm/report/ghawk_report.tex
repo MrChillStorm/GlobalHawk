@@ -379,7 +379,7 @@ Mach~0.70, are assumed: none is published.
 \centering\includegraphics[width=\columnwidth]{landing_roll.pdf}
 \caption{The landing's roll the station forecasts, from the flight model's own landings, and a landing made in FlightGear ten minutes after take-off.}\label{fig:roll}
 \end{figure}
-Flown through the station's protocol, the model taxis, takes off and joins its route on a start command, goes to a point and holds within 0.24\,nmi of
+Flown through the station's protocol, the model taxis, takes off and joins its route on a start command, goes to a point and holds within 0.25\,nmi of
 its circle, changes height in the hold, resumes its plan, refuses what it must (a go-to on the ground, a second start, 70\,000\,ft, a repeated
 sequence number), and 30.0\,s after the station goes silent leaves for home. The nine alerts each rise within 0.5\,s of their cause, or 29.5\,s into a
 silence, and clear with it. Control passes between stations only by offer and acceptance, or by taking it from a station that is no longer heard; a
@@ -396,14 +396,14 @@ The forecast of a 43-minute plan is 2.2\,\% long in time and 2.2\,\% short in fu
 \caption{The head-up display over the nose camera in a 22$^\circ$ banked turn in FlightGear.}\label{fig:hud}
 \end{figure}
 The aircraft starts on a runway in about 20\,s with the flight model at 120\,Hz and stands still for a minute. Started in the air at 20\,000\,ft and
-150\,KCAS it holds its height within 16\,ft, its speed within 0.6\,kt and its bank within half a degree over two minutes
+150\,KCAS it holds its height within \the\numexpr\FgAirHHi-\FgAirHLo\relax\,ft, its speed within 0.6\,kt and its bank within \FgAirBank$^\circ$ over two minutes
 (section~\ref{sec:review}, item~\ref{it:wind}). Commanded only through the link, by the scripting-language copy of the mission manager, it takes off,
 joins its route, holds within 2\,\% of its circle's radius, is flown by hand and handed back, loses its link, flies the contingency route and lands;
 33 of 33 commands are answered as the Python copy answers them, and the manager's events come in the same order. That landing, at 26\,320\,lb, was
-down to 15\,kt 5570\,ft past the aiming point, where the flight model alone needs 5770\,ft (figure~\ref{fig:roll}).
+down to 15\,kt \FgLandPast\,ft past the aiming point, where the flight model alone needs \FgLandModel\,ft (figure~\ref{fig:roll}).
 
-The head-up display's horizon lies within 0.3$^\circ$ of the scenery's and its figures are the aircraft's within rounding (figure~\ref{fig:hud}); it
-costs no measurable frame rate. The belly camera stays within 0.16$^\circ$ of a ground point through a 149$^\circ$ turn and within 0.06$^\circ$ of a
+The head-up display's horizon lies within \FgHudHorizon$^\circ$ of the scenery's and its figures are the aircraft's within rounding (figure~\ref{fig:hud}); it
+costs no measurable frame rate. The belly camera stays within \FgCamPoint$^\circ$ of a ground point through a 149$^\circ$ turn and within \FgCamShip$^\circ$ of a
 moving ship.
 
 \subsection{Sound}

@@ -18,4 +18,4 @@ F1   tip deflection at the climb, 26,750 lb trim, ft          4.297     4.297   
 F2   tip deflection standing with full tanks, ft             -1.598    -1.600   -0.13%   3.0%  pass
 F1   the mode 20 s after release at cruise against its settled value, ft     2.569     2.569   +0.00%   1.0%  pass
 4 checks, 4 pass
-exit 0 after 1 s
+exit 0 after 2 s

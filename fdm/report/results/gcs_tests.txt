@@ -16,4 +16,4 @@ plancheck OK
 predict OK
 reach OK
 traffic OK
-exit 0 after 1 s
+exit 0 after 2 s
