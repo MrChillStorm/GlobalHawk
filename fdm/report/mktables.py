@@ -102,7 +102,7 @@ def main(logs, groups):
         if id(c) not in used:
             problems.append('causes.json: stale, no such miss now: %s %s %s' % (c['log'], c['tag'], c['words']))
     with open(os.path.join(TAB, 'misses.tex'), 'w') as fh:
-        fh.write('\n'.join(m[1] for m in misses) + '\n')
+        fh.write('\n'.join(m[1] for m in misses) + '\n\\bottomrule\n')              # the rule here: TeX takes none after an \\input in a table
     # the summary: a row a log, a column a group, "pass/miss"
     order = [g for g in groups if any(g in by for _, by, _ in table)]
     cell = lambda v: '' if v is None else ('%d' % v[0] if not v[1] else '%d/\\textbf{%d}' % (v[0], v[1]))

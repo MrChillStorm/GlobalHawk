@@ -1,0 +1,686 @@
+[
+ {
+  "code": "T_1.1.1",
+  "guideline": "If an on-board camera is used for flight control tasks, the RPS should enable the pilot to align the camera with the longitudinal access of the…",
+  "status": "met",
+  "where": "The nose camera is fixed on the aircraft's axis; the belly camera is not used to fly."
+ },
+ {
+  "code": "P_1.1.1",
+  "guideline": "Not enable the pilot to disengage automation in flight if the aircraft will depart from controlled flight as a result",
+  "status": "partly",
+  "where": "Protected keeps the aircraft inside its limits. Direct has none and is offered all the same, enroute only: a simulator's choice."
+ },
+ {
+  "code": "P_1.1.2",
+  "guideline": "Prevent multiple operators from operating the same application or procedure at any one time",
+  "status": "met",
+  "where": "One station has control; another's commands and stick are refused by the aircraft, naming who has it."
+ },
+ {
+  "code": "P_1.1.3",
+  "guideline": "It should be possible to set an RPS to a receive only mode, in which the RPS displays information downlinked from an RPA in the absence of an active…",
+  "status": "met",
+  "where": "A station without control shows everything and its commands are greyed: Link reads \"receiving only\"."
+ },
+ {
+  "code": "T_1.2.1",
+  "guideline": "Monitor the status of consumable resources",
+  "status": "met",
+  "where": "Engine and fuel: fuel, flow, hours left at that flow, six tanks."
+ },
+ {
+  "code": "I_1.2.1",
+  "guideline": "Information on the status of consumable resources",
+  "status": "met",
+  "where": "As T_1.2.1; FUEL LOW is raised by the aircraft; the forecast gives fuel at each point and on landing."
+ },
+ {
+  "code": "T_1.3.1",
+  "guideline": "Perform checks on the status of RPS systems",
+  "status": "partly",
+  "where": "Only the link's state and the connection line at the foot of the page; a gamepad is named when one is found."
+ },
+ {
+  "code": "T_1.3.2",
+  "guideline": "Perform a pre-flight check on an alternate control station, or confirm that this check has been performed",
+  "status": "not met",
+  "where": "Nothing checks another station before a handover beyond its being heard."
+ },
+ {
+  "code": "T_1.3.3",
+  "guideline": "Monitor the performance of RPS support services, e.g. air conditioning and electrical power",
+  "status": "not applicable",
+  "where": "A browser page has no support services to watch."
+ },
+ {
+  "code": "I_1.3.1",
+  "guideline": "Health and status information on the RPS",
+  "status": "partly",
+  "where": "As T_1.3.1."
+ },
+ {
+  "code": "T_1.5.1",
+  "guideline": "Confirm spectrum availability before selecting link",
+  "status": "not applicable",
+  "where": "One simulated link; no spectrum."
+ },
+ {
+  "code": "T_1.5.2",
+  "guideline": "Select the appropriate communication mode (e.g. terrestrial/satellite, frequency)",
+  "status": "partly",
+  "where": "The station's name and delay are chosen in the page's address (LRE: none; MCE: 1.2 s), not while running."
+ },
+ {
+  "code": "T_1.5.3",
+  "guideline": "Maintain awareness of selected communication mode",
+  "status": "met",
+  "where": "Link shows the station's name and its delay."
+ },
+ {
+  "code": "T_1.5.4",
+  "guideline": "Confirm that communication link is effective, and established with the correct UA",
+  "status": "partly",
+  "where": "Link turns green only when the aircraft is hearing this station, and every command is answered. There is one aircraft, so \"the correct one\" is not shown."
+ },
+ {
+  "code": "T_1.5.5",
+  "guideline": "Identify if more than one control station is linked with the UA",
+  "status": "met",
+  "where": "Control lists the stations the aircraft hears and which has control."
+ },
+ {
+  "code": "T_1.5.6",
+  "guideline": "Maintain awareness of link strength, or link abnormalities",
+  "status": "not met",
+  "where": "Link strength is not modelled: the link is there or it is not."
+ },
+ {
+  "code": "T_1.5.7",
+  "guideline": "Maintain awareness of link latency, where relevant",
+  "status": "met",
+  "where": "The delay is shown beside Link, in seconds."
+ },
+ {
+  "code": "T_1.5.8",
+  "guideline": "Anticipate link degradations or diminished link strength",
+  "status": "not met",
+  "where": "No link coverage is modelled."
+ },
+ {
+  "code": "T_1.5.9",
+  "guideline": "Maintain an awareness of the geographic limits of the link and potential obstructions to signal",
+  "status": "not met",
+  "where": "No link coverage is modelled."
+ },
+ {
+  "code": "T_1.5.10",
+  "guideline": "Maintain awareness of crew actions or control inputs that could interrupt or degrade the link",
+  "status": "partly",
+  "where": "Closing the page is the one crew action that cuts the link, and the manual and the page say what follows."
+ },
+ {
+  "code": "T_1.5.11",
+  "guideline": "Respond to interference with the signal, (e.g. other users of frequency, jamming attempts)",
+  "status": "not applicable",
+  "where": "No interference is modelled."
+ },
+ {
+  "code": "T_1.5.12",
+  "guideline": "Change the link during flight operations as necessary",
+  "status": "not met",
+  "where": "The link cannot be changed in flight; control can be handed to a station on another link."
+ },
+ {
+  "code": "T_1.5.13",
+  "guideline": "Assess link strength and quality before switching link",
+  "status": "not met",
+  "where": "As T_1.5.6."
+ },
+ {
+  "code": "T_1.5.14",
+  "guideline": "Define the duration of a loss of link that must occur before the lost link alert is activated, or the RPA enters its lost link procedure",
+  "status": "not met",
+  "where": "The 30 s is shown, not set from the station (it is the flight model's ap/link-timeout-sec)."
+ },
+ {
+  "code": "T_1.5.15",
+  "guideline": "Manage resumption of the signal after a lost link",
+  "status": "met",
+  "where": "LINK WAS LOST stands until Resume plan; the aircraft stays on its lost-link route until told."
+ },
+ {
+  "code": "I_1.5.1",
+  "guideline": "Predictive information on the quality and strength of a C2 link before the link is actively used to control the UA",
+  "status": "not met",
+  "where": "No link quality is modelled."
+ },
+ {
+  "code": "I_1.5.2",
+  "guideline": "Identify which C2 link settings are active (e.g. selected frequency, satellite vs terrestrial)",
+  "status": "partly",
+  "where": "Station name and delay; nothing else to set."
+ },
+ {
+  "code": "I_1.5.3",
+  "guideline": "Information to confirm that effective control is established with the correct UA",
+  "status": "partly",
+  "where": "As T_1.5.4."
+ },
+ {
+  "code": "I_1.5.4",
+  "guideline": "Information on the geographic limits of the link",
+  "status": "not met",
+  "where": "No link coverage is modelled."
+ },
+ {
+  "code": "I_1.5.5",
+  "guideline": "Information on spectrum activity from a spectrum",
+  "status": "not applicable",
+  "where": "No spectrum is modelled."
+ },
+ {
+  "code": "I_1.5.6",
+  "guideline": "Alert the pilot when the RPA is approaching an area where link is likely to be lost",
+  "status": "not met",
+  "where": "No link coverage is modelled."
+ },
+ {
+  "code": "I_1.5.7",
+  "guideline": "Alert the pilot when the link is lost",
+  "status": "met",
+  "where": "NO LINK TO THE AIRCRAFT at the station that lost it; LINK WAS LOST from the aircraft to every station that hears it."
+ },
+ {
+  "code": "I_1.5.8",
+  "guideline": "The RPA will transmit a pre-determined transponder code when the link is lost",
+  "status": "not met",
+  "where": "No transponder is modelled."
+ },
+ {
+  "code": "I_1.5.9",
+  "guideline": "Monitor the strength of the link",
+  "status": "not met",
+  "where": "As T_1.5.6."
+ },
+ {
+  "code": "I_1.5.10",
+  "guideline": "Alert the pilot whenever the C2 link experiences interference, whether resulting from natural phenomena, payload or other equipment associated with…",
+  "status": "not applicable",
+  "where": "No interference is modelled."
+ },
+ {
+  "code": "I_1.5.11",
+  "guideline": "Display to the pilot the source of downlink transmissions",
+  "status": "partly",
+  "where": "One aircraft; the connection line names the address the telemetry comes from."
+ },
+ {
+  "code": "I_1.5.12",
+  "guideline": "Where relevant, the RPS should provide the pilot with information on link latency, in milliseconds",
+  "status": "partly",
+  "where": "The delay set for the station is shown in seconds; it is not measured."
+ },
+ {
+  "code": "I_1.5.13",
+  "guideline": "Anticipate link degradations or diminished link strength. This information may include link footprint, including areas that may be affected by…",
+  "status": "not met",
+  "where": "No link coverage is modelled."
+ },
+ {
+  "code": "I_1.5.14",
+  "guideline": "Manage link security",
+  "status": "not met",
+  "where": "No link security: anything that reaches FlightGear's web server can command the aircraft."
+ },
+ {
+  "code": "I_1.5.15",
+  "guideline": "Inform the pilot when a lost link is resumed",
+  "status": "partly",
+  "where": "Link turns green again and NO LINK clears; no separate message says it."
+ },
+ {
+  "code": "C_1.5.1",
+  "guideline": "Select the communication mode (e.g. terrestrial/satellite, frequency, transmission power)",
+  "status": "partly",
+  "where": "As T_1.5.2."
+ },
+ {
+  "code": "C_1.5.2",
+  "guideline": "A control to enable the pilot to request a link status report",
+  "status": "not met",
+  "where": "No such control; the link's state is always shown."
+ },
+ {
+  "code": "C_1.5.3",
+  "guideline": "If antenna selection is performed by the pilot, then the RPS should support an external command to set the antenna used for communication",
+  "status": "not applicable",
+  "where": "No antennas."
+ },
+ {
+  "code": "C_1.5.4",
+  "guideline": "Set the duration of a link outage that must occur before a lost link response is triggered",
+  "status": "not met",
+  "where": "As T_1.5.14."
+ },
+ {
+  "code": "P_1.5.1",
+  "guideline": "There must be an alert for the UAS [RPAS] crew, via a clear and distinct aural and visual signal, for any total loss of the command and control data…",
+  "status": "met",
+  "where": "NO LINK TO THE AIRCRAFT is a warning at the top of the list, with the warning tone."
+ },
+ {
+  "code": "P_1.5.2",
+  "guideline": "The aural warning for lost control link should be a unique sound, not also used to signify other conditions",
+  "status": "not met",
+  "where": "The warning tone is the same for every warning."
+ },
+ {
+  "code": "P_1.5.3",
+  "guideline": "The maximum range of the C2 datalink (datalink footprint) for all altitudes and directions relative to the signal source should be presented visually…",
+  "status": "not met",
+  "where": "No link footprint."
+ },
+ {
+  "code": "P_1.5.4",
+  "guideline": "Areas where the C2 link (datalink footprint) are predicted to be masked by terrain should be displayed on the C2 datalink display",
+  "status": "not met",
+  "where": "No link footprint."
+ },
+ {
+  "code": "P_1.5.5",
+  "guideline": "If the datalink footprint can be suppressed, it should be automatically displayed when the RPA is approaching a location where a loss of link is…",
+  "status": "not met",
+  "where": "No link footprint."
+ },
+ {
+  "code": "P_1.5.6",
+  "guideline": "The C2 datalink footprint should be easily distinguishable from other footprints that may be present on the operator map display",
+  "status": "not met",
+  "where": "No link footprint."
+ },
+ {
+  "code": "P_1.5.7",
+  "guideline": "If the payload utilizes a link separate to the aircraft control link, any display of payload link quality should be separate and clearly…",
+  "status": "not applicable",
+  "where": "The camera has no link of its own: its commands go the way of the others."
+ },
+ {
+  "code": "P_1.5.8",
+  "guideline": "If an aural warning is used to indicate loss of payload link, the sound should be dissimilar to that used to indicate loss of control link",
+  "status": "not applicable",
+  "where": "As P_1.5.7."
+ },
+ {
+  "code": "P_1.5.9",
+  "guideline": "Security features designed to prevent unapproved access (logon and logoff functions) should not result in inadvertent lockouts of authorized…",
+  "status": "not applicable",
+  "where": "No log-on."
+ },
+ {
+  "code": "P_1.5.10",
+  "guideline": "The RPS, in combination with the other elements of the RPAS should comply with control link latency (time from initiation of a maneuver to a…",
+  "status": "partly",
+  "where": "By hand with no delay the stick reaches the surfaces in a frame; with the satellite delay it does not meet a manned aircraft's figure, which is the point made."
+ },
+ {
+  "code": "T_1.6.1",
+  "guideline": "Enable control to be transferred between a giving and receiving RPS in a manner that is seamless and transparent to ATC",
+  "status": "not applicable",
+  "where": "No air traffic control is simulated."
+ },
+ {
+  "code": "T_1.6.2",
+  "guideline": "Enable continuity of pilot function to be maintained during the transfer of control between a giving and receiving RPS",
+  "status": "met",
+  "where": "The aircraft goes on flying its plan through a handover; control passes at the acceptance."
+ },
+ {
+  "code": "T_1.6.3",
+  "guideline": "Ensure that operating parameters are identical before and after handover",
+  "status": "partly",
+  "where": "Both stations show the plan and state the aircraft sends, so they cannot differ; each pilot ticks that they have compared them."
+ },
+ {
+  "code": "T_1.6.5",
+  "guideline": "In cases where more than one RPS could be linked with the RPA, each RPS will enable the pilot to monitor which entity has control of the aircraft and…",
+  "status": "met",
+  "where": "Control: who has it, to whom it is offered, which stations are heard."
+ },
+ {
+  "code": "T_1.6.6",
+  "guideline": "Enable the giving and receiving pilots to confirm that control settings are appropriate and consistent before a handover is accomplished",
+  "status": "met",
+  "where": "Three ticks on each side before the offer and before the acceptance."
+ },
+ {
+  "code": "T_1.6.7",
+  "guideline": "Enable the receiving pilot to monitor the status of the RPA by receiving telemetry from the RPA before establishing control of the UA",
+  "status": "met",
+  "where": "A watching station has the whole picture before it accepts."
+ },
+ {
+  "code": "T_1.6.8",
+  "guideline": "Facilitate a handover briefing between the giving and receiving pilots",
+  "status": "partly",
+  "where": "The ticks are the briefing's headings; the station carries no voice or text between the pilots."
+ },
+ {
+  "code": "T_1.6.9",
+  "guideline": "The receiving pilot with a means of confirming that control has been established with the UA",
+  "status": "met",
+  "where": "Control names this station, its commands are no longer greyed and Link reads its name."
+ },
+ {
+  "code": "I_1.6.1",
+  "guideline": "The pilot should be presented with information necessary to confirm that flight-critical settings in the receiving RPS are consistent with settings…",
+  "status": "partly",
+  "where": "As T_1.6.3."
+ },
+ {
+  "code": "I_1.6.2",
+  "guideline": "A level of involvement indicator to the pilot to show whether the RPS has been set to only receive telemetry from the UA, or to receive telemetry and…",
+  "status": "met",
+  "where": "Link: \"linked\" or \"receiving only\"."
+ },
+ {
+  "code": "C_1.6.1",
+  "guideline": "Select the desired level of involvement with a UA, ranging from monitoring telemetry without an active uplink, to telemetry with full control via an…",
+  "status": "partly",
+  "where": "A station watches until control is offered or taken; it cannot give control up except to another station."
+ },
+ {
+  "code": "C_1.6.2",
+  "guideline": "There should be a means for the giving and receiving pilots to communicate before, during and after the handover",
+  "status": "not met",
+  "where": "No voice or text between stations."
+ },
+ {
+  "code": "P_1.6.1",
+  "guideline": "Suitable displays to enable briefings to be conducted between a seated pilot and a standing pilot during control handovers. This may include the use…",
+  "status": "partly",
+  "where": "The map and the strip are legible from behind the seat on a large screen; nothing is made for it."
+ },
+ {
+  "code": "P_1.6.2",
+  "guideline": "Enable control to be transferred to another RPS without any gap in control occurring during the handover",
+  "status": "met",
+  "where": "Checked: the old holder's command is refused and the new one's accepted with nothing between."
+ },
+ {
+  "code": "T_2.1.1",
+  "guideline": "Ensure that both the runway and approach path are clear of traffic before taxiing onto the active runway",
+  "status": "partly",
+  "where": "Other aircraft are on the map with their height against ours; nothing looks at the runway or the approach in particular."
+ },
+ {
+  "code": "T_2.1.2",
+  "guideline": "The UAS [RPAS] shall be capable of transitioning from an instrument approach procedure to a safe landing, either by visual reference of a flight…",
+  "status": "met",
+  "where": "The aircraft lands by itself on the plan's aiming point."
+ },
+ {
+  "code": "P_2.1.1",
+  "guideline": "Map displays should be able to support a variety of map types including aeronautical charts and presentations of Digital Terrain Elevation Data…",
+  "status": "not met",
+  "where": "No background map: a grid and a scale."
+ },
+ {
+  "code": "P_2.1.2",
+  "guideline": "Map displays should be configurable to North up or Track up",
+  "status": "not met",
+  "where": "North up only."
+ },
+ {
+  "code": "P_2.1.3",
+  "guideline": "If control is via a terrestrial radio, the location of (or direction to) the ground transmitter/receiver should be shown on the map",
+  "status": "not applicable",
+  "where": "No ground transmitter is modelled."
+ },
+ {
+  "code": "P_2.1.4",
+  "guideline": "Primary flight controls for controlling the RPA (heading, attitude, speed) should be available at all times through dedicated physical controls. If…",
+  "status": "partly",
+  "where": "By hand: a gamepad, or keys. Automatic: software commands, each shown before it is sent."
+ },
+ {
+  "code": "T_2.2.1",
+  "guideline": "Observe and comply with signage, painted markings, and warning lights during surface operations",
+  "status": "not met",
+  "where": "The nose camera's picture is in FlightGear, not in the station; taxi follows the plan's surveyed points."
+ },
+ {
+  "code": "T_2.2.2",
+  "guideline": "Monitor weather that has the potential to affect the flight",
+  "status": "not met",
+  "where": "No weather in the station."
+ },
+ {
+  "code": "T_2.2.3",
+  "guideline": "Avoid weather that has the potential to affect the flight",
+  "status": "not met",
+  "where": "No weather in the station."
+ },
+ {
+  "code": "I_2.2.1",
+  "guideline": "The operator should be able to display flight corridors, controlled airspace and any other relevant airspace co-ordination information",
+  "status": "not met",
+  "where": "No airspace on the map."
+ },
+ {
+  "code": "I_2.2.2",
+  "guideline": "Display weather information to the pilot",
+  "status": "not met",
+  "where": "No weather in the station."
+ },
+ {
+  "code": "I_2.2.3",
+  "guideline": "Information on the location of icing conditions",
+  "status": "not applicable",
+  "where": "Icing is not modelled."
+ },
+ {
+  "code": "I_2.2.4",
+  "guideline": "Alert the pilot when the RPA enters icing conditions",
+  "status": "not applicable",
+  "where": "Icing is not modelled."
+ },
+ {
+  "code": "I_2.2.5",
+  "guideline": "Alert the pilot when the RPA encounters significant air turbulence",
+  "status": "not met",
+  "where": "No turbulence alert; the flight model flies in still air unless FlightGear's weather gives wind."
+ },
+ {
+  "code": "T_2.4.1",
+  "guideline": "Remain aware of the aircraft’s lost link procedure as the flight progresses",
+  "status": "met",
+  "where": "The lost-link route is on the map at all times, amber and dashed."
+ },
+ {
+  "code": "T_2.4.2",
+  "guideline": "Update the aircraft’s lost link procedure as the flight progresses",
+  "status": "met",
+  "where": "Edit plan, Lost-link route, Send plan."
+ },
+ {
+  "code": "T_2.4.3",
+  "guideline": "Select the length of time that must elapse between the onset of a lost link event and the activation of the aircraft’s lost link procedure",
+  "status": "not met",
+  "where": "As T_1.5.14."
+ },
+ {
+  "code": "I_2.4.1",
+  "guideline": "A display indicating the future flightpath of the aircraft should a lost link occur",
+  "status": "met",
+  "where": "As T_2.4.1, with a line from the aircraft to the route's first point while airborne."
+ },
+ {
+  "code": "I_2.4.2",
+  "guideline": "Alert the pilot whenever the execution of a lost link procedure would create a hazard (such as directing the aircraft towards terrain, or into…",
+  "status": "partly",
+  "where": "The lost-link route's forecast warns of fuel, of heights not reached and of a runway too short; not of terrain or airspace."
+ },
+ {
+  "code": "I_2.4.3",
+  "guideline": "Display to the pilot the length of time that will elapse between the onset of a lost link event and the activation of the aircraft’s lost link…",
+  "status": "met",
+  "where": "Beside Link: \"if lost: route home after 30 s\"."
+ },
+ {
+  "code": "I_2.4.4",
+  "guideline": "In the event of a lost link, the RPS should display the time remaining until the activation of the aircraft’s lost link procedure",
+  "status": "not met",
+  "where": "A station that has lost the link cannot hear the aircraft's count; it shows the 30 s, not what is left of it."
+ },
+ {
+  "code": "P_2.4.1",
+  "guideline": "The flightpath that would be taken by the aircraft in the event of a lost link should be clearly distinguishable from the programmed normal…",
+  "status": "met",
+  "where": "Amber dashes against the plan's white and the active leg's magenta."
+ },
+ {
+  "code": "P_2.4.2",
+  "guideline": "Information on the programmed lost link behavior of the aircraft should be readily available to the pilot, without the need for complex interactions…",
+  "status": "met",
+  "where": "Always drawn; nothing to open."
+ },
+ {
+  "code": "T_2.5.1",
+  "guideline": "Decide when to terminate the flight via controlled impact, ditching or parachute descent",
+  "status": "not applicable",
+  "where": "No flight termination system: without the engine the aircraft glides to a runway by itself."
+ },
+ {
+  "code": "T_2.5.2",
+  "guideline": "Identify a suitable location for flight termination",
+  "status": "partly",
+  "where": "Glide reach: the ring and each landing site's height in hand; NO RUNWAY IN REACH when there is none."
+ },
+ {
+  "code": "T_2.5.3",
+  "guideline": "Terminate the flight in a pre-designated area",
+  "status": "not applicable",
+  "where": "As T_2.5.1."
+ },
+ {
+  "code": "T_2.5.4",
+  "guideline": "Use real-time information to confirm that flight termination at the selected location will not present unacceptable risk to people or property",
+  "status": "not applicable",
+  "where": "As T_2.5.1."
+ },
+ {
+  "code": "I_2.5.1",
+  "guideline": "Real-time imagery of the selected impact, ditching or parachute descent site to confirm that a safe termination can be accomplished",
+  "status": "not applicable",
+  "where": "As T_2.5.1."
+ },
+ {
+  "code": "I_2.5.2",
+  "guideline": "An alert to the pilot to indicate that the flight termination system is about to be activated",
+  "status": "not applicable",
+  "where": "As T_2.5.1."
+ },
+ {
+  "code": "P_2.5.1",
+  "guideline": "When the RPA is equipped with a flight termination system:",
+  "status": "not applicable",
+  "where": "As T_2.5.1."
+ },
+ {
+  "code": "P_2.5.2",
+  "guideline": "Before the final step in activating the flight termination system is reached, the RPS should provide an aural and visual alert to the pilot that…",
+  "status": "not applicable",
+  "where": "As T_2.5.1."
+ },
+ {
+  "code": "P_2.5.3",
+  "guideline": "The aural alert warning of imminent flight termination should involve a unique sound. This should preferably take the form of a verbal message such…",
+  "status": "not applicable",
+  "where": "As T_2.5.1."
+ },
+ {
+  "code": "P_2.5.4",
+  "guideline": "When the RPA is equipped with a flight termination system, flight termination controls should be safeguarded from interference that could lead to…",
+  "status": "not applicable",
+  "where": "As T_2.5.1."
+ },
+ {
+  "code": "T_3.1.1",
+  "guideline": "When operating near a non-towered airport, the pilot should be able to exchange intent information with other airport traffic through standard…",
+  "status": "not met",
+  "where": "No radio."
+ },
+ {
+  "code": "T_3.1.2",
+  "guideline": "The remote pilot should be able to establish an alternate communications method with ATC if the duration of the communications loss exceeds…",
+  "status": "not met",
+  "where": "No radio."
+ },
+ {
+  "code": "I_3.1.1",
+  "guideline": "Include alternate means for the pilot to communicate with ATC in the event of a loss of C2 link",
+  "status": "not met",
+  "where": "No radio."
+ },
+ {
+  "code": "I_3.1.2",
+  "guideline": "Current settings of communication controls. The RPS should provide the pilot with information about the current state, mode, or setting of the…",
+  "status": "not met",
+  "where": "No radio."
+ },
+ {
+  "code": "P_3.1.1",
+  "guideline": "The voice communication delay between the pilot and ATC should have a mean less than or equal to 250 ms",
+  "status": "not applicable",
+  "where": "No radio."
+ },
+ {
+  "code": "P_3.1.2",
+  "guideline": "The voice communication delay between the pilot and ATC should be less than or equal to 300 ms. (99th percentile)",
+  "status": "not applicable",
+  "where": "No radio."
+ },
+ {
+  "code": "P_3.1.3",
+  "guideline": "The voice communication delay between the pilot and ATC should be within a maximum of 350 ms",
+  "status": "not applicable",
+  "where": "No radio."
+ },
+ {
+  "code": "T_3.2.1",
+  "guideline": "Enable the RPAS crewmembers to communicate with each other (co- located or not) in order to perform the necessary flight tasks",
+  "status": "not met",
+  "where": "No voice or text between crew positions."
+ },
+ {
+  "code": "T_3.2.2",
+  "guideline": "Ensure that commands sent to the aircraft on the ground do not create a safety hazard for ground support personnel",
+  "status": "not met",
+  "where": "Start is confirmed like any command; nothing shows the ground around the aircraft."
+ },
+ {
+  "code": "I_3.2.1",
+  "guideline": "Imagery of the aircraft whenever the pilot has control of the aircraft on the ground and ground support personnel are interacting with the aircraft",
+  "status": "not met",
+  "where": "No picture of the aircraft on the ground in the station (FlightGear has its outside views)."
+ },
+ {
+  "code": "I_3.2.2",
+  "guideline": "A communication link with ground support personnel while they are interacting with the aircraft",
+  "status": "not met",
+  "where": "No link with ground crew."
+ },
+ {
+  "code": "T_3.3.1",
+  "guideline": "Communicate with weather information services and other ancillary services",
+  "status": "not met",
+  "where": "No such services."
+ },
+ {
+  "code": "T_1.1.2",
+  "guideline": "If an on-board camera is used for flight control tasks, the RPS should enable the pilot to align the camera with the longitudinal access of the…",
+  "status": "met",
+  "where": "As T_1.1.1 (the study lists it twice)."
+ }
+]

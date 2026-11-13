@@ -1,0 +1,133 @@
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{12mm}>{\raggedright\arraybackslash}p{57mm}>{\raggedright\arraybackslash}p{13mm}>{\raggedright\arraybackslash}p{70mm}@{}}
+\toprule
+\textbf{Code} & \textbf{Guideline} & \textbf{Status} & \textbf{In the station} \\
+\midrule
+\endhead
+\addlinespace\multicolumn{4}{@{}l}{\textbf{Aircraft systems and automation}} \\
+T\_1.1.1 & If an on-board camera is used for flight control tasks, the RPS should enable the pilot to align the camera with the longitudinal access of the\ldots{} & \textbf{met} & The nose camera is fixed on the aircraft's axis; the belly camera is not used to fly. \\
+T\_1.1.2 & If an on-board camera is used for flight control tasks, the RPS should enable the pilot to align the camera with the longitudinal access of the\ldots{} & \textbf{met} & As T\_1.1.1 (the study lists it twice). \\
+P\_1.1.1 & Not enable the pilot to disengage automation in flight if the aircraft will depart from controlled flight as a result & partly & Protected keeps the aircraft inside its limits. Direct has none and is offered all the same, enroute only: a simulator's choice. \\
+P\_1.1.2 & Prevent multiple operators from operating the same application or procedure at any one time & \textbf{met} & One station has control; another's commands and stick are refused by the aircraft, naming who has it. \\
+P\_1.1.3 & It should be possible to set an RPS to a receive only mode, in which the RPS displays information downlinked from an RPA in the absence of an active\ldots{} & \textbf{met} & A station without control shows everything and its commands are greyed: Link reads ''receiving only''. \\
+\addlinespace\multicolumn{4}{@{}l}{\textbf{Consumables}} \\
+T\_1.2.1 & Monitor the status of consumable resources & \textbf{met} & Engine and fuel: fuel, flow, hours left at that flow, six tanks. \\
+I\_1.2.1 & Information on the status of consumable resources & \textbf{met} & As T\_1.2.1; FUEL LOW is raised by the aircraft; the forecast gives fuel at each point and on landing. \\
+\addlinespace\multicolumn{4}{@{}l}{\textbf{The station itself}} \\
+T\_1.3.1 & Perform checks on the status of RPS systems & partly & Only the link's state and the connection line at the foot of the page; a gamepad is named when one is found. \\
+T\_1.3.2 & Perform a pre-flight check on an alternate control station, or confirm that this check has been performed & \emph{not met} & Nothing checks another station before a handover beyond its being heard. \\
+T\_1.3.3 & Monitor the performance of RPS support services, e.g. air conditioning and electrical power & -- & A browser page has no support services to watch. \\
+I\_1.3.1 & Health and status information on the RPS & partly & As T\_1.3.1. \\
+\addlinespace\multicolumn{4}{@{}l}{\textbf{The link}} \\
+T\_1.5.1 & Confirm spectrum availability before selecting link & -- & One simulated link; no spectrum. \\
+T\_1.5.2 & Select the appropriate communication mode (e.g. terrestrial/satellite, frequency) & partly & The station's name and delay are chosen in the page's address (LRE: none; MCE: 1.2 s), not while running. \\
+T\_1.5.3 & Maintain awareness of selected communication mode & \textbf{met} & Link shows the station's name and its delay. \\
+T\_1.5.4 & Confirm that communication link is effective, and established with the correct UA & partly & Link turns green only when the aircraft is hearing this station, and every command is answered. There is one aircraft, so ''the correct one'' is not shown. \\
+T\_1.5.5 & Identify if more than one control station is linked with the UA & \textbf{met} & Control lists the stations the aircraft hears and which has control. \\
+T\_1.5.6 & Maintain awareness of link strength, or link abnormalities & \emph{not met} & Link strength is not modelled: the link is there or it is not. \\
+T\_1.5.7 & Maintain awareness of link latency, where relevant & \textbf{met} & The delay is shown beside Link, in seconds. \\
+T\_1.5.8 & Anticipate link degradations or diminished link strength & \emph{not met} & No link coverage is modelled. \\
+T\_1.5.9 & Maintain an awareness of the geographic limits of the link and potential obstructions to signal & \emph{not met} & No link coverage is modelled. \\
+T\_1.5.10 & Maintain awareness of crew actions or control inputs that could interrupt or degrade the link & partly & Closing the page is the one crew action that cuts the link, and the manual and the page say what follows. \\
+T\_1.5.11 & Respond to interference with the signal, (e.g. other users of frequency, jamming attempts) & -- & No interference is modelled. \\
+T\_1.5.12 & Change the link during flight operations as necessary & \emph{not met} & The link cannot be changed in flight; control can be handed to a station on another link. \\
+T\_1.5.13 & Assess link strength and quality before switching link & \emph{not met} & As T\_1.5.6. \\
+T\_1.5.14 & Define the duration of a loss of link that must occur before the lost link alert is activated, or the RPA enters its lost link procedure & \emph{not met} & The 30 s is shown, not set from the station (it is the flight model's ap/link-timeout-sec). \\
+T\_1.5.15 & Manage resumption of the signal after a lost link & \textbf{met} & LINK WAS LOST stands until Resume plan; the aircraft stays on its lost-link route until told. \\
+I\_1.5.1 & Predictive information on the quality and strength of a C2 link before the link is actively used to control the UA & \emph{not met} & No link quality is modelled. \\
+I\_1.5.2 & Identify which C2 link settings are active (e.g. selected frequency, satellite vs terrestrial) & partly & Station name and delay; nothing else to set. \\
+I\_1.5.3 & Information to confirm that effective control is established with the correct UA & partly & As T\_1.5.4. \\
+I\_1.5.4 & Information on the geographic limits of the link & \emph{not met} & No link coverage is modelled. \\
+I\_1.5.5 & Information on spectrum activity from a spectrum & -- & No spectrum is modelled. \\
+I\_1.5.6 & Alert the pilot when the RPA is approaching an area where link is likely to be lost & \emph{not met} & No link coverage is modelled. \\
+I\_1.5.7 & Alert the pilot when the link is lost & \textbf{met} & NO LINK TO THE AIRCRAFT at the station that lost it; LINK WAS LOST from the aircraft to every station that hears it. \\
+I\_1.5.8 & The RPA will transmit a pre-determined transponder code when the link is lost & \emph{not met} & No transponder is modelled. \\
+I\_1.5.9 & Monitor the strength of the link & \emph{not met} & As T\_1.5.6. \\
+I\_1.5.10 & Alert the pilot whenever the C2 link experiences interference, whether resulting from natural phenomena, payload or other equipment associated with\ldots{} & -- & No interference is modelled. \\
+I\_1.5.11 & Display to the pilot the source of downlink transmissions & partly & One aircraft; the connection line names the address the telemetry comes from. \\
+I\_1.5.12 & Where relevant, the RPS should provide the pilot with information on link latency, in milliseconds & partly & The delay set for the station is shown in seconds; it is not measured. \\
+I\_1.5.13 & Anticipate link degradations or diminished link strength. This information may include link footprint, including areas that may be affected by\ldots{} & \emph{not met} & No link coverage is modelled. \\
+I\_1.5.14 & Manage link security & \emph{not met} & No link security: anything that reaches FlightGear's web server can command the aircraft. \\
+I\_1.5.15 & Inform the pilot when a lost link is resumed & partly & Link turns green again and NO LINK clears; no separate message says it. \\
+C\_1.5.1 & Select the communication mode (e.g. terrestrial/satellite, frequency, transmission power) & partly & As T\_1.5.2. \\
+C\_1.5.2 & A control to enable the pilot to request a link status report & \emph{not met} & No such control; the link's state is always shown. \\
+C\_1.5.3 & If antenna selection is performed by the pilot, then the RPS should support an external command to set the antenna used for communication & -- & No antennas. \\
+C\_1.5.4 & Set the duration of a link outage that must occur before a lost link response is triggered & \emph{not met} & As T\_1.5.14. \\
+P\_1.5.1 & There must be an alert for the UAS [RPAS] crew, via a clear and distinct aural and visual signal, for any total loss of the command and control data\ldots{} & \textbf{met} & NO LINK TO THE AIRCRAFT is a warning at the top of the list, with the warning tone. \\
+P\_1.5.2 & The aural warning for lost control link should be a unique sound, not also used to signify other conditions & \emph{not met} & The warning tone is the same for every warning. \\
+P\_1.5.3 & The maximum range of the C2 datalink (datalink footprint) for all altitudes and directions relative to the signal source should be presented visually\ldots{} & \emph{not met} & No link footprint. \\
+P\_1.5.4 & Areas where the C2 link (datalink footprint) are predicted to be masked by terrain should be displayed on the C2 datalink display & \emph{not met} & No link footprint. \\
+P\_1.5.5 & If the datalink footprint can be suppressed, it should be automatically displayed when the RPA is approaching a location where a loss of link is\ldots{} & \emph{not met} & No link footprint. \\
+P\_1.5.6 & The C2 datalink footprint should be easily distinguishable from other footprints that may be present on the operator map display & \emph{not met} & No link footprint. \\
+P\_1.5.7 & If the payload utilizes a link separate to the aircraft control link, any display of payload link quality should be separate and clearly\ldots{} & -- & The camera has no link of its own: its commands go the way of the others. \\
+P\_1.5.8 & If an aural warning is used to indicate loss of payload link, the sound should be dissimilar to that used to indicate loss of control link & -- & As P\_1.5.7. \\
+P\_1.5.9 & Security features designed to prevent unapproved access (logon and logoff functions) should not result in inadvertent lockouts of authorized\ldots{} & -- & No log-on. \\
+P\_1.5.10 & The RPS, in combination with the other elements of the RPAS should comply with control link latency (time from initiation of a maneuver to a\ldots{} & partly & By hand with no delay the stick reaches the surfaces in a frame; with the satellite delay it does not meet a manned aircraft's figure, which is the point made. \\
+\addlinespace\multicolumn{4}{@{}l}{\textbf{Handing over control}} \\
+T\_1.6.1 & Enable control to be transferred between a giving and receiving RPS in a manner that is seamless and transparent to ATC & -- & No air traffic control is simulated. \\
+T\_1.6.2 & Enable continuity of pilot function to be maintained during the transfer of control between a giving and receiving RPS & \textbf{met} & The aircraft goes on flying its plan through a handover; control passes at the acceptance. \\
+T\_1.6.3 & Ensure that operating parameters are identical before and after handover & partly & Both stations show the plan and state the aircraft sends, so they cannot differ; each pilot ticks that they have compared them. \\
+T\_1.6.5 & In cases where more than one RPS could be linked with the RPA, each RPS will enable the pilot to monitor which entity has control of the aircraft and\ldots{} & \textbf{met} & Control: who has it, to whom it is offered, which stations are heard. \\
+T\_1.6.6 & Enable the giving and receiving pilots to confirm that control settings are appropriate and consistent before a handover is accomplished & \textbf{met} & Three ticks on each side before the offer and before the acceptance. \\
+T\_1.6.7 & Enable the receiving pilot to monitor the status of the RPA by receiving telemetry from the RPA before establishing control of the UA & \textbf{met} & A watching station has the whole picture before it accepts. \\
+T\_1.6.8 & Facilitate a handover briefing between the giving and receiving pilots & partly & The ticks are the briefing's headings; the station carries no voice or text between the pilots. \\
+T\_1.6.9 & The receiving pilot with a means of confirming that control has been established with the UA & \textbf{met} & Control names this station, its commands are no longer greyed and Link reads its name. \\
+I\_1.6.1 & The pilot should be presented with information necessary to confirm that flight-critical settings in the receiving RPS are consistent with settings\ldots{} & partly & As T\_1.6.3. \\
+I\_1.6.2 & A level of involvement indicator to the pilot to show whether the RPS has been set to only receive telemetry from the UA, or to receive telemetry and\ldots{} & \textbf{met} & Link: ''linked'' or ''receiving only''. \\
+C\_1.6.1 & Select the desired level of involvement with a UA, ranging from monitoring telemetry without an active uplink, to telemetry with full control via an\ldots{} & partly & A station watches until control is offered or taken; it cannot give control up except to another station. \\
+C\_1.6.2 & There should be a means for the giving and receiving pilots to communicate before, during and after the handover & \emph{not met} & No voice or text between stations. \\
+P\_1.6.1 & Suitable displays to enable briefings to be conducted between a seated pilot and a standing pilot during control handovers. This may include the use\ldots{} & partly & The map and the strip are legible from behind the seat on a large screen; nothing is made for it. \\
+P\_1.6.2 & Enable control to be transferred to another RPS without any gap in control occurring during the handover & \textbf{met} & Checked: the old holder's command is refused and the new one's accepted with nothing between. \\
+\addlinespace\multicolumn{4}{@{}l}{\textbf{Location and flight path}} \\
+T\_2.1.1 & Ensure that both the runway and approach path are clear of traffic before taxiing onto the active runway & partly & Other aircraft are on the map with their height against ours; nothing looks at the runway or the approach in particular. \\
+T\_2.1.2 & The UAS [RPAS] shall be capable of transitioning from an instrument approach procedure to a safe landing, either by visual reference of a flight\ldots{} & \textbf{met} & The aircraft lands by itself on the plan's aiming point. \\
+P\_2.1.1 & Map displays should be able to support a variety of map types including aeronautical charts and presentations of Digital Terrain Elevation Data\ldots{} & \emph{not met} & No background map: a grid and a scale. \\
+P\_2.1.2 & Map displays should be configurable to North up or Track up & \emph{not met} & North up only. \\
+P\_2.1.3 & If control is via a terrestrial radio, the location of (or direction to) the ground transmitter/receiver should be shown on the map & -- & No ground transmitter is modelled. \\
+P\_2.1.4 & Primary flight controls for controlling the RPA (heading, attitude, speed) should be available at all times through dedicated physical controls. If\ldots{} & partly & By hand: a gamepad, or keys. Automatic: software commands, each shown before it is sent. \\
+\addlinespace\multicolumn{4}{@{}l}{\textbf{Terrain, airspace and weather}} \\
+T\_2.2.1 & Observe and comply with signage, painted markings, and warning lights during surface operations & \emph{not met} & The nose camera's picture is in FlightGear, not in the station; taxi follows the plan's surveyed points. \\
+T\_2.2.2 & Monitor weather that has the potential to affect the flight & \emph{not met} & No weather in the station. \\
+T\_2.2.3 & Avoid weather that has the potential to affect the flight & \emph{not met} & No weather in the station. \\
+I\_2.2.1 & The operator should be able to display flight corridors, controlled airspace and any other relevant airspace co-ordination information & \emph{not met} & No airspace on the map. \\
+I\_2.2.2 & Display weather information to the pilot & \emph{not met} & No weather in the station. \\
+I\_2.2.3 & Information on the location of icing conditions & -- & Icing is not modelled. \\
+I\_2.2.4 & Alert the pilot when the RPA enters icing conditions & -- & Icing is not modelled. \\
+I\_2.2.5 & Alert the pilot when the RPA encounters significant air turbulence & \emph{not met} & No turbulence alert; the flight model flies in still air unless FlightGear's weather gives wind. \\
+\addlinespace\multicolumn{4}{@{}l}{\textbf{The lost-link route}} \\
+T\_2.4.1 & Remain aware of the aircraft’s lost link procedure as the flight progresses & \textbf{met} & The lost-link route is on the map at all times, amber and dashed. \\
+T\_2.4.2 & Update the aircraft’s lost link procedure as the flight progresses & \textbf{met} & Edit plan, Lost-link route, Send plan. \\
+T\_2.4.3 & Select the length of time that must elapse between the onset of a lost link event and the activation of the aircraft’s lost link procedure & \emph{not met} & As T\_1.5.14. \\
+I\_2.4.1 & A display indicating the future flightpath of the aircraft should a lost link occur & \textbf{met} & As T\_2.4.1, with a line from the aircraft to the route's first point while airborne. \\
+I\_2.4.2 & Alert the pilot whenever the execution of a lost link procedure would create a hazard (such as directing the aircraft towards terrain, or into\ldots{} & partly & The lost-link route's forecast warns of fuel, of heights not reached and of a runway too short; not of terrain or airspace. \\
+I\_2.4.3 & Display to the pilot the length of time that will elapse between the onset of a lost link event and the activation of the aircraft’s lost link\ldots{} & \textbf{met} & Beside Link: ''if lost: route home after 30 s''. \\
+I\_2.4.4 & In the event of a lost link, the RPS should display the time remaining until the activation of the aircraft’s lost link procedure & \emph{not met} & A station that has lost the link cannot hear the aircraft's count; it shows the 30 s, not what is left of it. \\
+P\_2.4.1 & The flightpath that would be taken by the aircraft in the event of a lost link should be clearly distinguishable from the programmed normal\ldots{} & \textbf{met} & Amber dashes against the plan's white and the active leg's magenta. \\
+P\_2.4.2 & Information on the programmed lost link behavior of the aircraft should be readily available to the pilot, without the need for complex interactions\ldots{} & \textbf{met} & Always drawn; nothing to open. \\
+\addlinespace\multicolumn{4}{@{}l}{\textbf{Ending the flight}} \\
+T\_2.5.1 & Decide when to terminate the flight via controlled impact, ditching or parachute descent & -- & No flight termination system: without the engine the aircraft glides to a runway by itself. \\
+T\_2.5.2 & Identify a suitable location for flight termination & partly & Glide reach: the ring and each landing site's height in hand; NO RUNWAY IN REACH when there is none. \\
+T\_2.5.3 & Terminate the flight in a pre-designated area & -- & As T\_2.5.1. \\
+T\_2.5.4 & Use real-time information to confirm that flight termination at the selected location will not present unacceptable risk to people or property & -- & As T\_2.5.1. \\
+I\_2.5.1 & Real-time imagery of the selected impact, ditching or parachute descent site to confirm that a safe termination can be accomplished & -- & As T\_2.5.1. \\
+I\_2.5.2 & An alert to the pilot to indicate that the flight termination system is about to be activated & -- & As T\_2.5.1. \\
+P\_2.5.1 & When the RPA is equipped with a flight termination system: & -- & As T\_2.5.1. \\
+P\_2.5.2 & Before the final step in activating the flight termination system is reached, the RPS should provide an aural and visual alert to the pilot that\ldots{} & -- & As T\_2.5.1. \\
+P\_2.5.3 & The aural alert warning of imminent flight termination should involve a unique sound. This should preferably take the form of a verbal message such\ldots{} & -- & As T\_2.5.1. \\
+P\_2.5.4 & When the RPA is equipped with a flight termination system, flight termination controls should be safeguarded from interference that could lead to\ldots{} & -- & As T\_2.5.1. \\
+\addlinespace\multicolumn{4}{@{}l}{\textbf{Air traffic control}} \\
+T\_3.1.1 & When operating near a non-towered airport, the pilot should be able to exchange intent information with other airport traffic through standard\ldots{} & \emph{not met} & No radio. \\
+T\_3.1.2 & The remote pilot should be able to establish an alternate communications method with ATC if the duration of the communications loss exceeds\ldots{} & \emph{not met} & No radio. \\
+I\_3.1.1 & Include alternate means for the pilot to communicate with ATC in the event of a loss of C2 link & \emph{not met} & No radio. \\
+I\_3.1.2 & Current settings of communication controls. The RPS should provide the pilot with information about the current state, mode, or setting of the\ldots{} & \emph{not met} & No radio. \\
+P\_3.1.1 & The voice communication delay between the pilot and ATC should have a mean less than or equal to 250 ms & -- & No radio. \\
+P\_3.1.2 & The voice communication delay between the pilot and ATC should be less than or equal to 300 ms. (99th percentile) & -- & No radio. \\
+P\_3.1.3 & The voice communication delay between the pilot and ATC should be within a maximum of 350 ms & -- & No radio. \\
+\addlinespace\multicolumn{4}{@{}l}{\textbf{Crew and ground support}} \\
+T\_3.2.1 & Enable the RPAS crewmembers to communicate with each other (co- located or not) in order to perform the necessary flight tasks & \emph{not met} & No voice or text between crew positions. \\
+T\_3.2.2 & Ensure that commands sent to the aircraft on the ground do not create a safety hazard for ground support personnel & \emph{not met} & Start is confirmed like any command; nothing shows the ground around the aircraft. \\
+I\_3.2.1 & Imagery of the aircraft whenever the pilot has control of the aircraft on the ground and ground support personnel are interacting with the aircraft & \emph{not met} & No picture of the aircraft on the ground in the station (FlightGear has its outside views). \\
+I\_3.2.2 & A communication link with ground support personnel while they are interacting with the aircraft & \emph{not met} & No link with ground crew. \\
+\addlinespace\multicolumn{4}{@{}l}{\textbf{Other services}} \\
+T\_3.3.1 & Communicate with weather information services and other ancillary services & \emph{not met} & No such services. \\
+\bottomrule
+\end{longtable}

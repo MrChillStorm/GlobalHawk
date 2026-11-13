@@ -27,6 +27,7 @@ else
     run mission $PY fdm/mission.py
     run engine_pycycle $PY fdm/engine_pycycle.py          # needs tools/pycycle (fdm/mkpycycle.sh)
     run attrex_lift $PY fdm/attrex_lift.py                # needs the ATTREX records in refs/
+    run phase4_checks $PY fdm/phase4_checks.py            # after attrex_lift: it reads fdm/data/attrex_lift.json
     for c in phase1 phase3 phase5 phase6 phase7a phase7b phase7c phase7d phase8a phase8b phase8c phase8d phase8e; do run ${c}_checks $PY fdm/${c}_checks.py; done
     run gcs_tests sh -c "cd GlobalHawk/gcs && npm test"
 fi

@@ -1,0 +1,20 @@
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{36mm}l>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{38mm}@{}}
+\toprule
+\textbf{Alert} & \textbf{Level} & \textbf{What it means} & \textbf{What the page says to do} \\
+\midrule
+\ann{ENGINE FAILED} & warning & The engine has stopped. The aircraft has chosen the runway it reaches with the most height to spare and is gliding to it; it will circle over the approach to lose its surplus and land. & Gliding to the site it names by itself. Clear the runway. No restart is modelled \\
+\ann{NO RUNWAY IN REACH} & warning & The engine has stopped and no landing site of the plan is within the glide the aircraft counts on. It glides towards the nearest. A landing off a runway is not built. & Gliding towards the nearest \\
+\ann{STRUCTURAL LIMIT PASSED} & warning & A load factor, airspeed or Mach limit has been passed. The flag stays until the flight ends. & Land \\
+\ann{NO LINK TO THE AIRCRAFT} & warning & This station is not hearing the aircraft. Raised by the station itself. & It flies its lost-link route by itself. Check the connection \\
+\ann{TRAFFIC, MANEUVER NOW} & warning & Another aircraft will be inside 0.75 nmi and 450 ft within 25 s. Raised by the station. & Change height or route \\
+\ann{LINK WAS LOST} & caution & No station in control was heard for the time-out, and the aircraft left its plan for the lost-link route. It stays on it, link or no link, until told otherwise. & The aircraft left its plan when the link was lost. Resume when ready \\
+\ann{NAVIGATORS DISAGREE} & caution & Two navigators in use differ by more than 3 deg. The aircraft takes the one whose bank agrees with its turn rate. & The aircraft is using the one that matches its turn rate. Land \\
+\ann{ONE NAVIGATOR LEFT or NO NAVIGATOR} & caution & Fewer than two navigators are switched on: nothing is left to compare the attitude with. & No cross-check of attitude is left. Switch one on \\
+\ann{FUEL LOW} & caution & Less than the low-fuel figure is left. & Return home \\
+\ann{ANGLE OF ATTACK LIMIT} & caution & The aircraft has been within 0.3 deg of its angle-of-attack limit for 3 s. Its pitch command is being held down. & The aircraft is holding it \\
+\ann{TRAFFIC, AVOID} & caution & Another aircraft will be inside 0.75 nmi and 450 ft within 55 s. Raised by the station. & Change height or route \\
+\ann{FLOWN BY HAND: PROTECTED or FLOWN BY HAND: DIRECT, NO PROTECTIONS} & advisory & The aircraft is being flown by hand from the station in control. &  \\
+\ann{OFF THE PLAN: GOTO, HOLD or HOME} & advisory & The aircraft has left its plan on a command (go to, hold, return home) and stays off it until Resume plan. &  \\
+\ann{TRAFFIC, MONITOR} & advisory & Another aircraft will pass inside 1 nmi and 700 ft. Raised by the station. & Nothing to do yet \\
+\bottomrule
+\end{tabularx}

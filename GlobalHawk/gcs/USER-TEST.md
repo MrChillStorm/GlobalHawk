@@ -1,8 +1,8 @@
 # User test of the ground control station
 
 **Not run yet.** The script, what is counted and the pass mark are written here before anyone is tested, so the
-result cannot move the mark. It needs the operator's manual (still to be written) and someone who has not seen
-the station.
+result cannot move the mark. It needs the operator's manual (`GlobalHawk-operators-manual.pdf` in the
+repository's root) and someone who has not seen the station.
 
 ## Who and with what
 

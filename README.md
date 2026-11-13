@@ -10,6 +10,11 @@ mission hands off, from taxi and takeoff to landing, with contingencies for a fa
 dead engine. In FlightGear it has a 3-D model with a bending wing, a head-up display over the nose camera, a
 belly camera that locks on targets, its own sounds, and a ground control station in the browser that flies it.
 
+- [Model report](GlobalHawk-JSBSim-model-report.pdf): how the flight model is built, what it was checked against, every
+  check that passes and every one that misses. Built by `fdm/report/build.sh` from the logs of `fdm/check_all.sh`.
+- [Operator's manual](GlobalHawk-operators-manual.pdf): the station, the aircraft in FlightGear, limits, procedures,
+  what the aircraft does when things fail, performance tables. Built by `manual/build.sh`; its tables of controls
+  and alerts and its figures come from the aircraft's own sources.
 - [fdm/data/README.md](fdm/data/README.md): every published number the model is built from, its source, and the
   choices made where sources disagree.
 - [fdm/attrex.py](fdm/attrex.py): reads the ATTREX flight records (NASA ESPO archive) and summarises each flight.

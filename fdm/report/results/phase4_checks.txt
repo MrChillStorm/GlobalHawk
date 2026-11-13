@@ -1,0 +1,23 @@
+
+
+     JSBSim Flight Dynamics Model v1.3.3 [GitHub build 2002/commit 66f7fafc07fe13e7ede9db20873030fed2881713] Oct 16 2026 00:38:24
+            [JSBSim-ML v2.0]
+
+JSBSim startup beginning ...
+
+     check                                                          model  measured    error  limit
+S1   section drag at lift 0.4 to 1.0, Mach 0.2, Re 1 million      0.00801  0.007541    +6.23     15  pass  (predicted)
+S2   section moment at lift 0.4 to 1.0, Mach 0.2, Re 1 million    -0.1079  -0.09449  -0.0134   0.02  pass  (predicted)
+S3   section maximum lift, Mach 0.2, Re 1 million                   1.363     1.434    -4.94     10  pass  (predicted)
+S1   section drag at lift 0.4 to 1.0, Mach 0.6, Re 1 million     0.008299   0.00964    -13.9     15  pass  (predicted)
+S2   section moment at lift 0.4 to 1.0, Mach 0.6, Re 1 million    -0.1331   -0.1076  -0.0254   0.02  MISS  (predicted)
+S3   section maximum lift, Mach 0.6, Re 1 million                   1.196     1.312    -8.82     10  pass  (predicted)
+S1   section drag at lift 0.4 to 1.0, Mach 0.6, Re 2 million     0.006554  0.007507    -12.7     15  pass  (predicted)
+S2   section moment at lift 0.4 to 1.0, Mach 0.6, Re 2 million     -0.134   -0.1107  -0.0233   0.02  MISS  (predicted)
+S3   section maximum lift, Mach 0.6, Re 2 million                   1.198     1.423    -15.8     10  MISS  (predicted)
+A1   trimmed lift-curve slope, Mach 0.50 to 0.54, per deg          0.1335    0.1298    +2.85     10  pass  (predicted: 6 trims at 44722 ft, 7 segments of 1 flights)
+A1   trimmed lift-curve slope, Mach 0.59 to 0.62, per deg          0.1218    0.1161    +4.92     10  pass  (predicted: 4 trims at 57293 ft, 52 segments of 3 flights)
+A2   bank in 409 long turns less speed times turn rate, deg         15.01     15.07  -0.0567      1  pass  (the data against kinematics, scatter 1.16 deg)
+
+12 checks, 9 pass, 3 miss
+exit 0 after 0 s
