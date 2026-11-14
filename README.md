@@ -1,5 +1,7 @@
 # Global Hawk for FlightGear, with a ground control station
 
+![The Global Hawk over the San Gabriel Mountains, in the evening light, in FlightGear](docs/pictures/globalhawk.jpg)
+
 A JSBSim flight model of NASA's Global Hawk N872NA, the high-altitude, long-endurance unmanned aircraft (a Northrop
 Grumman RQ-4A) that NASA flew on science missions, and a ground control station to fly it from. It is modelled from
 public data and is not made or endorsed by NASA or Northrop Grumman.
@@ -8,7 +10,7 @@ public data and is not made or endorsed by NASA or Northrop Grumman.
 data and checked against the measured climb, cruise-climb, takeoffs and landings. Its own flight laws fly a whole
 mission hands off, from taxi and takeoff to landing, with contingencies for a failed navigator, a lost link and a
 dead engine. In FlightGear it has a 3-D model with a bending wing, a head-up display over the nose camera, a
-belly camera that locks on targets, its own sounds, and a ground control station in the browser that flies it.
+belly camera that locks on targets, three liveries (white; a dark military grey; and a Finnish Air Force grey with the cockade and a made-up serial, GH-601; **Global Hawk > Select livery** in the menu), its own sounds, and a ground control station in the browser that flies it.
 
 - [Model report](GlobalHawk-JSBSim-model-report.pdf): how the flight model is built, what it was checked against, every
   check that passes and every one that misses. Built by `fdm/report/build.sh` from the logs of `fdm/check_all.sh`.
@@ -53,10 +55,12 @@ belly camera that locks on targets, its own sounds, and a ground control station
 
 - [GlobalHawk/GlobalHawk-set.xml](GlobalHawk/GlobalHawk-set.xml): the FlightGear aircraft. Its 3-D model is made by
   [fdm/mkmodel.py](fdm/mkmodel.py) from NASA's 3-D model of the Global Hawk: scaled to the published length, span and
-  height, the ailerons, ruddervators and spoilers cut out, the fan and turbine turning, and the gear folding into
-  fairings behind doors. [fdm/viewmodel.py](fdm/viewmodel.py) draws it posed, for checking without FlightGear;
-  `fdm/phase9a_checks.py` starts FlightGear with it. The fairings, the doors and the way the gear folds are our own
-  guesses: no drawing of them is public.
+  height, the ailerons, ruddervators and spoilers cut out, the fan and turbine turning, and the gear folding inboard
+  into the fuselage and wing root. Each main leg has NASA's own plate beside it, attached to the strut and folding up with it, and a door cut from the fuselage's lower skin, hinged near the
+  centre of the belly, which closes over the folded gear; nothing is hidden, the legs and plates lie inside the wing root and fuselage. [fdm/viewmodel.py](fdm/viewmodel.py) draws it posed, for checking without FlightGear;
+  `fdm/phase9a_checks.py` starts FlightGear with it. The way the gear folds is our own guess: no drawing of it is
+  public. The wheel sizes, the track, the single nose wheel and the doors' places are from photographs; the doors' swing angles are set by eye.
+  [docs/pictures/gear-doors.png](docs/pictures/gear-doors.png) shows the doors over the gear's travel.
 - [GlobalHawk/Nasal/](GlobalHawk/Nasal/): what runs inside FlightGear. `onboard.nas` and `missionmgr.nas` are the
   aircraft's end of the link and the mission manager, the same logic as `fdm/onboard.py` and `fdm/missionmgr.py`
   line for line (change both together); `json.nas` reads and writes the link's JSON. With them the ground station
@@ -95,4 +99,4 @@ and NASA's insignia are not used. The flight records are NASA's ATTREX data (NAS
 
 ## Licence
 
-GNU General Public License, version 2. See [COPYING](COPYING).
+GNU General Public License, version 2. See [LICENSE](LICENSE).
