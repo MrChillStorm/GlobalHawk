@@ -25,9 +25,9 @@
     return { mode, text: what + far, target: [lat, lon], level };
   }
 
-  /** The command that locks the camera on a point of the map. */
-  function point(p) {
-    return `point ${p[0].toFixed(6)} ${p[1].toFixed(6)}`;
+  /** The command that locks the camera on a point of the map: on the ground there, or, with a height (ft), on that height (an aircraft clicked). */
+  function point(p, elevFt) {
+    return `point ${p[0].toFixed(6)} ${p[1].toFixed(6)}` + (Number.isFinite(elevFt) ? ` ${Math.round(elevFt)}` : '');
   }
 
   const api = { CAM, PATHS, state, point };

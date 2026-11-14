@@ -4,7 +4,7 @@ A browser page from which the Global Hawk is supervised: you tell the aircraft w
 "hold", "come home") and it works out how. The autonomy is on board; this page is a terminal. **Close it and the
 aircraft notices the silence and flies its lost-link route home.**
 
-So far: the command link, a map, a flight display, engine, fuel and navigator status, one alert list, a plan
+So far: the command link, a map with layers (base maps, airspace, weather, airports, the link's limit), a flight display, engine, fuel and navigator status, one alert list, a plan
 editor with a forecast of time, fuel and height, several stations with a handover between them, and flying by hand
 with a gamepad or the keyboard, other aircraft on the map, and a demo that needs nothing but this folder.
 
@@ -77,6 +77,57 @@ whole scenario through the link; `fdm/phase8c_checks.py` holds the forecast and 
   those of NASA's detect-and-avoid studies; the prediction here is a simple straight-line one, and no avoiding
   manoeuvre is suggested.
 - **The height profile** under the map: the heights the plan asks for (dashed) and the height forecast.
+- **Map layers** (the **Layers** button on the map): a base map, airspace, weather, airports, the line-of-sight limit and more, each **Off, Auto or
+  On**, with a **Declutter** button. See "Map layers" below.
+
+## Map layers
+
+The map has a base map and layers on it, chosen in the **Layers** panel (a popover over the map: it opens no window and the map stays in use).
+Each layer is **Off**, **Auto** or **On**. **On** and **Off** are yours. **Auto** shows the layer while its reason holds and **says why**, in a chip
+under the toolbar ("Airspace: R-2508 restricted, entered 25 nmi ahead ✕"); the ✕ puts it away until the reason has gone and come back. Nearly
+everything starts on Auto, so the screen is as clean as before and things arrive when they matter.
+
+| Layer | Shows | Comes up by itself when |
+|---|---|---|
+| **Link range** | how far a station that needs line of sight can hear the aircraft at its height (the radio horizon, 1.23 × (√h₁ + √h₂) nmi: the most the link could reach, over a smooth earth, not what it does reach), and at the plan's highest point; the station is taken to be at the field with a 30 ft antenna | **forced** near the limit: within 15 % of it, or the path reaches it in 10 minutes (NASA's list for remote pilot stations asks for exactly this). No ring for a satellite station (MCE, or 600 ms of delay and more) |
+| **Traffic**, **Glide reach**, **Camera target**, **Trail** | what the station always had | traffic within 60 nmi (forced while a traffic alert stands); flying (forced while the engine is out); the camera is locked; trail always |
+| **Airspace** | restricted, prohibited, danger, warning and alert areas, MOAs, TFRs, controlled B, C, D; Auto shows the zones that reach the aircraft's height, On shows all heights; Class A and E are never drawn. The heights are read as MSL (an AGL limit is marked), the **times of use are not read** | the plan is being edited, or a zone is inside, ahead on the path (20 minutes) or crossed by the plan. The station then also raises an alert, never louder than a caution. The airspace of the aircraft's own field is not news |
+| **Weather hazards** | SIGMET and G-AIRMET areas for turbulence, icing, convection and ash that reach the aircraft's height | one meets the path, by NASA's rules for this aircraft (see below) |
+| **Airports** | fields with a long runway, marked **usable now** (the station's own landing forecast at the present weight, plus 800 ft for the aiming point) or **only lighter** (at the reserve weight); On shows the short ones too | on the field, in a contingency, when planning, below 18,000 ft, or within 100 nmi of the landing |
+| **Airport weather (METAR)** | category, wind and the crosswind on the best runway at the airports shown and the landing sites | with the airports |
+| **Terrain** | ground within 500 ft below the aircraft's height (lighter) or above it (darker) | flying below 15,000 ft and more than 1,000 ft above the ground; engine out |
+| **Rain radar** | the newest radar picture | flying at or below FL500, where NASA's rule is to stay 25 nmi from thunderstorms |
+| **Cloud tops (infrared)** | infrared satellite, cold = high, from the satellite that looks at the map's centre | flying above FL500, where tops matter; planning |
+| **Winds aloft** | wind arrows at the pressure level nearest the aircraft's height, and the head or tail wind on each leg (now, or +3 to +24 h) | planning; a headwind of 40 kt or more on the leg |
+| **Loaded areas** | GeoJSON you load: a survey box, a storm to chase | a file is loaded |
+
+**Rules that keep it calm:** a reason must hold for 2 s before a layer comes up and be false for 60 s before it goes; at most three layers come up by
+themselves at once on top of the station's own picture (the most safety-relevant first; the others wait, and the panel says so); nothing opens a
+window or moves the map; the **forced** layers (the link's edge, a traffic alert, an engine out) show even when Off or decluttered, for as long as the
+cause lasts. **Declutter** puts every optional layer away and a second click brings the same ones back. The plan, the aircraft, the active leg and
+the lost-link route are not layers and are never hidden. The numbers (2 s, 60 s, three) are choices made here: none is published.
+
+**NASA's rules for this aircraft** (Cecil et al., "Weather avoidance guidelines for NASA Global Hawk", the 2012 rules): at or below FL500 stay 25 nmi from thunderstorms;
+above FL500 stay 25 nmi from reported lightning where the tops are FL500 or higher, and 10,000 ft above it where they are lower; no flight into forecast or
+reported icing; none into forecast or reported moderate or severe turbulence. The station applies them to the SIGMET polygons it has and says what it compared:
+**a SIGMET is not a thunderstorm report, a polygon is not the weather, and a cell can grow faster than any data shows**, so a weather layer is an aid to a
+judgement and never a clearance. Nothing here refuses, changes or sends a command.
+
+**Where the data comes from** (all free, nothing needs an account or a key): base maps from Esri (dark gray, satellite), OpenStreetMap and OpenTopoMap; airports and
+runways from OurAirports (17 MB the first time, then kept in the browser); airspace from the FAA's open-data service (US only, shared quota: when it says it is busy
+the station asks again after a minute) or from files; radar from RainViewer; satellite from NASA GIBS (GOES, Himawari) and EUMETSAT (Meteosat); winds from Open-Meteo;
+US observations from the National Weather Service; terrain from Terrarium tiles. SIGMETs, G-AIRMETs and METAR for the rest of the world come from aviationweather.gov,
+which sends no header that lets a web page read it, so they need the small helper: `node tools/awc-proxy.js`, then open the station with `?awc=http://localhost:5402`.
+The helper passes six paths of that one service on, to this computer only, and keeps nothing. **All of it is real-world data, not the simulator's weather.**
+Files can be loaded in the Layers panel or dropped on the map: airspace (OpenAir, GeoJSON as the FAA's service gives it, OpenAIP JSON), airports and runways
+(OurAirports' CSV files), areas (any other GeoJSON).
+
+**Go offline** (in the panel, or `?offline=1`) stops every request to anyone else; the map then shows the grid and what was loaded from files or kept in the browser.
+The tiles and data are asked of other people's servers, which see the area being looked at. The demo has made-up airspace, fields, a report and wind around its made-up field.
+
+Address options: `?layers=airspace:on,wx-radar:off` (set layers), `?base=none|dark|streets|topo|satellite`, `?offline=1`, `?awc=…` (the helper),
+`?tiles=http://localhost:9000` (every tile asked of a local fake that serves `{id}/{z}/{x}/{y}.png`, for testing), `?sources=…` (an OurAirports mirror).
+`node tools/overlay-probe.js` asks the real services through the station's own modules and says what came back.
 
 ## Several stations, and handing over
 
@@ -102,7 +153,10 @@ automatic by itself and flies its lost-link route.
 
 ## The belly camera
 
-The Camera panel is the sensor operator's. **Lock on…** and a click on the map keeps the belly camera on that point
+The Camera panel is the sensor operator's. **A click on the map locks the camera there**: on an aircraft (at its height), a landing site,
+a route point, an airfield, or the bare place (not while a command or the plan editor is waiting for a click; a tick box in the panel turns it
+off). That is the same as **Lock on…** and a click, which stays. A click on an aircraft locks on where it was at that moment, not on the aircraft:
+**Nearest object** is the one that follows it. **Lock on…** and a click on the map keeps the belly camera on that point
 of the ground; **Nearest object** locks it on the nearest aircraft, ship or vehicle FlightGear has; **Unlock** frees
 it. The arrows turn it (or move a locked point, while FlightGear shows the belly camera's view), and **Level
 horizon** keeps the horizon level in the picture as the aircraft banks. What it is locked on is written in the panel
@@ -135,6 +189,32 @@ Return home. The figure is kept in the plan (`field.runway_past_aim_ft`) as the 
 does not read it, and lands where it is told.
 
 Every command is shown or described first and goes only on **Send**. It counts only when the aircraft answers.
+
+## The route planner
+
+In the plan editor (route being edited) **Plan a route** works out a route from where the route begins (the takeoff's end, or the aircraft when it is flying) to the plan's
+landing fix, and shows it as **cards**, as a map program does. Choose, then **Find routes**:
+
+- **Least fuel**, **Fastest**, **Cautious** and the **Direct** route to compare with. Each card gives time, fuel, distance, height, how it differs from the least-fuel one, what it goes
+  round (or, for the direct one, what it crosses) and its **emergency landing sites**: "a landing site in glide reach all the way", or the longest stretch with none. Routes that are practically
+  one (every point within 5 nmi, the same height) are one card with both names. Click a card to see it on the map (cyan dashes; amber where no site is in reach). **Use this route** puts its
+  points into the editor, and **Undo** gives the old route back exactly. Nothing is sent: **Send plan…** does that, through the confirm bar, and the aircraft checks the plan.
+- **Emergency landing sites: Prefer, Require or Off** (the operator's choice, kept in the browser). A site is in reach when the distance to it plus 5.3 nmi is within 0.85 of the
+  aircraft's own planner's glide radius at the height there (`(height - the site's height - 3,500 ft) x 20`, still air: `js/reach.js`; the 0.85 is this station's margin for turns and
+  wind), which is low in the climb and the descent, and within 12 nmi of a site it is in its pattern. **Prefer** (the default) makes a stretch out of reach cost a third more, so that a detour is taken to stay covered;
+  **Require** never leaves the reach of a site and may find no route (over the sea, for one: it then says how long the direct route's gap is); **Off** does not look at sites at all. The sites are
+  the plan's own and the airports that can hold the landing at the present weight (a paved runway of what the landing forecast asks plus 800 ft); "count shorter strips too" adds paved runways of
+  at least three quarters of that (a landing that may run off its end: the MV-22B's engine-out finder keeps such strips as a last resort too) and marks them. With no airports loaded only the plan's sites count, and it says so.
+- **Height:** the best of 20,000 to 65,000 ft in 5,000 ft steps (the ones the route is long enough to climb to and come down from, at the weight, by the station's own tables), or one you choose.
+- **The winds aloft** (Open-Meteo, the pressure level of each height, now or +3 to +24 h from the Layers panel) change the ground speed along each join, so the route leans on a tailwind and
+  keeps out of a headwind; the editor then also shows the forecast **with** them (the aircraft does not use it, and the forecast above it stays the no-wind one).
+- **What it goes round:** restricted, prohibited, danger and TFR areas at the cruise height (2 nmi of room; the aircraft's own home airspace, which cannot be avoided, is left out), turbulence and icing
+  areas at that height (NASA's rules 4 and 5; 1.5 nmi), and convection with 25 nmi at or below FL500 or where the tops are FL500 or more, 10,000 ft over the tops otherwise (NASA's rules 1 and 2; the **Cautious** route doubles
+  the room). MOAs and warning areas cost a quarter more. **Not looked at:** terrain, radar echoes, traffic, the times of use of airspace, the climb and the descent against the zones (only the cruise is), step
+  climbs (a height the weight does not allow at the start is not offered), and points the route must visit. SIGMET areas need the helper (see the layers); without it none are avoided, and it says so.
+  **A SIGMET area is the weather the station has, and a route round it is not a route round the weather.**
+- The method is this station's own (a lattice of 0.25 degrees, each point joined to its 16 nearest directions, Dijkstra's path on fuel or time, thinned and checked again); the real aircraft's is not public.
+  It takes a few seconds with real data (the wind fetch is most of it, once).
 
 ## The link
 
@@ -189,9 +269,13 @@ without the engine. The aircraft refuses a plan with an unknown item, a point of
 - `js/alerts.js`: the alert list's order, tones and acknowledging. `js/pfdmath.js`, `js/pfd.js`: the flight display.
 - `js/predict.js` with `js/perfdata.js`: the forecast. `js/editor.js`: the plan editor's logic. `js/plancheck.js`,
   `js/reach.js`: the aircraft's plan check and glide planner, ported so the station can show them at once.
+- `js/layers.js` (the layers' modes, rules and declutter), `js/overlayctx.js` (the situation, and each layer's Auto rule), `js/overlays.js` (what is drawn, the data each layer asks for, the panel),
+  `js/tiles.js` (slippy-map tiles through the station's projection), `js/airspace.js`, `js/airports.js`, `js/weather.js`, `js/linkrange.js`, `js/terrain.js`, `js/palette.js`,
+  `js/store.js` (what is kept in the browser), `js/pick.js` (what a click lands on), `js/demodata.js` (the demo's made-up zones, fields and weather),
+  `tools/awc-proxy.js` (the weather helper), `tools/overlay-probe.js`. The route planner: `js/router.js` (lattice, hard and soft areas, emergency-site coverage, heights, the four routes),
+  `js/routeinputs.js` (what it is given from a plan, and the words on a card); the forecast's wind option is in `js/predict.js`.
 - `js/map.js`, `js/main.js`, `index.html`, `css/gcs.css`: the page. Plain JavaScript, no build step.
 - The aircraft's end: `fdm/onboard.py` and `fdm/missionmgr.py` (Python, for the checks and the simulator server;
   the same logic goes into the aircraft's Nasal for FlightGear).
 
-The demo field is made up, and so are the two aircraft the simulator server shows as traffic. There is no
-background map yet, only a grid and a scale.
+The demo field is made up, and so are the two aircraft the simulator server shows as traffic. With no connection the map is a grid and a scale.

@@ -29,10 +29,15 @@
         <button id="follow" class="on" title="keep the aircraft in the middle">follow</button>
         <button id="fit" title="show the whole plan">plan</button>
         <button id="orient" title="which way is up on the map: north, or the way the aircraft is going">north up</button>
+        <button id="layers-btn" title="what the map shows: base map, airspace, weather, airports, link range… Most are Auto: they come up by themselves when they matter, and say why">Layers</button>
+        <button id="declutter-btn" title="put every optional layer away; a second click brings them back. The plan, the aircraft and the lost-link route stay">Declutter</button>
       </div>
+      <div id="chips"></div>
+      <div id="layers-panel" hidden></div>
       <div id="legend">
         <span class="k plan">plan</span><span class="k active">flying now</span><span class="k lost">if the link is lost</span><span class="k preview">not sent yet</span>
       </div>
+      <div id="legend2"></div>
       <canvas id="profile"></canvas>
       <div id="confirm" hidden>
         <div id="confirm-text"></div>
@@ -127,6 +132,7 @@
       <h2>Camera</h2>
       <div id="camera">
         <div id="cam-state" class="small"></div>
+        <label class="tick" title="a click on the map that is not asked for by a command or by the plan editor locks the belly camera on what is there: an aircraft, a landing site, a route point, an airfield, or the place itself"><input type="checkbox" id="cam-click"> A click on the map locks the camera there</label>
         <div class="row">
           <button id="cam-point" title="then click the map: the belly camera stays on that point of the ground">Lock on…</button>
           <button id="cam-nearest" title="the nearest aircraft, ship or vehicle FlightGear has">Nearest object</button>
@@ -149,6 +155,18 @@
         <table id="ed-table"></table>
         <label class="small" title="from the aiming point to the far end: the landing's forecast is held against it. The aircraft does not read it.">Runway past the aiming point, ft <input type="number" id="ed-runway" min="0" step="100" style="width:7em"></label>
         <div id="ed-warn"></div>
+        <div id="rp" hidden>
+          <h2>Plan a route</h2>
+          <div class="small">From where the route begins to the plan's landing: the least fuel, the fastest and a cautious one, by the winds aloft, round what the layers avoid, and with the emergency landing sites in mind. Advice only: nothing is sent. Heights, winds and areas are the real world's, not the simulator's.</div>
+          <label class="lbase" title="whether the route stays within glide reach of a landing site, by the aircraft's own planner's glide rule (20 to 1) with a margin of 15 %">Emergency landing sites
+            <select id="rp-sites"><option value="prefer">Prefer: keep one in glide reach where it can</option><option value="require">Require: never leave their reach</option><option value="off">Off: do not consider them</option></select></label>
+          <label class="tick" title="a paved runway of at least 0.75 of what the landing asks: a landing that may run off its end, counted only as a last resort"><input type="checkbox" id="rp-short"> count shorter strips as sites too (a last resort)</label>
+          <label class="lbase">Height <select id="rp-alt"><option value="best">the best of 20,000 to 65,000 ft</option><option value="20000">20,000 ft</option><option value="30000">30,000 ft</option><option value="40000">40,000 ft</option><option value="45000">45,000 ft</option><option value="50000">50,000 ft</option><option value="55000">55,000 ft</option><option value="60000">60,000 ft</option><option value="65000">65,000 ft</option></select></label>
+          <label class="tick"><input type="checkbox" id="rp-wind" checked> use the winds aloft</label>
+          <div class="row"><button id="rp-go">Find routes</button><button id="rp-use" disabled>Use this route</button><button id="rp-undo" disabled>Undo</button></div>
+          <div id="rp-status" class="small"></div>
+          <div id="rp-cards"></div>
+        </div>
         <div class="small">Click the map to add a point after the selected one. Drag a point to move it. Nothing is sent until Send.</div>
         <div class="row" style="margin-top:6px">
           <button id="ed-send">Send plan…</button>
@@ -176,10 +194,25 @@
   <script src="js/traffic.js"></script>
   <script src="js/controls.js"></script>
   <script src="js/camera.js"></script>
+  <script src="js/pick.js"></script>
   <script src="js/linkinfo.js"></script>
   <script src="js/demoplan.js"></script>
   <script src="js/demo.js"></script>
+  <script src="js/palette.js"></script>
+  <script src="js/layers.js"></script>
+  <script src="js/tiles.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/airspace.js"></script>
+  <script src="js/airports.js"></script>
+  <script src="js/linkrange.js"></script>
+  <script src="js/weather.js"></script>
+  <script src="js/router.js"></script>
+  <script src="js/routeinputs.js"></script>
+  <script src="js/terrain.js"></script>
+  <script src="js/overlayctx.js"></script>
+  <script src="js/demodata.js"></script>
   <script src="js/map.js"></script>
+  <script src="js/overlays.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

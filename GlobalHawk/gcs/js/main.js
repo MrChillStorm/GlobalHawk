@@ -36,6 +36,24 @@
   const aircraft = demo ? new G.DemoAircraft({ speed: demoSpeed }) : null; // ?demo=1: a stand-in in this page
   const link = new G.Link({ transport: aircraft || new G.WsTransport(host, port), station, latency });
   const map = new G.MapView($('map'));
+  // the map's layers: which are shown and why (js/layers.js, js/overlayctx.js, js/overlays.js)
+  const storage = (() => {
+    try {
+      return window.localStorage;
+    } catch (e) {
+      return null;
+    }
+  })();
+  const layers = new G.layers.Layers({ storage, key: 'gcs.layers' });
+  G.overlayctx.defineLayers(layers);
+  const savedLayers = layers.load() || {};
+  layers.applyQuery(q.get('layers'));
+  const ov = new G.Overlays({
+    map, layers, demo, fetch: (u, o) => window.fetch(u, o), store: new G.store.Store('gcs-data'),
+    awc: q.get('awc'), tiles: q.get('tiles'), sourcesBase: q.get('sources'), offline: q.get('offline') === '1',
+    prefs: Object.assign({}, savedLayers.prefs || {}, q.get('base') ? { base: q.get('base') } : {}),
+    panel: { button: $('layers-btn'), declutter: $('declutter-btn'), chips: $('chips'), box: $('layers-panel') },
+  });
   const pfd = new G.FlightDisplay($('pfd'));
   const alerts = new G.Alerts();
   let trafficList = []; // other aircraft, from FlightGear's AI and multiplayer tree
@@ -51,8 +69,12 @@
   }
   setInterval(pollTraffic, 2000);
   const forecast = G.predict.make(G.perfdata);
+  ov.forecast = forecast;
   let editor = null; // the plan being edited, or null
-  const hms = (s) => (s >= 3600 ? `${Math.floor(s / 3600)} h ${String(Math.round((s % 3600) / 60)).padStart(2, '0')} min` : `${Math.round(s / 60)} min`);
+  const hms = (s) => {
+    const min = Math.round(s / 60); // whole minutes first: 1 h 59.6 min is 2 h 00 min, never "1 h 60 min"
+    return min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')} min` : `${min} min`;
+  };
   /** The aircraft as the forecast takes it: now if flying, else full of what it has on the field. */
   const stateNow = (elev) => ({ alt_ft: Number.isFinite(tel.alt) ? tel.alt : elev, weight_lb: Number.isFinite(tel.weight) ? tel.weight : 25600, fuel_lb: Number.isFinite(tel.fuel) ? tel.fuel : 14150 });
   $('tanks').innerHTML = TANKS.map((t, i) => `<div class="tank"><div class="bar"><i id="tank${i}"></i></div>${t[0]}</div>`).join('');
@@ -375,7 +397,27 @@
   $('cam-level').addEventListener('click', () => link.camera(G.camera.state(link.values).level ? 'level off' : 'level'));
   [['cam-left', -1, 0], ['cam-right', 1, 0], ['cam-up', 0, 1], ['cam-down', 0, -1]].forEach(([id, r, u]) => $(id).addEventListener('click', () => link.cameraSlew(r, u)));
 
-  map.onClick = (p) => {
+  // "just click anything on the map": a click that no command and no plan edit asked for locks the belly camera on what is
+  // there (an aircraft at its height, a landing site, a route point, an airfield) or on the place itself. A switch in the
+  // Camera panel turns it off; it is kept in the browser. Not a flight command: it needs no control and gets no answer.
+  let camClick = true;
+  try {
+    camClick = localStorage.getItem('gcs.camclick') !== '0';
+  } catch (e) { /* no storage: it stays on */ }
+  $('cam-click').checked = camClick;
+  $('cam-click').addEventListener('change', () => {
+    camClick = $('cam-click').checked;
+    try {
+      localStorage.setItem('gcs.camclick', camClick ? '1' : '0');
+    } catch (e) { /* the choice then lasts until the page closes */ }
+  });
+  function lockCameraAt(p, screen) {
+    const hit = screen ? map.pickAt(screen.x, screen.y) : null;
+    const at = hit ? hit.p : p;
+    link.camera(G.camera.point(at, hit && hit.kind === 'aircraft' ? hit.alt_ft : undefined));
+    map.flash(at, hit ? `camera → ${hit.name}` : 'camera → here');
+  }
+  map.onClick = (p, screen) => {
     if (aiming) {
       link.camera(G.camera.point(p));
       aim(false);
@@ -385,6 +427,8 @@
     } else if (editor && !armed) {
       editor.add(p);
       renderEditor();
+    } else if (camClick && !armed && !demo && link.state.mode === 'live') {
+      lockCameraAt(p, screen);
     }
   };
   map.onHandle = (i, p, done) => {
@@ -422,11 +466,141 @@
     return { legs, r: forecast.predict(legs, stateNow(elev)), from: flying ? 'where the aircraft is now' : 'the takeoff' };
   }
 
+  /* ------------------------------------------------------------- the route planner (in the plan editor) */
+  const RP_KEY = 'gcs.route';
+  let rp = null; // the last search: { routes, notes, errors, pick }
+  try {
+    const saved = JSON.parse(localStorage.getItem(RP_KEY) || 'null');
+    if (saved) {
+      if (['prefer', 'require', 'off'].includes(saved.sites)) $('rp-sites').value = saved.sites;
+      $('rp-short').checked = !!saved.short;
+      if (saved.alt) $('rp-alt').value = saved.alt;
+      $('rp-wind').checked = saved.wind !== false;
+    }
+  } catch (e) { /* no storage: the defaults */ }
+  const rpSave = () => {
+    try {
+      localStorage.setItem(RP_KEY, JSON.stringify({ sites: $('rp-sites').value, short: $('rp-short').checked, alt: $('rp-alt').value, wind: $('rp-wind').checked }));
+    } catch (e) { /* kept until the page closes */ }
+  };
+  ['rp-sites', 'rp-short', 'rp-alt', 'rp-wind'].forEach((id) => $(id).addEventListener('change', rpSave));
+
+  function rpClear() {
+    rp = null;
+    map.data.routeView = null;
+    $('rp-cards').innerHTML = '';
+    $('rp-use').disabled = true;
+  }
+
+  function rpShow() {
+    if (!rp || !rp.routes[rp.pick]) {
+      map.data.routeView = null;
+      return;
+    }
+    const c = rp.routes[rp.pick];
+    map.data.routeView = { points: [rp.start].concat(c.points), gaps: c.coverage ? c.coverage.gaps : [] };
+    document.querySelectorAll('.rcard').forEach((el, i) => el.classList.toggle('sel', i === rp.pick));
+    $('rp-use').disabled = false;
+    map.draw();
+  }
+
+  function rpCards() {
+    $('rp-cards').innerHTML = rp.routes.map((c, i) => {
+      const w = G.routeinputs.words(c);
+      return `<label class="rcard ${c.direct ? 'direct' : ''}" data-i="${i}"><input type="radio" name="rp-pick" ${i === rp.pick ? 'checked' : ''}><b>${esc(w.title)}</b> <span class="stats">${esc(w.stats)}</span>${w.diff ? `<div class="line2">${esc(w.diff)}</div>` : ''}${w.reach ? `<div class="line2 ${/^no /.test(w.reach) ? 'nosite' : ''}">${esc(w.reach)}</div>` : ''}${w.avoids ? `<div class="line2">${esc(w.avoids)}</div>` : ''}${w.warnings.map((t) => `<div class="warn">${esc(t)}</div>`).join('')}</label>`;
+    }).join('');
+  }
+
+  $('rp-cards').addEventListener('change', (e) => {
+    const card = e.target.closest('.rcard');
+    if (card && rp) {
+      rp.pick = Number(card.getAttribute('data-i'));
+      rpShow();
+    }
+  });
+
+  async function findRoutes() {
+    if (!editor || editor.which !== 'route') return;
+    const plan = editor.plan;
+    const goal = G.routeinputs.goalOf(plan);
+    const status = (t) => ($('rp-status').textContent = t);
+    if (!goal) return status('The plan has no landing to route to.');
+    const flying = enrouteNow();
+    const st = G.routeinputs.startOf(plan, flying, here(), tel.alt);
+    const state = stateNow(plan.field.elev_ft);
+    const useWind = $('rp-wind').checked;
+    const siteMode = $('rp-sites').value;
+    const altitudes = $('rp-alt').value === 'best' ? undefined : [Number($('rp-alt').value)];
+    $('rp-go').disabled = true;
+    rpClear();
+    status('Fetching the winds and the airports…');
+    const notes = [];
+    try {
+      const span = Math.max(Math.abs(goal.fix[0] - st.pos[0]), Math.abs(goal.fix[1] - st.pos[1]) * Math.cos((st.pos[0] * Math.PI) / 180));
+      const m = Math.max(1.5, 0.35 * span) + 0.5;
+      const c = Math.cos((((st.pos[0] + goal.fix[0]) / 2) * Math.PI) / 180);
+      const box = [Math.max(-85, Math.min(st.pos[0], goal.fix[0]) - m), Math.min(st.pos[1], goal.fix[1]) - m / c, Math.min(85, Math.max(st.pos[0], goal.fix[0]) + m), Math.max(st.pos[1], goal.fix[1]) + m / c];
+      if (!ov.prefs.offline && !demo) {
+        if (siteMode !== 'off') await ov.airports.ensure([(st.pos[0] + goal.fix[0]) / 2, (st.pos[1] + goal.fix[1]) / 2], Math.max(500, (span * 60) / 2 + 250));
+        if (useWind && ov.wind.prefetch) {
+          const levels = [...new Set((altitudes || G.router.ALTITUDES).map((a) => G.weather.levelFor(a)))];
+          const r = await ov.wind.prefetch(box, levels);
+          if (!r.ok) notes.push('The winds could not be had (' + r.status + '): the route is planned in still air.');
+        }
+      } else if (ov.prefs.offline && useWind && !demo) notes.push('The page is offline: no winds, and only the airports that were kept in this browser.');
+      const windOk = useWind && (demo || ov.wind.cells.size > 0);
+      if (useWind && !windOk && !notes.length) notes.push('No winds are loaded: the route is planned in still air.');
+      const siteInfo = G.routeinputs.sites(plan, ov.airports.list, forecast, state.weight_lb);
+      if (siteMode !== 'off') notes.push('Landing sites: ' + siteInfo.note + '.');
+      const out = await G.router.alternativesAsync({
+        start: st.pos, start_alt_ft: st.alt_ft, goal: goal.fix, fix_alt_ft: goal.fix_alt_ft, weight_lb: state.weight_lb, fuel_lb: state.fuel_lb, fc: forecast, perf: G.perfdata,
+        wind: windOk ? (la, lo, alt, h) => ov.wind.at(la, lo, alt, h) : null, hours: ov.prefs.windHours, zones: ov.zones(), hazards: ov.hazardList(), now: Date.now(), altitudes,
+        legsFor: (pts) => G.plancheck.legs([{ kind: 'route', points: pts }, goal.land], st.pos, plan.field),
+        sites: siteInfo.list, glide: (a, e) => G.reach.radius(a, e) / geo.NM, siteMode, shortStrips: $('rp-short').checked,
+      }, (name) => status(`Working out the ${name.toLowerCase()} route…`));
+      if (!out.ok) {
+        status('No route: ' + out.error);
+        $('rp-go').disabled = false;
+        return;
+      }
+      rp = { routes: out.routes, pick: 0, start: st.pos };
+      out.notes.forEach((n) => notes.push(n));
+      out.errors.forEach((n) => notes.push(n));
+      if (!demo && !ov.hazards.awc) notes.push('Weather hazards (SIGMET) need the helper: none were avoided.');
+      status(notes.join(' '));
+      rpCards();
+      rpShow();
+    } catch (e) {
+      status('The route planner failed: ' + e.message);
+    }
+    $('rp-go').disabled = false;
+  }
+  $('rp-go').addEventListener('click', findRoutes);
+  $('rp-use').addEventListener('click', () => {
+    if (!editor || !rp) return;
+    const c = rp.routes[rp.pick];
+    if (editor.setRoute(c.points)) {
+      $('rp-undo').disabled = false;
+      $('rp-status').textContent = `The route is in the plan (${c.names.join(' · ')}). Nothing is sent: Send plan… does that, and the aircraft checks it.`;
+      map.data.routeView = null;
+      renderEditor();
+    }
+  });
+  $('rp-undo').addEventListener('click', () => {
+    if (editor && editor.undoRoute()) {
+      $('rp-undo').disabled = true;
+      $('rp-status').textContent = 'The route is as it was.';
+      renderEditor();
+    }
+  });
+
   function renderEditor() {
     const box = $('editor');
     box.hidden = !editor;
     $('c-edit').classList.toggle('on', !!editor);
     if (!editor) {
+      if (rp) rpClear();
+      $('rp-undo').disabled = true;
       map.data.handles = null;
       map.data.editing = null;
       drawProfile();
@@ -456,11 +630,19 @@
       const roll = landingWords(fc.r, plan.field);
       if (roll) warn.push(`<span class="small">${esc(roll[0].toUpperCase() + roll.slice(1))}.</span>`);
       warn.push(`<span class="small">Forecast from ${fc.from}: ${hms(fc.r.total.t_s)}, ${fmtAlt(fc.r.total.fuel_used_lb)} lb of fuel, ${(fc.r.total.dist_ft / geo.NM).toFixed(0)} nmi. No wind.</span>`);
+      if (editor.which === 'route' && (demo || ov.wind.cells.size > 0)) {
+        // the same legs with the wind aloft the planner fetched: the aircraft does not use it, and neither does the forecast above
+        const wf = forecast.predict(fc.legs, stateNow(plan.field.elev_ft), { wind: (la, lo, alt, h) => ov.wind.at(la, lo, alt, h), hours: ov.prefs.windHours });
+        warn.push(`<span class="small">With the winds aloft (${demo ? 'made up' : 'Open-Meteo'}, ${ov.prefs.windHours ? '+' + ov.prefs.windHours + ' h' : 'now'}): ${hms(wf.total.t_s)}, ${fmtAlt(wf.total.fuel_used_lb)} lb of fuel.</span>`);
+      }
     }
     if ($('ed-table').dataset.html !== rowsHtml && !$('ed-table').contains(document.activeElement)) {
       $('ed-table').innerHTML = rowsHtml;
       $('ed-table').dataset.html = rowsHtml;
     }
+    $('rp').hidden = editor.which !== 'route';
+    $('rp-undo').disabled = !editor.undo;
+    warn = warn.concat(ov.editNotes(plan, editor.which, tel.gs).map((t) => `<span class="small">${esc(t)}</span>`));
     $('ed-warn').innerHTML = warn.join('<br>');
     if (document.activeElement !== $('ed-runway')) $('ed-runway').value = plan.field.runway_past_aim_ft > 0 ? plan.field.runway_past_aim_ft : '';
     $('ed-send').disabled = !!bad || !(link.state.mode === 'live');
@@ -745,7 +927,22 @@
     trafficList.forEach((t) => (t.threat = ownPath ? G.traffic.threat(ownPath, t) : null));
     const trafficAlert = airborneNow ? G.traffic.alert(trafficList) : null;
     map.data.traffic = trafficList;
-    const own = trafficAlert ? [trafficAlert] : [];
+    // the layers: the situation, which are shown and why; their advisories join the one alert list
+    const ownPos = Number.isFinite(tel.lat) && Number.isFinite(tel.lon) ? { lat: tel.lat, lon: tel.lon, alt_ft: tel.alt, agl_ft: tel.agl, track: Number.isFinite(tel.trackRad) ? (tel.trackRad * 180) / Math.PI : tel.hdg, gs_kt: tel.gs || 0, vs_fps: tel.vs || 0 } : null;
+    const ctx = ov.situation.update({
+      now: Date.now(), own: ownPos, status: live ? s : null, plan: link.plan, editing: !!editor, station, latency, traffic: trafficList, alertIds: alerts.items.map((a) => a.id),
+      cameraLocked: live && !!G.camera.state(link.values).target, areas: ov.areas.length, hours: ov.prefs.windHours, engineOut: tel.failed > 0.5,
+    });
+    layers.update(ctx);
+    if (Number.isFinite(tel.weight)) ov.weightNow = tel.weight;
+    if (Number.isFinite(tel.fuel)) ov.fuelNow = tel.fuel;
+    ov.tick(ctx);
+    const legend = ov.legendHtml() + (map.data.routeView ? `<span class="k2" style="border-top:3px dashed ${G.COL.preview}">route on its card</span>${map.data.routeView.gaps && map.data.routeView.gaps.length ? `<span class="k2" style="border-top:5px solid ${G.COL.lost}">no landing site in reach</span>` : ''}` : '');
+    if ($('legend2').dataset.html !== legend) {
+      $('legend2').innerHTML = legend;
+      $('legend2').dataset.html = legend;
+    }
+    const own = (trafficAlert ? [trafficAlert] : []).concat(ov.alerts(ctx));
     if (comeBack) own.push({ id: 'link-restored', level: 'advisory', text: 'LINK RESTORED', action: s && s.link_lost ? 'The aircraft is still on its lost-link route: Resume plan to go on with the mission' : '' });
     const list = alerts.update(s ? s.alerts : [], link.lastDown, !!(s && s.started) || link.lastDown !== null, own);
     const html = list.map((a) => `<div class="alert ${a.level} ${a.acked ? 'acked' : 'new'}"><b>${esc(a.text)}</b><span class="do">${esc(a.action)}</span>${a.acked ? '' : `<button data-ack="${esc(a.id)}">OK</button>`}</div>`).join('');
@@ -861,5 +1058,5 @@
     if (armed) renderConfirm();
     render();
   }, 250);
-  window.GCSApp = { link, map, tel, pfd, alerts, get editor() { return editor; }, forecastTo }; // for looking at from the console
+  window.GCSApp = { link, map, tel, pfd, alerts, layers, ov, get editor() { return editor; }, forecastTo, planForecast, stateNow, forecast }; // for looking at from the console
 })();

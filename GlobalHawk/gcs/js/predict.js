@@ -1,10 +1,12 @@
 /**
  * The station's forecast: time, fuel and height along a list of legs, from a table sampled from the flight model
  * (js/perfdata.js, written by fdm/gcs_perf.py). The aircraft does not use this: it is what the station draws
- * before a command is sent. Standard atmosphere, no wind, no turns.
+ * before a command is sent. Standard atmosphere, no turns, and no wind unless a wind is given (opts.wind of predict: the ground speed then
+ * follows the wind along each leg; without it every answer is what it was before the option existed).
  */
 (function (root) {
   'use strict';
+  const geo = typeof module !== 'undefined' && module.exports ? require('./geo.js') : root.GCS.geo;
   const NM = 6076.1;
   const STEP_S = 20;
   const CAPTURE_FT = 150; // the manager flies level within this of a commanded height
@@ -71,7 +73,11 @@
      * A 'land' leg's point also has landing: what landing() gives for the weight it arrives with; and if the leg
      * says how much runway there is past the aiming point (runway_past_aim_ft), too little is a warning.
      */
-    function predict(legs, state) {
+    function predict(legs, state, opts) {
+      // opts.wind(lat, lon, alt_ft, hours) => { spd (kt), dir (deg, it blows FROM) } | null, and opts.hours: when the flight starts (hours from now).
+      // The wind changes the ground speed only: along the leg, a tailwind adds to it and a headwind takes from it (the aircraft crabs and
+      // keeps its track, so the crosswind costs nothing here), and the time on a leg and so its fuel change with it. No wind given, no change at all.
+      const wind = opts && opts.wind ? opts.wind : null;
       let t = 0;
       let alt = state.alt_ft;
       let fuel = state.fuel_lb;
@@ -92,6 +98,7 @@
         }
         let left = leg.dist_ft;
         let guard = 0;
+        const course = wind && leg.from && leg.at && leg.kind !== 'land' ? geo.course(leg.from, leg.at).deg : null;
         while (left > 1 && guard++ < 20000) {
           const w = dry + Math.max(fuel, 0);
           let v = ktas(alt) * (NM / 3600); // ft/s
@@ -114,14 +121,21 @@
             flow = look(P.level_pph, alt, w);
             if (flow === null) flow = look(P.climb_pph, alt, w);
           }
-          let dt = Math.min(STEP_S, left / v);
+          let vg = v; // ground speed, ft/s
+          if (course !== null) {
+            const f = leg.dist_ft > 0 ? 1 - left / leg.dist_ft : 0;
+            const here = [leg.from[0] + (leg.at[0] - leg.from[0]) * f, leg.from[1] + (leg.at[1] - leg.from[1]) * f];
+            const wv = wind(here[0], here[1], alt, ((opts.hours || 0) * 3600 + t) / 3600);
+            if (wv && Number.isFinite(wv.spd) && Number.isFinite(wv.dir)) vg = Math.max(v + wv.spd * Math.cos(((wv.dir + 180 - course) * Math.PI) / 180) * (NM / 3600), 30 * (NM / 3600));
+          }
+          let dt = Math.min(STEP_S, left / vg);
           if (rate > 0) dt = Math.min(dt, Math.max((leg.alt_ft - alt) / rate, 0.5));
           if (rate < 0 && leg.kind !== 'land') dt = Math.min(dt, Math.max((alt - leg.alt_ft) / -rate, 0.5));
           alt += rate * dt;
           fuel -= (flow * dt) / 3600;
           t += dt;
-          left -= v * dt;
-          dist += v * dt;
+          left -= vg * dt;
+          dist += vg * dt;
           profile.push([dist, alt, t, fuel]);
         }
         const reached = leg.kind === 'land' || Math.abs(alt - leg.alt_ft) <= CAPTURE_FT + 1;

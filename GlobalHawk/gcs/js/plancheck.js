@@ -95,12 +95,12 @@
         last = it.end;
       } else if (it.kind === 'route') {
         it.points.forEach((p, i) => {
-          out.push({ dist_ft: last ? geo.course(last, p).ft : 0, alt_ft: p[2], item: it, index: i, at: [p[0], p[1]], name: String(i + 1) });
+          out.push({ dist_ft: last ? geo.course(last, p).ft : 0, alt_ft: p[2], item: it, index: i, at: [p[0], p[1]], from: last ? [last[0], last[1]] : null, name: String(i + 1) });
           last = p;
           alt = p[2];
         });
       } else if (it.kind === 'land') {
-        if (last) out.push({ dist_ft: geo.course(last, it.fix).ft, alt_ft: alt === null ? fieldElev + 4000 : alt, item: it, at: it.fix, label: 'fix', name: 'landing fix' });
+        if (last) out.push({ dist_ft: geo.course(last, it.fix).ft, alt_ft: alt === null ? fieldElev + 4000 : alt, item: it, at: it.fix, from: [last[0], last[1]], label: 'fix', name: 'landing fix' });
         out.push({ kind: 'land', dist_ft: geo.course(it.fix, it.aim).ft, alt_ft: fieldElev, item: it, at: it.aim, label: 'land', runway_past_aim_ft: runway });
         last = it.aim;
       } else if (it.kind === 'taxi') {

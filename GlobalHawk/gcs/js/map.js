@@ -49,7 +49,7 @@
       canvas.addEventListener('pointerup', (e) => {
         const r = canvas.getBoundingClientRect();
         if (drag && drag.handle !== null && this.onHandle) this.onHandle(drag.handle, drag.moved ? this.unproject(e.clientX - r.left, e.clientY - r.top) : null, true);
-        else if (drag && !drag.moved && this.onClick) this.onClick(this.unproject(e.clientX - r.left, e.clientY - r.top));
+        else if (drag && !drag.moved && this.onClick) this.onClick(this.unproject(e.clientX - r.left, e.clientY - r.top), { x: e.clientX - r.left, y: e.clientY - r.top });
         drag = null;
       });
       canvas.addEventListener('wheel', (e) => {
@@ -100,6 +100,17 @@
         if (Math.hypot(q[0] - x, q[1] - y) < 11) return i;
       }
       return null;
+    }
+
+    /** The thing under a point of the canvas (an aircraft, a site, a route point, an airfield), or null: see js/pick.js. */
+    pickAt(x, y) {
+      return G.pick.pick(G.pick.items(this.data, geo.planLines), (p) => this.project(p), x, y, 12);
+    }
+
+    /** A ring and a few words where the user has just asked for something, for a moment (until the thing itself is drawn). */
+    flash(p, text, ms) {
+      this.flashing = { p, text, until: Date.now() + (ms || 2500) };
+      this.draw();
     }
 
     /** Show all of these points. */
@@ -178,7 +189,19 @@
       }
     }
 
-    grid() {
+    /** Call a layer painter (js/overlays.js) at a stage of the drawing; a painter that fails must not take the map with it. */
+    paint(stage) {
+      const fn = this.stages && this.stages[stage];
+      if (!fn) return;
+      try {
+        fn(this, this.ctx);
+      } catch (e) {
+        if (!this.paintFailed) console.error('map layer', stage, e);
+        this.paintFailed = true;
+      }
+    }
+
+    grid(noLines) {
       const x = this.ctx;
       const nm = this.ftPerPx / geo.NM;
       const steps = [0.1, 0.25, 0.5, 1, 2, 5, 10, 25, 50, 100, 250, 500];
@@ -193,13 +216,13 @@
       x.strokeStyle = COL.grid;
       x.lineWidth = 1;
       x.beginPath();
-      for (let la = Math.floor(lat0 / dLat) * dLat; la <= lat1; la += dLat) {
+      if (!noLines) for (let la = Math.floor(lat0 / dLat) * dLat; la <= lat1; la += dLat) {
         const a1 = this.project([la, lon0]);
         const a2 = this.project([la, lon1]);
         x.moveTo(a1[0], a1[1]);
         x.lineTo(a2[0], a2[1]);
       }
-      for (let lo = Math.floor(lon0 / dLon) * dLon; lo <= lon1; lo += dLon) {
+      if (!noLines) for (let lo = Math.floor(lon0 / dLon) * dLon; lo <= lon1; lo += dLon) {
         const a1 = this.project([lat0, lo]);
         const a2 = this.project([lat1, lo]);
         x.moveTo(a1[0], a1[1]);
@@ -224,7 +247,11 @@
       const d = this.data;
       if (!this.w) return;
       x.clearRect(0, 0, this.w, this.h);
-      this.grid();
+      const show = d.show || { trail: true, traffic: true, reach: true, camera: true };
+      this.paint('base');
+      this.paint('rasters');
+      this.grid(!!this.baseOn); // with a map behind, the grid's lines go and the scale stays
+      this.paint('under');
       // the plan the aircraft holds, its lost-link route and sites
       if (d.plan) {
         const p = d.plan;
@@ -249,12 +276,12 @@
         if (d.status.hold) this.circle([d.status.hold.lat, d.status.hold.lon], d.status.hold.radius_ft, COL.active, 3);
       }
       // without the engine: how far the aircraft's own planner would count on gliding, and what it would have in hand at each site
-      if (d.reach && this.own) {
+      if (d.reach && this.own && show.reach) {
         this.circle(this.own.p, d.reach.radiusFt, COL.site, 1, [3, 7]);
         for (const s of d.reach.sites) this.label(s.aim, s.inReach ? `glide: ${Math.round(s.inHand / 100) * 100} ft in hand` : 'glide: OUT OF REACH', s.inReach ? COL.site : '#ff5252', 9, 18);
       }
       // what the belly camera is locked on: a cross, and the line of sight from the aircraft
-      if (d.camera) {
+      if (d.camera && show.camera) {
         const q = this.project(d.camera);
         if (this.own) this.line([this.own.p, d.camera], COL.camera, 1, [2, 4]);
         x.strokeStyle = COL.camera;
@@ -264,6 +291,31 @@
         x.moveTo(q[0], q[1] - 9); x.lineTo(q[0], q[1] - 3); x.moveTo(q[0], q[1] + 3); x.lineTo(q[0], q[1] + 9);
         x.stroke();
         this.label(d.camera, 'camera', COL.camera, 11, -8);
+      }
+      if (this.flashing) {
+        if (Date.now() > this.flashing.until) this.flashing = null;
+        else {
+          const q = this.project(this.flashing.p);
+          x.strokeStyle = COL.camera;
+          x.lineWidth = 2;
+          x.setLineDash([4, 3]);
+          x.beginPath();
+          x.arc(q[0], q[1], 14, 0, 2 * Math.PI);
+          x.stroke();
+          x.setLineDash([]);
+          this.label(this.flashing.p, this.flashing.text, COL.camera, 18, -12);
+        }
+      }
+      // a route from the route planner, chosen on its card: cyan dashes, and where no landing site is in glide reach in amber
+      if (d.routeView && d.routeView.points.length > 1) {
+        this.line(d.routeView.points, COL.preview, 3, [10, 5]);
+        for (const g of d.routeView.gaps || []) this.line(g, COL.lost, 6);
+        d.routeView.points.slice(1).forEach((p, i) => {
+          const q = this.project(p);
+          x.fillStyle = COL.preview;
+          x.fillRect(q[0] - 3, q[1] - 3, 6, 6);
+          if (p[2] !== undefined) this.label(p, `${Math.round(p[2] / 100) * 100} ft`, COL.preview, 8, -8);
+        });
       }
       // a command being prepared
       const pv = d.preview;
@@ -286,7 +338,7 @@
         this.label(p, String(i + 1), COL.preview, 11, -9);
       });
       // other aircraft: an arrowhead on its heading, its callsign and its height against ours in hundreds of feet
-      for (const t of d.traffic || []) {
+      for (const t of show.traffic ? d.traffic || [] : []) {
         const q = this.project([t.lat, t.lon]);
         if (q[0] < -30 || q[1] < -30 || q[0] > this.w + 30 || q[1] > this.h + 30) continue;
         const lvl = t.threat ? t.threat.level : null;
@@ -311,7 +363,7 @@
         const arrow = t.vs_fps > 8 ? ' ↑' : t.vs_fps < -8 ? ' ↓' : '';
         this.label([t.lat, t.lon], `${t.callsign} ${rel >= 0 ? '+' : '−'}${String(Math.abs(rel)).padStart(2, '0')}${arrow}`, col, 10, 4);
       }
-      this.line(this.trail, COL.trail, 1.5);
+      if (show.trail) this.line(this.trail, COL.trail, 1.5);
       if (this.own) {
         const q = this.project(this.own.p);
         x.save();
@@ -339,6 +391,7 @@
         x.stroke();
         x.restore();
       }
+      this.paint('over');
       // which way north is: an arrow that turns as the map does
       x.save();
       x.translate(this.w - 30, 62);

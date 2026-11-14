@@ -72,6 +72,32 @@
       return true;
     }
 
+    /** Replace the route being edited with points from the route planner; the old ones are kept for one undo. Returns false when there is no route to replace. */
+    setRoute(points) {
+      const it = this.item();
+      if (!it || !Array.isArray(points) || !points.length) return false;
+      this.undo = { which: this.which, points: JSON.parse(JSON.stringify(it.points)), id: this.plan.id, selected: this.selected };
+      it.points = points.map((p) => [round6(p[0]), round6(p[1]), p[2]]);
+      this.selected = it.points.length - 1;
+      this.touch();
+      return true;
+    }
+
+    /** Give back the route as it was before the last setRoute. */
+    undoRoute() {
+      const u = this.undo;
+      if (!u) return false;
+      const was = this.which;
+      this.which = u.which;
+      const it = this.item();
+      if (it) it.points = u.points;
+      this.plan.id = u.id;
+      this.selected = Math.min(u.selected === null ? 0 : u.selected, this.points().length - 1);
+      this.which = was;
+      this.undo = null;
+      return true;
+    }
+
     touch() {
       if (!/ \(edited\)$/.test(this.plan.id)) this.plan.id += ' (edited)';
     }

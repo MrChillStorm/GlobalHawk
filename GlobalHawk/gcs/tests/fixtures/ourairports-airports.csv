@@ -1,0 +1,10 @@
+id,ident,type,name,latitude_deg,longitude_deg,elevation_ft,continent,iso_country,iso_region,municipality,scheduled_service,icao_code,iata_code,gps_code,local_code,home_link,wikipedia_link,keywords
+6523,00A,heliport,Total RF Heliport,40.070985,-74.933689,11,NA,US,US-PA,Bensalem,no,,,K00A,00A,https://www.penndot.pa.gov/TravelInPA/airports-pa/Pages/Total-RF-Heliport.aspx,,
+3402,KBFL,medium_airport,Meadows Field,35.433601,-119.056999,510,NA,US,US-CA,Bakersfield,yes,KBFL,BFL,KBFL,BFL,,https://en.wikipedia.org/wiki/Meadows_Field_Airport,
+3503,KEDW,medium_airport,Edwards Air Force Base,34.910781,-117.886391,2312,NA,US,US-CA,Edwards,no,KEDW,EDW,KEDW,EDW,https://www.edwards.af.mil/,https://en.wikipedia.org/wiki/Edwards_Air_Force_Base,
+3632,KLAX,large_airport,Los Angeles International Airport,33.942501,-118.407997,125,NA,US,US-CA,Los Angeles,yes,KLAX,LAX,KLAX,LAX,https://www.flylax.com/,https://en.wikipedia.org/wiki/Los_Angeles_International_Airport,Tom Bradley
+20507,KMHV,medium_airport,Mojave Air &  Space Port,35.056391,-118.145342,2801,NA,US,US-CA,Mojave,no,KMHV,MHV,KMHV,MHV,https://www.mojaveairport.com/,https://en.wikipedia.org/wiki/Mojave_Air_and_Space_Port,Rutan Field
+3782,KPMD,medium_airport,Palmdale Regional Airport / USAF Plant 42 Airport,34.629398,-118.084999,2543,NA,US,US-CA,Palmdale,no,KPMD,PMD,KPMD,PMD,,https://en.wikipedia.org/wiki/LA/Palmdale_Regional_Airport,
+3866,KSBA,medium_airport,Santa Barbara Municipal Airport,34.426201,-119.839996,13,NA,US,US-CA,Santa Barbara,yes,KSBA,SBA,KSBA,SBA,,https://en.wikipedia.org/wiki/Santa_Barbara_Airport,
+21315,KVCV,small_airport,Southern California Logistics Airport,34.597499847399995,-117.383003235,2885,NA,US,US-CA,Victorville,no,KVCV,VCV,KVCV,VCV,http://www.logisticsairport.com/page.aspx?pgid=3,https://en.wikipedia.org/wiki/Southern_California_Logistics_Airport,"George AFB, Victorville Airport"
+21375,KWJF,medium_airport,General William J Fox Airfield,34.7411,-118.219002,2351,NA,US,US-CA,Lancaster,no,KWJF,WJF,KWJF,WJF,,https://en.wikipedia.org/wiki/General_William_J._Fox_Airfield,
