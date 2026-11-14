@@ -1,0 +1,13 @@
+{
+ "kcas": [
+  110.0,
+  150.0,
+  200.0
+ ],
+ "delay_s": [
+  2.21,
+  2.26,
+  2.45
+ ],
+ "note": "rolltest.py: the bank's delay behind its 5 deg/s target, s: going in and coming out, two weights (fdm/laws.py roll_delay)"
+}

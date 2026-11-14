@@ -11,6 +11,8 @@ Properties: ap/engaged, ap/pitch-mode (0 attitude, 1 speed by elevator, 2 altitu
 ap/speed-cmd-kcas, ap/speed-schedule, ap/speed-offset-kcas, ap/alt-cmd-ft, ap/bank-cmd-deg, ap/heading-cmd-deg,
 ap/throttle-cmd. ap/gain-scale multiplies every loop gain (for the gain-margin checks).
 """
+import json
+import os
 
 # gains at a dynamic pressure of 50 psf (docs/FLIGHT-LAWS.md, section 3)
 G = dict(K_theta=1.4, K_q=0.6, K_theta_i=0.4, K_phi=0.5, K_phi_i=0.0, K_p=0.6, K_r=0.5, K_beta=1.5, K_beta_i=0.15, K_ari=0.0,
@@ -28,6 +30,20 @@ FT_PER_DEG = 364567.2            # feet in a degree of latitude
 GLIDE_TAN = 0.07782              # tan of 4.45 deg: the measured approaches
 APPROACH_CL = 0.645              # the measured approaches
 SPOILER_BASE = 0.667             # 30 of 45 deg
+# the turn onto the next leg is the aircraft's (docs/PLAN.md, "Turns onto a new leg"): the manager gives the laws the next waypoint and
+# advances the leg when the laws say the turn is done
+BANK_RATE = 5.0                  # deg/s: the rate limit of the bank target (the actuator below)
+ALPHA_ZERO_LIFT = -4.6           # deg, body axes: where the lift is nothing. From two trims at 150 KEAS, clean: 12,000 lb at -2.0 deg and 26,000 lb at +1.0, a lift
+                                 # coefficient of 0.292 and 0.632 (weight / q S), so 0.114 per deg and the lift is nothing at -4.6
+TURN_ALPHA_MARGIN = 0.5          # deg kept under the angle-of-attack limit by the bank of a turn
+TURN_MIN_BANK = 8.0              # deg: the least the angle-of-attack margin takes the bank down to (the pitch law's protection holds the rest)
+TURN_FLY_BY_MAX = 150.0          # deg: past this the corner is led as if it were 150 deg (the waypoint is nearly flown over)
+# the glide path on spoilers: the capture and the hold are one profile (docs/PLAN.md, "The takeoff's veer and the glide path's overshoot")
+GLIDE_TAU = 4.0                  # s: the path error dies away with this time constant, so the aircraft arrives on the path and not through it
+GLIDE_AZ = 3.0                   # ft/s2: far off the path the profile asks the sink rate to change no faster than this (it matters beyond 2 a tau^2, 96 ft)
+GLIDE_KS, GLIDE_KIS, GLIDE_ICLIP = 0.15, 0.01, 0.25    # spoiler per ft/s of sink error against the profile; its integral per ft/s*s; the integral's limit
+GLIDE_IBAND = 30.0               # ft: the integral runs only this close to the path and is held at zero outside (JSBSim's clip limits the output, not the state: it wound up far off the path)
+ROLL_NO_BETA = 1                 # 1: the sideslip law is off while the takeoff roll holds the line (on the mains, steering, not landing)
 # The flare and the rotation, set against the records on 2026-11-13 (docs/PLAN.md, "FDM issues"): the first design (flare at
 # 70 ft, gain 0.25, 2.3 ft/s wanted) touched down at 1.1 m/s where the two recorded landings had 0.66 and 0.75; at a gain
 # of 0.6, 1.6 ft/s wanted and a flare from 45 ft it is 0.64 to 0.71 m/s from 12,500 to 26,000 lb, at 2.2 deg, with a peak
@@ -43,6 +59,16 @@ FLARE_SLACK = 4.0                # ft/s of sink that is not a downdraft: the app
 ROTATE_KIAS, ROTATE_PITCH = 120.0, 6.5
 DECEL_G = 0.235                  # the measured rollout
 WING_AREA = 540.0
+
+
+def roll_delay():
+    """the bank's delay behind its target against the calibrated airspeed, s (rolltest.py writes data/roll_delay_gh.json, as the MV-22B's
+    roll delay is measured and tabulated); none measured: 2 s"""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'roll_delay_gh.json')
+    if not os.path.exists(path):
+        return [0.0, 300.0], [2.0, 2.0]
+    d = json.load(open(path))
+    return d['kcas'], d['delay_s']
 
 
 def _table(pts, prop, ind='          '):
@@ -237,7 +263,8 @@ def laws_file():
         ('theta-latched-deg', 0), ('theta-delta-deg', 0), ('theta-speed-bias-deg', 0), ('land-mode', 0), ('ground-steer', 0), ('taxi-speed-kt', 0),
         ('spoiler-mode', 0), ('spoiler-cmd', 0), ('rwy-elev-ft', 0), ('leg-lat0-deg', 0), ('leg-lon0-deg', 0), ('leg-lat1-deg', 0.01),
         ('leg-lon1-deg', 0), ('rollout', 0), ('spoiler-base', 0.667), ('flare-height-ft', FLARE_HEIGHT), ('link-last-sec', 0), ('link-timeout-sec', 30), ('link-monitor', 0),
-        ('link-lost', 0), ('manual', 0), ('direct-pitch-deg', 0), ('direct-roll-deg', 0), ('direct-yaw-deg', 0)))
+        ('link-lost', 0), ('manual', 0), ('direct-pitch-deg', 0), ('direct-roll-deg', 0), ('direct-yaw-deg', 0),
+        ('next-lat-deg', 0), ('next-lon-deg', 0), ('next-valid', 0), ('turn-phase', 0), ('turn-done', 0), ('turn-ack', 0)))
     props += ''.join('  <property value="0">limits/%s</property>\n' % k for k in ('overstress', 'failed', 'reset'))
     ch = []
     # ---- part C: navigators and the link, ahead of everything that uses them
@@ -306,10 +333,11 @@ def laws_file():
         </difference>''' % (_p('ap/leg-course-deg'), _v(-45), _v(45), _p('ap/leg-xt-ft'), _v(least), _v(per_second), _p('velocities/vg-fps')))
 
     def wrapped(name, a, b, desc=''):
-        return _fn(name, '''        <difference>
-          <mod><sum><difference>%s%s</difference>%s</sum>%s</mod>
-          %s
-        </difference>''' % (_p(a), _p(b), _v(540), _v(360), _v(180)), desc)
+        """a less b, turned into -180 to 180 deg. Through sin and cos: JSBSim's <mod> works on whole numbers (found in a
+        FlightGear takeoff record, 770 of 770 rows), which left this error in whole degrees, rounded down: nothing seen
+        between 0 and 1 deg on one side, and the error read 0.5 deg low on average."""
+        d = '<toradians><difference>%s%s</difference></toradians>' % (_p(a), _p(b))
+        return _fn(name, '        <todegrees><atan2><sin>%s</sin><cos>%s</cos></atan2></todegrees>' % (d, d), desc)
     ch.append(intercept('ap/track-cmd-deg', 15.0, 3000.0))
     ch.append(wrapped('ap/track-error-deg', 'ap/track-cmd-deg', 'ap/ground-track-deg', 'wanted course less ground track'))
     ch.append(intercept('ap/ground-course-cmd-deg', 4.0, 60.0))
@@ -499,13 +527,81 @@ def laws_file():
         </difference>''' % (_p('ap/heading-cmd-deg'), _p('attitude/psi-deg'), _v(540), _v(360), _v(180)), 'right of the nose is positive'))
     ch.append(_fn('ap/bank-heading-deg', _op('product', _v(G['K_psi']), _p('ap/heading-error-deg'), '<quotient>%s%s</quotient>' % (_p('velocities/vt-fps'), _v(600)))))
     ch.append(_fn('ap/bank-track-deg', _op('product', _v(G['K_psi']), _p('ap/track-error-deg'), '<quotient>%s%s</quotient>' % (_p('velocities/vt-fps'), _v(600)))))
+    # ---- the turn onto the next leg, the aircraft's own. The manager gives the next waypoint (ap/next-lat-deg, -lon-, ap/next-valid) and
+    # advances the leg when ap/turn-done passes ap/turn-ack. Everything else is worked out here, live: the turn's size from the leg's
+    # course and the next, its radius from the ground speed (the wind is in it) and the bank the aircraft can use (its limit, and what
+    # its angle-of-attack margin allows), where it starts (where an arc of that radius joins the two legs, less half the roll in and
+    # the bank's own delay), and where the roll out starts (when the track still has to turn what the roll out turns). Phases:
+    # 0 on the leg, 1 turning at that bank, 2 rolling out onto the next leg's course, 3 on it, waiting for the manager.
+    X = lambda tag, *a: '<%s>%s</%s>' % (tag, ''.join(a), tag)
+    P, V = _p, _v
+    M = lambda *a: X('product', *a)
+    S = lambda *a: X('sum', *a)
+    D = lambda a, b: X('difference', a, b)
+    Q = lambda a, b: X('quotient', a, b)
+    GT = lambda a, b: X('gt', a, b)
+    LT = lambda a, b: X('lt', a, b)
+    EQ = lambda a, b: X('eq', a, b)
+    MAX = lambda *a: X('max', *a)
+    MIN = lambda *a: X('min', *a)
+    ABS = lambda a: X('abs', a)
+    IF = lambda c, a, b: X('ifthen', c, a, b)
+    AND = lambda *a: X('and', *a)
+    DEG = lambda a: X('todegrees', a)
+    RAD = lambda a: X('toradians', a)
+    TAN = lambda a: X('tan', RAD(a))
+    n2 = M(V(FT_PER_DEG), D(P('ap/next-lat-deg'), P('ap/leg-lat1-deg')))
+    e2 = M(V(FT_PER_DEG), coslat, D(P('ap/next-lon-deg'), P('ap/leg-lon1-deg')))
+    ch.append(_fn('ap/next-course-deg', DEG(X('atan2', e2, n2)), 'the next leg\'s course, from the end of this one to the next waypoint'))
+    ch.append(wrapped('ap/turn-delta-deg', 'ap/next-course-deg', 'ap/leg-course-deg', 'the turn at the end of the leg, right positive'))
+    ch.append(wrapped('ap/turn-err-deg', 'ap/next-course-deg', 'ap/ground-track-deg', 'the next leg\'s course less the ground track'))
+    # the bank an angle-of-attack margin allows: the load factor at which the angle reaches its limit less a margin, the lift's slope
+    # taken from where the aircraft is (its angle above the zero-lift angle, per g)
+    nz = MAX(P('accelerations/Nz'), V(0.5))
+    slope = Q(MAX(V(0.5), D(P('aero/alpha-deg'), V(ALPHA_ZERO_LIFT))), nz)
+    ncap = S(nz, Q(D(D(P('ap/alpha-limit-deg'), V(TURN_ALPHA_MARGIN)), P('aero/alpha-deg')), slope))
+    ch.append(_fn('ap/bank-alpha-cap-deg', DEG(X('acos', Q(V(1), MAX(V(1.0001), ncap)))),
+                  'the bank the angle-of-attack margin allows: acos(1 / n), n the load factor at which the angle reaches its limit less %g deg' % TURN_ALPHA_MARGIN,
+                  clip=('%g' % TURN_MIN_BANK, '60')))
+    rk, rt = roll_delay()
+    ch.append(_fn('ap/roll-lag-s', _table(list(zip(rk, rt)), 'velocities/vc-kts'), 'the bank\'s delay behind its target at this speed (rolltest.py), s'))
+    ch.append(_fn('ap/turn-bank-deg', MIN(P('ap/bank-command-limit-deg'), P('ap/bank-alpha-cap-deg')),
+                  'the bank of a turn on a leg: the bank command limit, and what the angle-of-attack margin allows (heading mode and the pilot are not held to the margin)'))
+    lim = P('ap/turn-bank-deg')
+    vgt = MAX(P('velocities/vg-fps'), V(60))
+    radius = Q(M(vgt, vgt), M(V(32.174), TAN(lim)))
+    ch.append(_fn('ap/turn-radius-ft', radius, 'the radius of a turn at the bank the aircraft can use, in ground speed'))
+    ch.append(_fn('ap/turn-lead-ft', S(M(P('ap/turn-radius-ft'), TAN(M(V(0.5), MIN(ABS(P('ap/turn-delta-deg')), V(TURN_FLY_BY_MAX))))),
+                                        M(vgt, S(M(V(0.5), Q(lim, V(BANK_RATE))), P('ap/roll-lag-s')))),
+                  'the distance before the corner a turn starts at: where an arc joins the two legs, less half the roll in and the bank\'s delay'))
+    phi = P('attitude/phi-deg')
+    ch.append(_fn('ap/turn-rollout-deg', M(DEG(Q(M(V(32.174), TAN(ABS(phi))), vgt)), S(M(V(0.5), Q(ABS(phi), V(BANK_RATE))), P('ap/roll-lag-s'))),
+                  'the track still to turn when the roll out starts: the turn rate times half the roll out and the delay'))
+    dsign = IF(GT(P('ap/turn-delta-deg'), V(0)), V(1), V(-1))
+    ch.append(_fn('ap/turn-remaining-deg', M(dsign, P('ap/turn-err-deg')), 'the track still to turn to the next leg\'s course, in the turn\'s direction'))
+    armed = AND(EQ(P('ap/roll-mode'), V(2)), EQ(P('ap/next-valid'), V(1)), EQ(P('ap/engaged'), V(1)), EQ(P('ap/on-mains'), V(0)), EQ(P('ap/manual'), V(0)),
+                GT(P('velocities/vg-fps'), V(60)))
+    small = LT(ABS(P('ap/turn-delta-deg')), V(2.5))
+    phase = P('ap/turn-phase')
+    new = IF(armed,
+             IF(LT(phase, V(0.5)), IF(LT(P('ap/leg-togo-ft'), IF(small, V(150), P('ap/turn-lead-ft'))), IF(small, V(3), V(1)), V(0)),
+                IF(LT(phase, V(1.5)), IF(LT(P('ap/turn-remaining-deg'), P('ap/turn-rollout-deg')), V(2), V(1)),
+                   IF(LT(phase, V(2.5)), IF(AND(LT(ABS(phi), V(1.5)), LT(ABS(P('ap/turn-err-deg')), V(4))), V(3), V(2)),
+                      IF(LT(P('ap/turn-ack'), P('ap/turn-done')), V(3), V(0))))),
+             V(0))
+    ch.append(_fn('ap/turn-phase-new', new, 'the turn\'s phase this frame'))
+    ch.append(_fn('ap/turn-done-next', S(P('ap/turn-done'), IF(AND(GT(P('ap/turn-phase-new'), V(2.5)), LT(phase, V(2.5))), V(1), V(0))), out='ap/turn-done'))
+    ch.append(_fn('ap/turn-phase-next', P('ap/turn-phase-new'), out='ap/turn-phase'))
+    ch.append(_fn('ap/bank-leg-deg', MAX(X('product', V(-1), lim), MIN(lim, IF(LT(phase, V(0.5)), P('ap/bank-track-deg'),
+                                         IF(LT(phase, V(1.5)), M(dsign, lim), M(V(G['K_psi']), P('ap/turn-err-deg'), Q(P('velocities/vt-fps'), V(600))))))),
+                  'the bank on a leg: the leg\'s law; in the turn the bank fed forward; rolling out the heading law onto the next course'))
     ch.append('''    <switch name="ap/bank-mode-deg">
       <default value="ap/bank-cmd-deg"/>
       <test value="0">ap/on-mains gt 0</test>
       <test value="nav/roll-deg">ap/manual == 2</test>
       <test value="ap/bank-manual-deg">ap/manual == 1</test>
       <test value="ap/bank-heading-deg">ap/roll-mode == 1</test>
-      <test value="ap/bank-track-deg">ap/roll-mode == 2</test>
+      <test value="ap/bank-leg-deg">ap/roll-mode == 2</test>
     </switch>''')
     ch.append(_fn('ap/bank-command-limit-deg', _op('product', _p('ap/bank-limit-deg'), _v(BANK_COMMAND)),
                   'the bank command stops at %g of the limit: turning, the bank overshoots its command and then settles '
@@ -522,8 +618,8 @@ def laws_file():
     ch.append('''    <actuator name="ap/bank-target-deg">
       <description>the bank command moves at 5 deg/s at most</description>
       <input>ap/bank-gated-deg</input>
-      <rate_limit>5</rate_limit>
-    </actuator>''')
+      <rate_limit>%g</rate_limit>
+    </actuator>''' % BANK_RATE)
     ch.append(_fn('ap/bank-error-deg', _op('difference', _p('ap/bank-target-deg'), _p('nav/roll-deg'))))
     # the integral trims the ailerons in a steady turn; it runs only close to the target, so it can't wind up
     # while the bank command is still ramping
@@ -539,11 +635,14 @@ def laws_file():
       <input>velocities/r-rad_sec</input>
       <c1>0.3333</c1>
     </washout_filter>''')
-    ch.append(_trigger('beta'))
+    ch.append(_fn('ap/takeoff-roll', '        <ifthen><and><eq>%s%s</eq><gt>%s%s</gt><eq>%s%s</eq></and>%s%s</ifthen>' % (
+        _p('ap/ground-steer'), _v(1), _p('ap/on-mains'), _v(0), _p('ap/land-mode'), _v(0), _v(1), _v(0)), 'on the mains with steering on and not landing: the takeoff roll'))
+    ch.append(_trigger('beta', *(('ap/takeoff-roll == 0',) if ROLL_NO_BETA else ())))
     ch.append(_fn('ap/beta-error-deg', '        <sum>%s<product>%s%s%s</product></sum>' % (_p('aero/beta-deg'), _v(MANUAL_BETA), _p('ap/protected'), _p('ap/pedal')),
                   'sideslip less the pedals\' (nose right is negative sideslip)'))
-    ch.append(_fn('ap/beta-gated-deg', '        <product>%s<max>%s<min>%s<quotient><difference>%s%s</difference>%s</quotient></min></max></product>' % (
-        _p('ap/beta-error-deg'), _v(0), _v(1), _p('velocities/vc-kts'), _v(40), _v(20)), 'sideslip, faded out below 60 kt: it means nothing at a walk'))
+    ch.append(_fn('ap/beta-gated-deg', '        <product>%s<max>%s<min>%s<quotient><difference>%s%s</difference>%s</quotient></min></max>%s</product>' % (
+        _p('ap/beta-error-deg'), _v(0), _v(1), _p('velocities/vc-kts'), _v(40), _v(20),
+        ('<difference>%s%s</difference>' % (_v(1), _p('ap/takeoff-roll'))) if ROLL_NO_BETA else ''), 'sideslip, faded out below 60 kt: it means nothing at a walk' + ('; off on the takeoff roll' if ROLL_NO_BETA else '')))
     ch.append(_pid('ap/yaw-beta-deg', 'ap/beta-gated-deg', 'ap/k-beta', 'ap/k-beta-i', 'beta', clip=('-12', '12')))
     ch.append(_fn('ap/yaw-ground-deg', _op('product', _p('ap/ground-steer'), '<min>%s%s</min>' % (_v(1), _p('ap/on-mains')), _v(0.5), _p('ap/ground-error-deg')),
                   'on the ground the ruddervators help the nose wheel', clip=('-10', '10')))
@@ -582,14 +681,28 @@ def laws_file():
     # ---- part B: the glide path on spoilers
     ch.append(_fn('ap/glide-height-ft', '        <sum>%s%s<product>%s<max>%s%s</max></product></sum>' % (
         _p('ap/rwy-elev-ft'), _v(5.3), _v(GLIDE_TAN), _v(0), _p('ap/leg-togo-ft')), 'height of the glide path here: the leg ends at the aiming point'))
-    ch.append(_fn('ap/glide-error-ft', _op('difference', _p('position/h-sl-ft'), _p('ap/glide-height-ft')), 'high is positive', clip=('-300', '300')))
+    ch.append(_fn('ap/glide-error-ft', _op('difference', _p('position/h-sl-ft'), _p('ap/glide-height-ft')), 'high is positive (not clipped: the lead is compared with it, and the lead can be 300 ft or more)', clip=('-3000', '3000')))
     ch.append(_fn('ap/glide-sink-error-fps', '        <sum>%s<product>%s%s</product></sum>' % (_p('velocities/h-dot-fps'), _v(GLIDE_TAN), _p('velocities/vg-fps')),
                   'sinking less than the path asks is positive'))
-    ch.append(_trigger('glide', 'ap/land-mode == 1', 'ap/flare == 0', 'ap/rollout == 0'))
-    ch.append(_pid('ap/glide-i', 'ap/glide-error-ft', 0.0, 0.0004, 'glide', clip=('-0.25', '0.25')))
-    ch.append(_fn('ap/spoiler-glide', '        <sum>%s<product>%s%s</product><product>%s%s</product>%s</sum>' % (
-        _v(SPOILER_BASE), _v(0.004), _p('ap/glide-error-ft'), _v(0.02), _p('ap/glide-sink-error-fps'), _p('ap/glide-i')),
-        'spoilers hold the glide path: more when high or sinking too little', clip=('0.10', '1')))
+    # the profile: the sink the aircraft should lack at this height off the path. On the path none; below it the sink it can still lose
+    # before it arrives, at the most GLIDE_AZ (the square root of twice that times the height), and near the path no more than a
+    # first-order approach with GLIDE_TAU (height / tau): the arrival is tangent, as the end of a turn is
+    e, ea = _p('ap/glide-error-ft'), '<abs>%s</abs>' % _p('ap/glide-error-ft')
+    mag = '<min><quotient>%s%s</quotient><pow><product>%s%s%s</product>%s</pow></min>' % (ea, _v(GLIDE_TAU), _v(2 * GLIDE_AZ), '', ea, _v(0.5))
+    ch.append(_fn('ap/glide-sink-want-fps', '        <ifthen><gt>%s%s</gt><product>%s%s</product>%s</ifthen>' % (e, _v(0), _v(-1), mag, mag),
+                  'the sink the aircraft should lack at this height off the path (sinking less than the path asks is positive): none on it, below it the profile\'s'))
+    ch.append(_fn('ap/glide-track-fps', _op('difference', _p('ap/glide-sink-error-fps'), _p('ap/glide-sink-want-fps')),
+                  'the sink the aircraft lacks less what the profile asks: nothing when it flies the profile, ft/s'))
+    # the lead: the height under the path at which the profile asks for exactly the sink the aircraft lacks now, r (the path's fall in
+    # ground speed, so the wind, less its own sink): the larger of r tau and r^2 / 2a. The task takes the glide over there, and
+    # the law starts on its profile with no step in the spoilers
+    r_lack = '<max>%s%s</max>' % (_v(0), _p('ap/glide-sink-error-fps'))
+    ch.append(_fn('ap/glide-lead-ft', '        <max><product>%s%s</product><quotient><pow>%s%s</pow>%s</quotient></max>' % (r_lack, _v(GLIDE_TAU), r_lack, _v(2), _v(2 * GLIDE_AZ)),
+                  'the height under the path the glide is taken over at: where the profile asks for the sink the aircraft lacks'))
+    ch.append(_trigger('glide', 'ap/land-mode == 1', 'ap/flare == 0', 'ap/rollout == 0', 'ap/glide-error-ft lt %g' % GLIDE_IBAND, 'ap/glide-error-ft gt %g' % -GLIDE_IBAND))
+    ch.append(_pid('ap/glide-i', 'ap/glide-track-fps', 0.0, GLIDE_KIS, 'glide', clip=('-%g' % GLIDE_ICLIP, '%g' % GLIDE_ICLIP)))
+    ch.append(_fn('ap/spoiler-glide', '        <sum>%s<product>%s%s</product>%s</sum>' % (_v(SPOILER_BASE), _v(GLIDE_KS), _p('ap/glide-track-fps'), _p('ap/glide-i')),
+                  'spoilers hold the glide path: they follow the profile', clip=('0.10', '1')))
     ch.append('''    <switch name="ap/latch-spoiler-base">
       <description>the spoiler setting at the start of the flare</description>
       <default value="ap/spoiler-base"/>

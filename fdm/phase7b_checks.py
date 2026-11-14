@@ -45,6 +45,47 @@ def landing_case(f, name, weight, elev, meas):
     judge_landing(log, name + ' landing', meas)
 
 
+def capture_case(f, weight, headwind):
+    """The glide path taken over from level flight (docs/PLAN.md, "The takeoff's veer and the glide path's overshoot"): the manager
+    flies a land item from 9 nmi out and 3,500 ft over the runway, on the approach speed, in the landing configuration. Returns the
+    highest the aircraft gets above the path, the lowest it gets below it once it has first come within 10 ft of it, and the
+    crossings of the path beyond 5 ft (a turn onto the path ends on it: none)."""
+    elev = 174.0
+    u = unit(90.0)
+    fld = MM.Field(60.3, 24.96, elev)
+    aim, fix, start = fld.ll(0, 0), fld.ll(*(-10 * NM * u)), fld.ll(*(-9 * NM * u))
+    keas = math.sqrt(weight / (0.645 * 540 * 0.5 * 0.0023769)) / H.KT
+    t = H.trim(f, alt=elev + 3500, kcas=keas, weight=weight, gamma=0.0, gear=1.0, spoiler=2 / 3, lat=start[0], lon=start[1], psi=90.0, terrain=elev)
+    H.engage(f, t)
+    mgr = MM.Manager(f, [dict(kind='land', fix=fix, aim=aim, elev=elev)])
+    f['ap/engaged'] = 1
+    if headwind:
+        f['atmosphere/wind-east-fps'] = -headwind * 1.6878      # blowing towards the west: a headwind on a heading of 90
+    err = []
+    for _ in range(int(400 * H.HZ)):
+        mgr.step()
+        if not f.run():
+            break
+        if mgr.plan[0]['_on_path']:
+            if f['ap/flare'] > 0 or f['ap/leg-togo-ft'] < 1500 or f['ap/on-mains'] > 0:
+                break
+            err.append(f['ap/glide-error-ft'])
+    e = np.array(err)
+    reached = int(np.argmax(e >= -10.0)) if (e >= -10).any() else len(e)
+    under = float(e[reached:].min()) if reached < len(e) else float(e.min())
+    big = e[reached:][np.abs(e[reached:]) > 5]
+    return float(e.max()), under, (int(np.sum(np.diff(np.sign(big)) != 0)) if len(big) > 1 else 0)
+
+
+def capture_matrix(f):
+    cells = {(w, hw): capture_case(f, w, hw) for w in (12000.0, 14000.0, 17000.0, 20000.0, 23000.0, 26000.0) for hw in (0.0, 20.0, -15.0)}
+    over, under = max(c[0] for c in cells.values()), min(c[1] for c in cells.values())
+    crossings = sum(c[2] for c in cells.values())
+    add('M5b', 'glide path taken over from level flight, 18 cases', over <= 8 and under >= -12 and crossings == 0,
+        '12,000 to 26,000 lb, calm, 20 kt headwind, 15 kt tailwind: highest above the path %.1f ft (limit 8), lowest below it after arriving %.1f ft (limit -12), '
+        '%d crossings beyond 5 ft (limit 0)' % (over, under, crossings))
+
+
 def judge_landing(log, name, meas=None):
     air = log['mains'] == 0
     if not (log['mains'] > 0).any():
@@ -80,8 +121,8 @@ def mission(f):
         dict(kind='takeoff', start=P(0), end=P(10000), elev=elev),
         dict(kind='route', points=[P(25 * NM) + (20000.0,), P(25 * NM, 25 * NM) + (20000.0,),
                                    fld.ll(*(25 * NM * u + 25 * NM * r + 25 * NM * unit(COURSE + 210.0))) + (20000.0,),
-                                   P(-16 * NM) + (6500.0,)]),
-        dict(kind='land', fix=P(-16 * NM), aim=P(0), elev=elev),
+                                   P(-20 * NM) + (6500.0,)]),
+        dict(kind='land', fix=P(-20 * NM), aim=P(0), elev=elev),
         dict(kind='taxi', points=lambda m: [fld.ll(*(np.array(fld.ne(*m.here())) + 400 * u)), fld.ll(*(np.array(fld.ne(*m.here())) + 400 * u + 300 * r))],
              speed=12, turn_speed=8, stop=True),
     ]
@@ -180,6 +221,7 @@ def main():
     f = H.load()
     landing_case(f, '2013', 20800.0, 2357.0, dict(app=133, td=130, pitch=2.4, sink=0.66))
     landing_case(f, '2014', 17100.0, 574.0, dict(app=120, td=122, pitch=2.3, sink=0.75))
+    capture_matrix(f)
     log, mgr = mission(f)
     for tag, name, ok, detail in rows:
         print('%-3s %-44s %s  %s' % (tag, name, 'pass' if ok else 'MISS', detail))

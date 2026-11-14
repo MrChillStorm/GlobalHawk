@@ -23,6 +23,7 @@ KT = 1.6878099
 RATE = 12                      # frames between the manager's looks: 10 a second
 NM = 6076.1
 GLIDE_TAN = 0.07782            # the approach path, 4.45 deg (fdm/laws.py)
+CAPTURE_SPEED_KT = 10.0        # the glide is taken over only within this many kt of the approach speed: 30 kt over it the speed-by-elevator law pitched up 15 deg and the aircraft zoomed through the path
 GLIDE_CL = 0.8                 # the lift coefficient of the glide without the engine
 GLIDE_RATIO = 20.0             # what the planner counts on: the model's 26 less a margin for wind and turns
 ENTRY_HEIGHT = 2500.0          # ft above the runway on the glide path: where the entry point is
@@ -78,6 +79,18 @@ class Manager:
     def here(self):
         return (self.f['position/lat-geod-deg'], self.f['position/long-gc-deg'])
 
+    def after(self, i):
+        """The point the leg that ends item i's last waypoint is followed by: a landing's aiming point, else none."""
+        nxt = self.plan[i + 1] if i + 1 < len(self.plan) else None
+        return tuple(nxt['aim']) if nxt is not None and nxt['kind'] == 'land' else None
+
+    def set_next(self, p):
+        f = self.f
+        if p is None:
+            f['ap/next-valid'] = 0
+        else:
+            f['ap/next-lat-deg'], f['ap/next-lon-deg'], f['ap/next-valid'] = p[0], p[1], 1
+
     def begin(self):
         """Set the laws up for the item that starts now."""
         f = self.f
@@ -88,6 +101,8 @@ class Manager:
         self.k = 0
         kind = it['kind']
         self.note('begin ' + kind)
+        f['ap/next-valid'] = 0
+        f['ap/turn-ack'] = f['ap/turn-done']
         if kind == 'taxi':
             given = it['points'](self) if callable(it['points']) else it['points']
             pts = [self.here()] + list(given)
@@ -332,17 +347,15 @@ class Manager:
                 self.note('airborne, climb')
                 self.next()
         elif kind == 'route':
+            # the turn onto the next leg is the aircraft's (fdm/laws.py, ap/turn-*): the manager gives it the next waypoint and moves on when
+            # the laws say the turn is done. Past the last waypoint of a route that a landing follows the next point is the aiming point
             pts = it['_pts']
             self.vertical(it.get('alt_override', pts[self.k + 1][2]))
             last = self.k == len(pts) - 2
-            lead = 0.0
-            if not last:
-                c0, _ = course(pts[self.k], pts[self.k + 1])
-                c1, _ = course(pts[self.k + 1], pts[self.k + 2])
-                bank = math.radians(max(f['ap/bank-limit-deg'] - 2.0, 5.0))
-                radius = f['velocities/vg-fps'] ** 2 / (32.174 * math.tan(bank))
-                lead = radius * math.tan(math.radians(abs(turn(c0, c1))) / 2.0) + 5.0 * f['velocities/vg-fps']
-            if togo < max(lead, 500.0):
+            nxt = pts[self.k + 2] if not last else self.after(self.i)
+            self.set_next(nxt)
+            if f['ap/turn-done'] > f['ap/turn-ack']:
+                f['ap/turn-ack'] = f['ap/turn-done']
                 if last:
                     self.next()
                 else:
@@ -350,10 +363,12 @@ class Manager:
                     it.pop('alt_override', None)
                     self.leg(pts[self.k], pts[self.k + 1])
                     self.note('leg %d' % (self.k + 1))
+            elif last and nxt is None and togo < 500.0:
+                self.next()
         elif kind == 'land':
             if not it['_on_path']:
                 f['ap/speed-cmd-kcas'] = f['ap/approach-keas']
-                if f['ap/glide-error-ft'] > -10.0:
+                if f['ap/glide-error-ft'] > -f['ap/glide-lead-ft'] and f['velocities/vc-kts'] - f['ap/approach-keas'] < CAPTURE_SPEED_KT:
                     it['_on_path'] = True
                     f['ap/pitch-mode'] = 1
                     f['ap/land-mode'] = 1

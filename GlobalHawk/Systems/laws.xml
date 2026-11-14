@@ -42,6 +42,12 @@
   <property value="0">ap/direct-pitch-deg</property>
   <property value="0">ap/direct-roll-deg</property>
   <property value="0">ap/direct-yaw-deg</property>
+  <property value="0">ap/next-lat-deg</property>
+  <property value="0">ap/next-lon-deg</property>
+  <property value="0">ap/next-valid</property>
+  <property value="0">ap/turn-phase</property>
+  <property value="0">ap/turn-done</property>
+  <property value="0">ap/turn-ack</property>
   <property value="0">limits/overstress</property>
   <property value="0">limits/failed</property>
   <property value="0">limits/reset</property>
@@ -502,10 +508,7 @@
     <fcs_function name="ap/track-error-deg">
       <description>wanted course less ground track</description>
       <function>
-        <difference>
-          <mod><sum><difference><property>ap/track-cmd-deg</property><property>ap/ground-track-deg</property></difference><value>540</value></sum><value>360</value></mod>
-          <value>180</value>
-        </difference>
+        <todegrees><atan2><sin><toradians><difference><property>ap/track-cmd-deg</property><property>ap/ground-track-deg</property></difference></toradians></sin><cos><toradians><difference><property>ap/track-cmd-deg</property><property>ap/ground-track-deg</property></difference></toradians></cos></atan2></todegrees>
       </function>
     </fcs_function>
     <fcs_function name="ap/ground-course-cmd-deg">
@@ -519,10 +522,7 @@
     <fcs_function name="ap/ground-error-deg">
       <description>wanted course less heading, on the ground</description>
       <function>
-        <difference>
-          <mod><sum><difference><property>ap/ground-course-cmd-deg</property><property>attitude/psi-deg</property></difference><value>540</value></sum><value>360</value></mod>
-          <value>180</value>
-        </difference>
+        <todegrees><atan2><sin><toradians><difference><property>ap/ground-course-cmd-deg</property><property>attitude/psi-deg</property></difference></toradians></sin><cos><toradians><difference><property>ap/ground-course-cmd-deg</property><property>attitude/psi-deg</property></difference></toradians></cos></atan2></todegrees>
       </function>
     </fcs_function>
     <fcs_function name="ap/on-mains">
@@ -849,13 +849,102 @@
         <product><value>1.2</value><property>ap/track-error-deg</property><quotient><property>velocities/vt-fps</property><value>600</value></quotient></product>
       </function>
     </fcs_function>
+    <fcs_function name="ap/next-course-deg">
+      <description>the next leg's course, from the end of this one to the next waypoint</description>
+      <function>
+<todegrees><atan2><product><value>364567</value><cos><toradians><property>ap/leg-lat0-deg</property></toradians></cos><difference><property>ap/next-lon-deg</property><property>ap/leg-lon1-deg</property></difference></product><product><value>364567</value><difference><property>ap/next-lat-deg</property><property>ap/leg-lat1-deg</property></difference></product></atan2></todegrees>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-delta-deg">
+      <description>the turn at the end of the leg, right positive</description>
+      <function>
+        <todegrees><atan2><sin><toradians><difference><property>ap/next-course-deg</property><property>ap/leg-course-deg</property></difference></toradians></sin><cos><toradians><difference><property>ap/next-course-deg</property><property>ap/leg-course-deg</property></difference></toradians></cos></atan2></todegrees>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-err-deg">
+      <description>the next leg's course less the ground track</description>
+      <function>
+        <todegrees><atan2><sin><toradians><difference><property>ap/next-course-deg</property><property>ap/ground-track-deg</property></difference></toradians></sin><cos><toradians><difference><property>ap/next-course-deg</property><property>ap/ground-track-deg</property></difference></toradians></cos></atan2></todegrees>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/bank-alpha-cap-deg">
+      <description>the bank the angle-of-attack margin allows: acos(1 / n), n the load factor at which the angle reaches its limit less 0.5 deg</description>
+      <function>
+<todegrees><acos><quotient><value>1</value><max><value>1.0001</value><sum><max><property>accelerations/Nz</property><value>0.5</value></max><quotient><difference><difference><property>ap/alpha-limit-deg</property><value>0.5</value></difference><property>aero/alpha-deg</property></difference><quotient><max><value>0.5</value><difference><property>aero/alpha-deg</property><value>-4.6</value></difference></max><max><property>accelerations/Nz</property><value>0.5</value></max></quotient></quotient></sum></max></quotient></acos></todegrees>
+      </function>
+      <clipto><min>8</min><max>60</max></clipto>
+    </fcs_function>
+    <fcs_function name="ap/roll-lag-s">
+      <description>the bank's delay behind its target at this speed (rolltest.py), s</description>
+      <function>
+          <table><independentVar lookup="row">velocities/vc-kts</independentVar><tableData>
+              110 2.21
+              150 2.26
+              200 2.45
+          </tableData></table>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-bank-deg">
+      <description>the bank of a turn on a leg: the bank command limit, and what the angle-of-attack margin allows (heading mode and the pilot are not held to the margin)</description>
+      <function>
+<min><property>ap/bank-command-limit-deg</property><property>ap/bank-alpha-cap-deg</property></min>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-radius-ft">
+      <description>the radius of a turn at the bank the aircraft can use, in ground speed</description>
+      <function>
+<quotient><product><max><property>velocities/vg-fps</property><value>60</value></max><max><property>velocities/vg-fps</property><value>60</value></max></product><product><value>32.174</value><tan><toradians><property>ap/turn-bank-deg</property></toradians></tan></product></quotient>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-lead-ft">
+      <description>the distance before the corner a turn starts at: where an arc joins the two legs, less half the roll in and the bank's delay</description>
+      <function>
+<sum><product><property>ap/turn-radius-ft</property><tan><toradians><product><value>0.5</value><min><abs><property>ap/turn-delta-deg</property></abs><value>150</value></min></product></toradians></tan></product><product><max><property>velocities/vg-fps</property><value>60</value></max><sum><product><value>0.5</value><quotient><property>ap/turn-bank-deg</property><value>5</value></quotient></product><property>ap/roll-lag-s</property></sum></product></sum>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-rollout-deg">
+      <description>the track still to turn when the roll out starts: the turn rate times half the roll out and the delay</description>
+      <function>
+<product><todegrees><quotient><product><value>32.174</value><tan><toradians><abs><property>attitude/phi-deg</property></abs></toradians></tan></product><max><property>velocities/vg-fps</property><value>60</value></max></quotient></todegrees><sum><product><value>0.5</value><quotient><abs><property>attitude/phi-deg</property></abs><value>5</value></quotient></product><property>ap/roll-lag-s</property></sum></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-remaining-deg">
+      <description>the track still to turn to the next leg's course, in the turn's direction</description>
+      <function>
+<product><ifthen><gt><property>ap/turn-delta-deg</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><property>ap/turn-err-deg</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-phase-new">
+      <description>the turn's phase this frame</description>
+      <function>
+<ifthen><and><eq><property>ap/roll-mode</property><value>2</value></eq><eq><property>ap/next-valid</property><value>1</value></eq><eq><property>ap/engaged</property><value>1</value></eq><eq><property>ap/on-mains</property><value>0</value></eq><eq><property>ap/manual</property><value>0</value></eq><gt><property>velocities/vg-fps</property><value>60</value></gt></and><ifthen><lt><property>ap/turn-phase</property><value>0.5</value></lt><ifthen><lt><property>ap/leg-togo-ft</property><ifthen><lt><abs><property>ap/turn-delta-deg</property></abs><value>2.5</value></lt><value>150</value><property>ap/turn-lead-ft</property></ifthen></lt><ifthen><lt><abs><property>ap/turn-delta-deg</property></abs><value>2.5</value></lt><value>3</value><value>1</value></ifthen><value>0</value></ifthen><ifthen><lt><property>ap/turn-phase</property><value>1.5</value></lt><ifthen><lt><property>ap/turn-remaining-deg</property><property>ap/turn-rollout-deg</property></lt><value>2</value><value>1</value></ifthen><ifthen><lt><property>ap/turn-phase</property><value>2.5</value></lt><ifthen><and><lt><abs><property>attitude/phi-deg</property></abs><value>1.5</value></lt><lt><abs><property>ap/turn-err-deg</property></abs><value>4</value></lt></and><value>3</value><value>2</value></ifthen><ifthen><lt><property>ap/turn-ack</property><property>ap/turn-done</property></lt><value>3</value><value>0</value></ifthen></ifthen></ifthen></ifthen><value>0</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-done-next">
+      <function>
+<sum><property>ap/turn-done</property><ifthen><and><gt><property>ap/turn-phase-new</property><value>2.5</value></gt><lt><property>ap/turn-phase</property><value>2.5</value></lt></and><value>1</value><value>0</value></ifthen></sum>
+      </function>
+      <output>ap/turn-done</output>
+    </fcs_function>
+    <fcs_function name="ap/turn-phase-next">
+      <function>
+<property>ap/turn-phase-new</property>
+      </function>
+      <output>ap/turn-phase</output>
+    </fcs_function>
+    <fcs_function name="ap/bank-leg-deg">
+      <description>the bank on a leg: the leg's law; in the turn the bank fed forward; rolling out the heading law onto the next course</description>
+      <function>
+<max><product><value>-1</value><property>ap/turn-bank-deg</property></product><min><property>ap/turn-bank-deg</property><ifthen><lt><property>ap/turn-phase</property><value>0.5</value></lt><property>ap/bank-track-deg</property><ifthen><lt><property>ap/turn-phase</property><value>1.5</value></lt><product><ifthen><gt><property>ap/turn-delta-deg</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><property>ap/turn-bank-deg</property></product><product><value>1.2</value><property>ap/turn-err-deg</property><quotient><property>velocities/vt-fps</property><value>600</value></quotient></product></ifthen></ifthen></min></max>
+      </function>
+    </fcs_function>
     <switch name="ap/bank-mode-deg">
       <default value="ap/bank-cmd-deg"/>
       <test value="0">ap/on-mains gt 0</test>
       <test value="nav/roll-deg">ap/manual == 2</test>
       <test value="ap/bank-manual-deg">ap/manual == 1</test>
       <test value="ap/bank-heading-deg">ap/roll-mode == 1</test>
-      <test value="ap/bank-track-deg">ap/roll-mode == 2</test>
+      <test value="ap/bank-leg-deg">ap/roll-mode == 2</test>
     </switch>
     <fcs_function name="ap/bank-command-limit-deg">
       <description>the bank command stops at 0.86 of the limit: turning, the bank overshoots its command and then settles above it (a proportional law; an integral was tried and overshot)</description>
@@ -922,10 +1011,17 @@
       <input>velocities/r-rad_sec</input>
       <c1>0.3333</c1>
     </washout_filter>
+    <fcs_function name="ap/takeoff-roll">
+      <description>on the mains with steering on and not landing: the takeoff roll</description>
+      <function>
+        <ifthen><and><eq><property>ap/ground-steer</property><value>1</value></eq><gt><property>ap/on-mains</property><value>0</value></gt><eq><property>ap/land-mode</property><value>0</value></eq></and><value>1</value><value>0</value></ifthen>
+      </function>
+    </fcs_function>
     <switch name="ap/trig-beta">
       <default value="-1"/>
       <test logic="AND" value="0">
         ap/engaged == 1
+        ap/takeoff-roll == 0
       </test>
     </switch>
     <fcs_function name="ap/beta-error-deg">
@@ -935,9 +1031,9 @@
       </function>
     </fcs_function>
     <fcs_function name="ap/beta-gated-deg">
-      <description>sideslip, faded out below 60 kt: it means nothing at a walk</description>
+      <description>sideslip, faded out below 60 kt: it means nothing at a walk; off on the takeoff roll</description>
       <function>
-        <product><property>ap/beta-error-deg</property><max><value>0</value><min><value>1</value><quotient><difference><property>velocities/vc-kts</property><value>40</value></difference><value>20</value></quotient></min></max></product>
+        <product><property>ap/beta-error-deg</property><max><value>0</value><min><value>1</value><quotient><difference><property>velocities/vc-kts</property><value>40</value></difference><value>20</value></quotient></min></max><difference><value>1</value><property>ap/takeoff-roll</property></difference></product>
       </function>
     </fcs_function>
     <pid name="ap/yaw-beta-deg">
@@ -1038,16 +1134,34 @@
       </function>
     </fcs_function>
     <fcs_function name="ap/glide-error-ft">
-      <description>high is positive</description>
+      <description>high is positive (not clipped: the lead is compared with it, and the lead can be 300 ft or more)</description>
       <function>
         <difference><property>position/h-sl-ft</property><property>ap/glide-height-ft</property></difference>
       </function>
-      <clipto><min>-300</min><max>300</max></clipto>
+      <clipto><min>-3000</min><max>3000</max></clipto>
     </fcs_function>
     <fcs_function name="ap/glide-sink-error-fps">
       <description>sinking less than the path asks is positive</description>
       <function>
         <sum><property>velocities/h-dot-fps</property><product><value>0.07782</value><property>velocities/vg-fps</property></product></sum>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/glide-sink-want-fps">
+      <description>the sink the aircraft should lack at this height off the path (sinking less than the path asks is positive): none on it, below it the profile's</description>
+      <function>
+        <ifthen><gt><property>ap/glide-error-ft</property><value>0</value></gt><product><value>-1</value><min><quotient><abs><property>ap/glide-error-ft</property></abs><value>4</value></quotient><pow><product><value>6</value><abs><property>ap/glide-error-ft</property></abs></product><value>0.5</value></pow></min></product><min><quotient><abs><property>ap/glide-error-ft</property></abs><value>4</value></quotient><pow><product><value>6</value><abs><property>ap/glide-error-ft</property></abs></product><value>0.5</value></pow></min></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/glide-track-fps">
+      <description>the sink the aircraft lacks less what the profile asks: nothing when it flies the profile, ft/s</description>
+      <function>
+        <difference><property>ap/glide-sink-error-fps</property><property>ap/glide-sink-want-fps</property></difference>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/glide-lead-ft">
+      <description>the height under the path the glide is taken over at: where the profile asks for the sink the aircraft lacks</description>
+      <function>
+        <max><product><max><value>0</value><property>ap/glide-sink-error-fps</property></max><value>4</value></product><quotient><pow><max><value>0</value><property>ap/glide-sink-error-fps</property></max><value>2</value></pow><value>6</value></quotient></max>
       </function>
     </fcs_function>
     <switch name="ap/trig-glide">
@@ -1057,20 +1171,22 @@
         ap/land-mode == 1
         ap/flare == 0
         ap/rollout == 0
+        ap/glide-error-ft lt 30
+        ap/glide-error-ft gt -30
       </test>
     </switch>
     <pid name="ap/glide-i">
-      <input>ap/glide-error-ft</input>
+      <input>ap/glide-track-fps</input>
       <kp>0.0</kp>
-      <ki>0.0004</ki>
+      <ki>0.01</ki>
       <kd>0</kd>
       <trigger>ap/trig-glide</trigger>
       <clipto><min>-0.25</min><max>0.25</max></clipto>
     </pid>
     <fcs_function name="ap/spoiler-glide">
-      <description>spoilers hold the glide path: more when high or sinking too little</description>
+      <description>spoilers hold the glide path: they follow the profile</description>
       <function>
-        <sum><value>0.667</value><product><value>0.004</value><property>ap/glide-error-ft</property></product><product><value>0.02</value><property>ap/glide-sink-error-fps</property></product><property>ap/glide-i</property></sum>
+        <sum><value>0.667</value><product><value>0.15</value><property>ap/glide-track-fps</property></product><property>ap/glide-i</property></sum>
       </function>
       <clipto><min>0.10</min><max>1</max></clipto>
     </fcs_function>

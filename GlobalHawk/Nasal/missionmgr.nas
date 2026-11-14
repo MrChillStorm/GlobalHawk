@@ -39,6 +39,7 @@ var FT_PER_DEG = 364567.2;
 var NM = 6076.1;
 var D2R = math.pi / 180.0;
 var GLIDE_TAN = 0.07782;           # the approach path, 4.45 deg (fdm/laws.py)
+var CAPTURE_SPEED_KT = 10.0;       # the glide is taken over only within this many kt of the approach speed: 30 kt over it the speed-by-elevator law pitched up 15 deg and the aircraft zoomed through the path
 var GLIDE_CL = 0.8;                # the lift coefficient of the glide without the engine
 var GLIDE_RATIO = 20.0;            # what the planner counts on: the model's 26 less a margin for wind and turns
 var ENTRY_HEIGHT = 2500.0;         # ft above the runway on the glide path: where the entry point is
@@ -95,6 +96,21 @@ var Manager = {
         fset("ap/leg-lat1-deg", b[0]); fset("ap/leg-lon1-deg", b[1]);
     },
     here: func { return [fget("position/lat-geod-deg"), fget("position/long-gc-deg")]; },
+
+    # the point the leg that ends item i's last waypoint is followed by: a landing's aiming point, else none
+    after: func(i) {
+        var nxt = i + 1 < size(me.plan) ? me.plan[i + 1] : nil;
+        return (nxt != nil and nxt.kind == "land") ? [nxt.aim[0], nxt.aim[1]] : nil;
+    },
+
+    set_next: func(p) {
+        if (p == nil) fset("ap/next-valid", 0);
+        else {
+            fset("ap/next-lat-deg", p[0]);
+            fset("ap/next-lon-deg", p[1]);
+            fset("ap/next-valid", 1);
+        }
+    },
     track: func { return atan2d(fget("velocities/v-east-fps"), fget("velocities/v-north-fps")); },
     rest: func { return me.i + 1 < size(me.plan) ? subvec(me.plan, me.i + 1) : []; },
     upto: func { return subvec(me.plan, 0, me.i + 1); },          # the plan as far as the item being flown
@@ -106,6 +122,8 @@ var Manager = {
         me.k = 0;
         var kind = it.kind;
         me.note("begin " ~ kind);
+        fset("ap/next-valid", 0);
+        fset("ap/turn-ack", fget("ap/turn-done"));
         if (kind == "taxi") {
             var pts = [me.here()] ~ it.points;
             it._pts = pts;
@@ -349,18 +367,15 @@ var Manager = {
                 me.next();
             }
         } elsif (kind == "route") {
+            # the turn onto the next leg is the aircraft's (fdm/laws.py, ap/turn-*): the manager gives it the next waypoint and moves on when
+            # the laws say the turn is done. Past the last waypoint of a route that a landing follows the next point is the aiming point
             var pts = it._pts;
             me.vertical(opt(it, "alt_override", pts[me.k + 1][2]));
             var last = me.k == size(pts) - 2;
-            var lead = 0.0;
-            if (!last) {
-                var c0 = course(pts[me.k], pts[me.k + 1])[0];
-                var c1 = course(pts[me.k + 1], pts[me.k + 2])[0];
-                var vg = fget("velocities/vg-fps");
-                var radius = vg * vg / (32.174 * tand(maxv(fget("ap/bank-limit-deg") - 2.0, 5.0)));
-                lead = radius * tand(absv(turn(c0, c1)) / 2.0) + 5.0 * vg;
-            }
-            if (togo < maxv(lead, 500.0)) {
+            var nxt = !last ? pts[me.k + 2] : me.after(me.i);
+            me.set_next(nxt);
+            if (fget("ap/turn-done") > fget("ap/turn-ack")) {
+                fset("ap/turn-ack", fget("ap/turn-done"));
                 if (last) me.next();
                 else {
                     me.k += 1;
@@ -368,11 +383,13 @@ var Manager = {
                     me.leg(pts[me.k], pts[me.k + 1]);
                     me.note(sprintf("leg %d", me.k + 1));
                 }
+            } elsif (last and nxt == nil and togo < 500.0) {
+                me.next();
             }
         } elsif (kind == "land") {
             if (!it._on_path) {
                 fset("ap/speed-cmd-kcas", fget("ap/approach-keas"));
-                if (fget("ap/glide-error-ft") > -10.0) {
+                if (fget("ap/glide-error-ft") > -fget("ap/glide-lead-ft") and fget("velocities/vc-kts") - fget("ap/approach-keas") < CAPTURE_SPEED_KT) {
                     it._on_path = 1;
                     fset("ap/pitch-mode", 1);
                     fset("ap/land-mode", 1);
