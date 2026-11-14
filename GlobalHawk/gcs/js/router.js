@@ -600,7 +600,7 @@
     const prev = points[points.length - 2];
     const F = geo.course(fix, o.aim).deg;
     const vg = (o.fc ? o.fc.ktas(o.fix_alt_ft) : 200) * FM.KT;
-    const lead = (delta) => FM.turn({ delta_deg: delta, alt_ft: o.fix_alt_ft, vg_fps: vg, kcas: FM.cap.approach.schedule_kcas }).lead_ft;
+    const lead = (delta) => FM.turn({ delta_deg: delta, alt_ft: o.fix_alt_ft, vg_fps: vg, weight_lb: o.weight_lb }).lead_ft;
     const turnAt = (a, b, c) => Math.abs(geo.turn(geo.course(a, b).deg, geo.course(b, c).deg));
     const fixTurn = turnAt(prev, fix, o.aim);
     if (fixTurn <= JOIN_AT_FIX_DEG && geo.course(prev, fix).ft >= lead(fixTurn)) return { points, note: null };
@@ -631,6 +631,91 @@
     const made = points.slice(0, -1).concat(best.pts.map((p) => [p[0], p[1]]), [fix]);
     const note = best.worst > lim ? `the route arrives ${Math.round(fixTurn)}° off the final and the best join still turns ${Math.round(best.worst)}°` : `joined onto the final by ${best.pts.length === 1 ? 'a point' : 'two points'} ${best.pts.length === 1 ? '' : 'a teardrop '}out on its extension (the corner at the fix was ${Math.round(fixTurn)}°)`;
     return { points: made, note, corner_deg: best.worst };
+  }
+
+  /**
+   * The join after the takeoff. The aircraft arrives at the first leg on the takeoff's heading (o.start_hdg_deg). The first leg begins where it lifts off and has no
+   * leg before it, so the corner at the takeoff's end is not flown with the lead and arc the turns between legs have: the aircraft sweeps off the line and takes
+   * miles to be back on it (js/flightmath.js departureOffFt, from fdm/departure.py: a first point 90 deg off the heading is 6,300 ft off the line and 5.7 nmi to
+   * settle; flown at 171 deg, a loop 1.3 nmi wide). So the first leg goes straight on, along the runway's extension to a point J, and the corners are J's and the
+   * later ones, flown with the aircraft's own turns: J alone, J and a turning point T off the extension toward the first point, or J and two points that turn it
+   * in three steps (a reversal: the corner limit is 120 deg and two corners of 90 deg are all a 180 deg reversal could have). The search takes the way that keeps
+   * the largest corner smallest (corners under the join limit are equal: then the shortest), each leg at least as long as the turns at its ends need (the first
+   * leg: the way to settle after its own corner, from the table). A first corner within what the table allows (the planner's limit off the line) and a long
+   * enough leg is left alone, and without a heading (the aircraft is flying) nothing is changed.
+   * Returns { points, note, corner_deg, added_nm }: points start first, the new ones between it and the first original point.
+   */
+  function joinDeparture(points, o) {
+    const first0 = FM.departureMaxDeg();
+    if (!Number.isFinite(o.start_hdg_deg) || points.length < 2 || first0 === null) return { points, note: null };
+    const lim = JOIN_DEG;
+    const H = o.start_hdg_deg;
+    const start = points[0];
+    const first = points[1];
+    const next = points.length > 2 ? points[2] : null;
+    // the leads are the aircraft's at the height the corner will be flown at, as plancheck.assess takes it: further out at the height the climb gives there
+    // (o.climb_alt(nmi from the start) => ft, as withHeights gives the points their heights; without it, 5,000 ft over the start)
+    const altAt = (nm) => Math.max(o.start_alt_ft || 0, Math.floor((o.climb_alt ? o.climb_alt(nm) : (o.start_alt_ft || 0) + 5000) / 100) * 100);
+    const leadAt = (d, nm) => {
+      const alt = altAt(nm);
+      return FM.turn({ delta_deg: d, alt_ft: alt, vg_fps: (o.fc ? o.fc.ktas(alt) : 200) * FM.KT, weight_lb: o.weight_lb }).lead_ft;
+    };
+    const flown = (d) => d > 2.5;
+    // the corners of a path [start, ...added, first, next]: the first from the heading, the rest between legs
+    const corners = (pts) => {
+      const d = [Math.abs(geo.turn(H, geo.course(pts[0], pts[1]).deg))];
+      for (let k = 1; k + 1 < pts.length; k++) d.push(Math.abs(geo.turn(geo.course(pts[k - 1], pts[k]).deg, geo.course(pts[k], pts[k + 1]).deg)));
+      return d;
+    };
+    // every leg long enough for what is done at its two ends: the first one settles after the takeoff's corner (the table), the others take their leads
+    const check = (pts, d) => {
+      let ok = true;
+      let run = 0; // nmi along the path to pts[k]
+      for (let k = 0; k + 1 < pts.length; k++) {
+        const len = geo.course(pts[k], pts[k + 1]).ft;
+        if (k + 1 >= d.length) break; // the last point's corner is not known
+        const here = k === 0 ? FM.departureBackNm(d[0]) * NM : flown(d[k]) ? leadAt(d[k], run) : 0;
+        const there = flown(d[k + 1]) ? leadAt(d[k + 1], run + len / NM) : 0;
+        if (len < here + there) ok = false;
+        run += len / NM;
+      }
+      return ok;
+    };
+    const whole = (added) => [start].concat(added, [first], next ? [next] : []);
+    const lengthOf = (pts) => pts.slice(1).reduce((a, p, i) => a + geo.course(pts[i], p).ft, 0);
+    const base = whole([]);
+    const d0 = corners(base);
+    if (d0[0] <= first0 + 0.5 && check(base, d0)) return { points, note: null };
+    const side = Math.sin(((geo.course(start, first).deg - H) * Math.PI) / 180) >= 0 ? 1 : -1; // +1: the first point is on the right of the runway's line
+    let best = null;
+    const consider = (added) => {
+      const pts = whole(added);
+      const d = corners(pts);
+      if (d[0] > first0 + 0.5) return; // the first leg goes straight on
+      const w = Math.max(...d.slice(0, 1 + added.length + (next ? 1 : 0)));
+      const ok = check(pts, d);
+      const score = Math.max(w, lim + 0.5) + (ok ? 0 : 1000) + (0.001 * lengthOf(pts)) / NM;
+      if (!best || score < best.score - 1e-9) best = { score, added, worst: w, ok, extra_nm: (lengthOf(pts) - lengthOf(base)) / NM };
+    };
+    for (let L = 3; L <= 40; L += 1) consider([geo.along(start, H, L * NM)]);
+    for (let L = 3; L <= 24; L += 3) {
+      const J = geo.along(start, H, L * NM);
+      for (let A = 60; A <= 105; A += 15) for (let D = 4; D <= 20; D += 2) consider([J, geo.along(J, H + A * side, D * NM)]);
+      // a turn in three steps (reversals): two legs each turning on by the step
+      for (let phi = 45; phi <= 75; phi += 15) {
+        for (let D = 3; D <= 14; D += 1) {
+          const P2 = geo.along(J, H + phi * side, D * NM);
+          consider([J, P2, geo.along(P2, H + 2 * phi * side, D * NM)]);
+        }
+      }
+    }
+    if (!best) return { points, note: null };
+    const made = [start].concat(best.added.map((p) => [p[0], p[1]]), points.slice(1));
+    const reported = d0[0];
+    const note = best.worst > lim + 0.5
+      ? `the first point is ${Math.round(reported)}° off the takeoff's heading and the best departure still turns ${Math.round(best.worst)}°`
+      : `a departure of ${best.added.length === 1 ? 'one point' : best.added.length + ' points'} for a first point ${Math.round(reported)}° off the takeoff's heading (the largest corner ${Math.round(best.worst)}°, ${best.extra_nm.toFixed(1)} nmi more)`;
+    return { points: made, note, corner_deg: best.worst, added_nm: best.extra_nm };
   }
 
   function withHeights(path, cruise, fixAlt, climb, descent, margin) {
@@ -736,7 +821,9 @@
       }
       const free = (a, b) => !bl.along(a, b, 2) && (!cover || mode !== 'require' || sampleCovered(cover, a, b));
       const thinned0 = shortcut(thin(s.points, 3, free), s.chordCost, free, cruiseWeight);
-      const joined = joinFinal(thinned0, o);
+      const joinedF = joinFinal(thinned0, o);
+      const departed = joinDeparture(joinedF.points, Object.assign({}, o, { climb_alt: (nm) => Math.min(alt, interp(climb, nm)) }));
+      const joined = { points: departed.points, note: [joinedF.note, departed.note].filter(Boolean).join('; ') || null };
       const thinned = joined.points;
       // the descent at the weight it will really have, and with the wind where the path really goes: its tail at the middle of the descent and of the climb
       const rough = descentProfile(fc, perf, alt, o.fix_alt_ft, cruiseWeight - s.fuel_lb, tailDown);
@@ -759,13 +846,19 @@
       // aircraft does reach there, and if the fix itself is not reached the top of the descent moves back (up to three times)
       let h;
       let f;
+      // the departure's points are corners the aircraft turns while it is climbing, and it climbs faster than the table: given the height the table says there, it levels off in the
+      // middle of the turn and the turn goes 560 ft past its line (flown, docs/PLAN.md, "The turn after takeoff"; 54 ft with the climb going on through it). So they carry the first
+      // route point's height, the climb goes on through them, and "not reached" is not said of them: the aircraft is on its way up there
+      const nDep = departed.points.length - joinedF.points.length;
+      const climbThrough = () => { for (let i = 0; i < nDep; i++) h.points[i][2] = h.points[nDep][2]; };
       for (let tries = 0, mg = { k: 1.05, extra: 3 }; tries < 4; tries++, mg = { k: mg.k + 0.15, extra: mg.extra + 6 }) {
         h = withHeights(thinned, alt, o.fix_alt_ft, climbReal, descent, mg);
+        climbThrough();
         f = fc.predict(o.legsFor(h.points), state, { wind: o.wind, hours: o.hours });
         let changed = false;
         h.points.forEach((p, i) => {
           const pt = f.points[i];
-          if (!pt || pt.reached || i === h.points.length - 1) return;
+          if (!pt || pt.reached || i === h.points.length - 1 || i < nDep) return;
           const prev = i ? h.points[i - 1][2] : o.start_alt_ft;
           const set = p[2] < prev ? Math.ceil(pt.alt_ft / 100) * 100 : Math.floor(pt.alt_ft / 100) * 100;
           if (set !== p[2]) {
@@ -773,11 +866,15 @@
             changed = true;
           }
         });
-        if (changed) f = fc.predict(o.legsFor(h.points), state, { wind: o.wind, hours: o.hours });
+        if (changed) {
+          climbThrough();
+          f = fc.predict(o.legsFor(h.points), state, { wind: o.wind, hours: o.hours });
+        }
+        f.warnings = f.warnings.filter((w) => !(nDep && /^point (\d+): .* is not reached by then/.test(w) && Number(/^point (\d+)/.exec(w)[1]) <= nDep));
         if (!f.warnings.some((w) => /not reached/.test(w))) break;
       }
       const cov = mode !== 'off' && useCover ? coverageOf([[o.start[0], o.start[1], o.start_alt_ft]].concat(h.points), o.sites, o.glide, { short: o.shortStrips, profile: f.profile }) : null;
-      return { alt_ft: alt, join: joined.note, points: h.points, fuel_lb: f.total.fuel_used_lb, time_s: f.total.t_s, dist_nm: f.total.dist_ft / NM, warnings: f.warnings, soft_nm: s.soft_nm, path_nm: h.total_nm, step_deg: s.step_deg, nodes: s.nodes, tod: h.tod, blockers: bl.hard.length, coverage: cov, quick: !useCover };
+      return { alt_ft: alt, join: joined.note, departure_points: departed.points.length - joinedF.points.length, points: h.points, fuel_lb: f.total.fuel_used_lb, time_s: f.total.t_s, dist_nm: f.total.dist_ft / NM, warnings: f.warnings, soft_nm: s.soft_nm, path_nm: h.total_nm, step_deg: s.step_deg, nodes: s.nodes, tod: h.tod, blockers: bl.hard.length, coverage: cov, quick: !useCover };
     };
     // with sites in mind each height costs about four times as much: so the heights are ranked first without them (cheap), and only the best of them are solved with them
     // (more of them while Require finds none: it needs the heights where the glide is long)
@@ -940,7 +1037,7 @@
     return assemble(o, results, ctx);
   }
 
-  const api = { joinFinal, blocker, coverage, coverageOf, climbProfile, descentProfile, solve, thin, shortcut, withHeights, plan, alternatives, alternativesAsync, similar, offChord, REACH_FACTOR, ENTRY_NM, NEAR_SITE_NM, PREFER_PENALTY, SHORT_STRIP, CAUTIOUS_BUFFERS, ALTITUDES, HARD_KINDS, SOFT_KINDS, ZONE_BUFFER_NM, CONVECTIVE_BUFFER_NM, HOME_RADIUS_NM };
+  const api = { joinFinal, joinDeparture, blocker, coverage, coverageOf, climbProfile, descentProfile, solve, thin, shortcut, withHeights, plan, alternatives, alternativesAsync, similar, offChord, REACH_FACTOR, ENTRY_NM, NEAR_SITE_NM, PREFER_PENALTY, SHORT_STRIP, CAUTIOUS_BUFFERS, ALTITUDES, HARD_KINDS, SOFT_KINDS, ZONE_BUFFER_NM, CONVECTIVE_BUFFER_NM, HOME_RADIUS_NM };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else (root.GCS = root.GCS || {}).router = api;
 })(typeof window !== 'undefined' ? window : globalThis);

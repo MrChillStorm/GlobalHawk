@@ -76,6 +76,15 @@
     return min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')} min` : `${min} min`;
   };
   /** The aircraft as the forecast takes it: now if flying, else full of what it has on the field. */
+  /** The wind the nearest field's report gives at the plan's landing field (within 8 nmi of it), { dir_deg, speed_kt, gust_kt, from }, or null: no report, calm or variable. */
+  function fieldWind(plan) {
+    try {
+      const near = G.airports.nearest(ov.airports.list || [], plan.field.lat, plan.field.lon, 1)[0];
+      const m = near && near.nm < 8 ? ov.metars.get(near.a.ident) : null;
+      if (m && Number.isFinite(m.wspd) && Number.isFinite(m.wdir)) return { dir_deg: m.wdir, speed_kt: m.wspd, gust_kt: m.wgst || 0, from: m.id };
+    } catch (e) { /* no wind: no check */ }
+    return null;
+  }
   const stateNow = (elev) => ({ alt_ft: Number.isFinite(tel.alt) ? tel.alt : elev, weight_lb: Number.isFinite(tel.weight) ? tel.weight : 25600, fuel_lb: Number.isFinite(tel.fuel) ? tel.fuel : 14150 });
   $('tanks').innerHTML = TANKS.map((t, i) => `<div class="tank"><div class="bar"><i id="tank${i}"></i></div>${t[0]}</div>`).join('');
   $('navs').innerHTML = NAVS.map((n) => `<button id="nav-${n[0]}" data-nav="${n[0]}">${n[1]}</button>`).join('');
@@ -315,7 +324,7 @@
     // for an airport FlightGear started it at: the aircraft stands lined up on a runway, and the plan is laid from there
     if (!here() || !Number.isFinite(tel.hdg) || !Number.isFinite(tel.alt)) return;
     const elev = tel.alt - (Number.isFinite(tel.agl) ? tel.agl : 5);
-    armPlan(geo.localPlan(here(), tel.hdg, elev), $('c-here'));
+    armPlan(geo.localPlan(here(), tel.hdg, elev, G.plancheck.localBoxFt(here(), tel.hdg, elev, forecast, stateNow(elev))), $('c-here')); // the box at a height the aircraft can climb to and come down from
   });
   $('c-file').addEventListener('change', (e) => {
     const f = e.target.files[0];
@@ -553,7 +562,7 @@
       const siteInfo = G.routeinputs.sites(plan, ov.airports.list, forecast, state.weight_lb);
       if (siteMode !== 'off') notes.push('Landing sites: ' + siteInfo.note + '.');
       const out = await G.router.alternativesAsync({
-        start: st.pos, start_alt_ft: st.alt_ft, goal: goal.fix, aim: goal.land.aim, fix_alt_ft: goal.fix_alt_ft, weight_lb: state.weight_lb, fuel_lb: state.fuel_lb, fc: forecast, perf: G.perfdata,
+        start: st.pos, start_alt_ft: st.alt_ft, start_hdg_deg: st.hdg_deg, goal: goal.fix, aim: goal.land.aim, fix_alt_ft: goal.fix_alt_ft, weight_lb: state.weight_lb, fuel_lb: state.fuel_lb, fc: forecast, perf: G.perfdata,
         wind: windOk ? (la, lo, alt, h) => ov.wind.at(la, lo, alt, h) : null, hours: ov.prefs.windHours, zones: ov.zones(), hazards: ov.hazardList(), now: Date.now(), altitudes,
         legsFor: (pts) => G.plancheck.legs([{ kind: 'route', points: pts }, goal.land], st.pos, plan.field),
         sites: siteInfo.list, glide: (a, e) => G.reach.radius(a, e) / geo.NM, siteMode, shortStrips: $('rp-short').checked,
@@ -628,7 +637,7 @@
       });
       warn = warn.concat(fc.r.warnings.map(esc));
       // what the aircraft's capability says about the plan (its turns, its legs, its final): the planner's word, in words with the numbers
-      warn = warn.concat(G.plancheck.assess(plan, { weight_lb: stateNow(plan.field.elev_ft).weight_lb }).map((a) => esc(a.text)));
+      warn = warn.concat(G.plancheck.assess(plan, { weight_lb: stateNow(plan.field.elev_ft).weight_lb, field_wind: fieldWind(plan) }).map((a) => esc(a.text)));
       const roll = landingWords(fc.r, plan.field);
       if (roll) warn.push(`<span class="small">${esc(roll[0].toUpperCase() + roll.slice(1))}.</span>`);
       warn.push(`<span class="small">Forecast from ${fc.from}: ${hms(fc.r.total.t_s)}, ${fmtAlt(fc.r.total.fuel_used_lb)} lb of fuel, ${(fc.r.total.dist_ft / geo.NM).toFixed(0)} nmi. No wind.</span>`);

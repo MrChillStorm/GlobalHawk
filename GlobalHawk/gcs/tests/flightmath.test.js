@@ -9,16 +9,72 @@ const RAD = Math.PI / 180;
 near(FM.bankLimitDeg(4000), 25 * cap.turn.bank_command, 1e-9, 'bank at 4,000 ft');
 near(FM.bankLimitDeg(50000), 15 * cap.turn.bank_command, 1e-9, 'bank at 50,000 ft');
 near(FM.bankLimitDeg(40000), (25 + (15 - 25) * (40000 - 30000) / 20000) * cap.turn.bank_command, 1e-9, 'bank between');
-// a turn worked by hand: 90 deg at 250 ft/s and 150 KCAS, the bank at 4,000 ft
+// the turn performance table (fdm/turnperf.py): the bank flown over the bank commanded, at a table point exactly, trilinear between, held at the ends
+{
+  const P = cap.turn.performance;
+  assert.ok(P, 'the capability file carries the turn performance table');
+  P.axes.speed_kcas.forEach((k, i) => P.axes.weight_lb.forEach((w, j) => P.axes.pressure_alt_ft.forEach((h, l) => {
+    near(FM.bankRatio(w, h, k), 1 + P.flown_per_cmd[i][j][l], 1e-12, `table point ${k} ${w} ${h}`);
+  })));
+  const [k0, k1] = P.axes.speed_kcas, [w0, w1] = P.axes.weight_lb, [h0, h1] = P.axes.pressure_alt_ft;
+  near(FM.bankRatio((w0 + w1) / 2, h0, k0), 1 + (P.flown_per_cmd[0][0][0] + P.flown_per_cmd[0][1][0]) / 2, 1e-12, 'halfway in weight');
+  near(FM.bankRatio(w0, (h0 + h1) / 2, k1), 1 + (P.flown_per_cmd[1][0][0] + P.flown_per_cmd[1][0][1]) / 2, 1e-12, 'halfway in height');
+  near(FM.bankRatio(w0 - 5000, h0 - 1000, k0 - 50), FM.bankRatio(w0, h0, k0), 1e-12, 'held below');
+  const last = (xs) => xs[xs.length - 1];
+  near(FM.bankRatio(last(P.axes.weight_lb) + 9000, last(P.axes.pressure_alt_ft) + 9000, last(P.axes.speed_kcas) + 50), 1 + P.flown_per_cmd[P.axes.speed_kcas.length - 1][P.axes.weight_lb.length - 1][P.axes.pressure_alt_ft.length - 1], 1e-12, 'held above');
+  // the flown bank is above the commanded one, most when slow, heavy and low
+  assert.ok(FM.bankRatio(26000, 4174, 110) > FM.bankRatio(26000, 4174, 150) && FM.bankRatio(26000, 4174, 150) > FM.bankRatio(12000, 4174, 150) && FM.bankRatio(12000, 4174, 150) > FM.bankRatio(12000, 30174, 150));
+  assert.ok(FM.bankRatio(12000, 4174, 150) > 1);
+}
+// the effective roll-in delay (fdm/turnperf.py, from the heading): at a table point exactly, longer than the delay table's, growing with speed and falling with height
+{
+  const P = cap.turn.performance;
+  assert.ok(P.lag_in_s && P.lag_out_s, 'the capability file carries the delays');
+  P.axes.speed_kcas.forEach((k, i) => P.axes.weight_lb.forEach((w, j) => P.axes.pressure_alt_ft.forEach((h, l) => {
+    near(FM.turnLagInS(w, h, k), P.lag_in_s[i][j][l], 1e-12, `delay at table point ${k} ${w} ${h}`);
+  })));
+  assert.ok(FM.turnLagInS(20000, 4174, 150) > FM.rollLagS(150), 'the heading\'s delay is longer than the bank\'s');
+  assert.ok(FM.turnLagInS(20000, 4174, 170) > FM.turnLagInS(20000, 4174, 130));
+  assert.ok(FM.turnLagInS(20000, 4174, 150) > FM.turnLagInS(20000, 30174, 150));
+}
+// the speed the laws hold: 150 KCAS up to FL220, above it the scheduled Mach
+near(FM.scheduleKcas(4000), 150, 1e-12, 'schedule low down');
+assert.ok(FM.scheduleKcas(45000) > 120 && FM.scheduleKcas(45000) < 160, 'schedule at FL450: ' + FM.scheduleKcas(45000));
+// a turn worked by hand: 90 deg at 250 ft/s and 150 KCAS, the bank at 4,000 ft, flown at the table's bank for 20,000 lb
 {
   const bank = 25 * cap.turn.bank_command;
-  const R = 250 * 250 / (32.174 * Math.tan(bank * RAD));
-  const lag = FM.rollLagS(150);
+  const ratio = FM.bankRatio(20000, 4000, 150);
+  const R = 250 * 250 / (32.174 * Math.tan(bank * ratio * RAD));
+  const lag = FM.turnLagInS(20000, 4000, 150);        // the table's effective delay (the heading's), not the delay table's
   const t = FM.turn({ delta_deg: 90, alt_ft: 4000, vg_fps: 250, kcas: 150 });
   near(t.radius_ft, R, 1e-6, 'radius');
-  near(t.lead_ft, R * Math.tan(45 * RAD) + 250 * (0.5 * bank / cap.turn.bank_rate_dps + lag), 1e-6, 'lead');
+  near(t.bank_flown_deg, bank * ratio, 1e-9, 'bank flown');
+  const mom = (w, h, k) => {      // the roll out's moment, from the table by hand
+    const P = cap.turn.performance;
+    const at = (xs, x) => { if (x <= xs[0]) return [0, 0]; if (x >= xs[xs.length - 1]) return [xs.length - 2, 1]; let i = 0; while (xs[i + 1] < x) i++; return [i, (x - xs[i]) / (xs[i + 1] - xs[i])]; };
+    const [ik, fk] = at(P.axes.speed_kcas, k), [iw, fw] = at(P.axes.weight_lb, w), [ih, fh] = at(P.axes.pressure_alt_ft, h);
+    let v = 0;
+    for (let a = 0; a < 2; a++) for (let b = 0; b < 2; b++) for (let c = 0; c < 2; c++) v += (a ? fk : 1 - fk) * (b ? fw : 1 - fw) * (c ? fh : 1 - fh) * P.moment_out_s2[ik + a][iw + b][ih + c];
+    return v;
+  };
+  const drift90 = 32.174 * Math.tan(bank * ratio * RAD) * mom(20000, 4000, 150);      // over sin 90 deg
+  assert.ok(drift90 > 10, 'the roll out drifts: ' + drift90);
+  near(t.lead_ft, R * Math.tan(45 * RAD) + 250 * (0.5 * bank / cap.turn.bank_rate_dps + lag) + drift90, 1e-6, 'lead');
   assert.ok(!t.over && t.off_ft === 0);
-  near(t.rate_dps, (32.174 * Math.tan(bank * RAD) / 250) / RAD, 1e-6, 'turn rate');
+  near(t.rate_dps, (32.174 * Math.tan(bank * ratio * RAD) / 250) / RAD, 1e-6, 'turn rate');
+  // the drift fades in between the corners cap.turn.drift_fade_deg, and is not in a corner under the wind's least or over the fly-by limit
+  {
+    const L = (d) => FM.turn({ delta_deg: d, alt_ft: 4000, vg_fps: 250, kcas: 150 }).lead_ft;
+    const base = (d) => { const tt = FM.turn({ delta_deg: d, alt_ft: 4000, vg_fps: 250, kcas: 150 }); return tt.radius_ft * Math.tan(0.5 * Math.min(d, cap.turn.fly_by_max_deg) * RAD) + 250 * (0.5 * bank / cap.turn.bank_rate_dps + lag); };
+    const [f0, f1] = cap.turn.drift_fade_deg;
+    near(L(f0 - 1) - base(f0 - 1), 0, 1e-6, 'no drift under the fade');
+    const mid = (f0 + f1) / 2;
+    near(L(mid) - base(mid), (L(f1) - base(f1)) * (Math.sin(f1 * RAD) / Math.sin(mid * RAD)) * 0.5, 1e-6, 'half the drift halfway through the fade (over the sine of the corner)');
+    near(L(5) - base(5), 0, 1e-6, 'none in a small turn');
+    near(L(cap.turn.fly_by_max_deg + 10) - base(cap.turn.fly_by_max_deg + 10), 0, 1e-6, 'none in a fly-over');
+  }
+  // heavier, the aircraft flies more bank for the command and turns tighter
+  assert.ok(FM.turn({ delta_deg: 90, alt_ft: 4000, vg_fps: 250, kcas: 150, weight_lb: 26000 }).radius_ft < t.radius_ft);
   // the wind is in the ground speed: a slower aircraft turns tighter and starts later
   const slow = FM.turn({ delta_deg: 90, alt_ft: 4000, vg_fps: 200, kcas: 150 });
   assert.ok(slow.radius_ft < t.radius_ft && slow.lead_ft < t.lead_ft);
@@ -58,6 +114,19 @@ assert.ok(FM.descentFpm(30000, 22000) < FM.descentFpm(10000, 22000));
 near(FM.descentFpm(cap.flown.alt_ft[4], cap.flown.weight_lb[2]), cap.flown.descent_fpm[4][2], 1e-9, 'descent at a table point');
 // no hole in the descent table (the unsettled corner is filled from the trim, and says so)
 cap.flown.descent_fpm.forEach((row) => row.forEach((v) => assert.ok(Number.isFinite(v) && v < 0)));
+// the turn onto the first leg after takeoff (fdm/departure.py's table): off the line grows with the corner, so does the way back; the limit's corner is where the table crosses it
+{
+  const rows = cap.flown.departure.rows;
+  assert.ok(rows.length >= 6 && rows[0].delta_deg === 0 && rows[0].off_ft < 50, 'straight on: no sweep');
+  for (let i = 1; i < rows.length; i++) assert.ok(rows[i].off_ft > rows[i - 1].off_ft && rows[i].turned_deg >= rows[i - 1].turned_deg, `row ${i}`);
+  near(FM.departureOffFt(rows[3].delta_deg), rows[3].off_ft, 1e-9, 'off at a table row');
+  near(FM.departureOffFt(-rows[3].delta_deg), rows[3].off_ft, 1e-9, 'either side');
+  near(FM.departureBackNm(rows[4].delta_deg), rows[4].back_nm, 1e-9, 'back at a table row');
+  const m = FM.departureMaxDeg();
+  near(FM.departureOffFt(m), FM.DEPART_OFF_LIMIT_FT, 1e-6, 'the limit corner is flown 700 ft off');
+  assert.ok(FM.departureMaxDeg(2000) > m && FM.departureMaxDeg(300) < m, 'a looser limit allows a larger corner');
+  assert.strictEqual(FM.departureMaxDeg(1e9), rows[rows.length - 1].delta_deg);
+}
 // one source: no capability number is typed in the station's planner modules (the aircraft's laws, missionmgr and the flown tables have them)
 const fs = require('fs');
 for (const f of ['plancheck.js', 'router.js', 'predict.js', 'flightmath.js']) {

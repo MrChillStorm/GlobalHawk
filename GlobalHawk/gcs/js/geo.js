@@ -48,17 +48,19 @@
 
   /**
    * A local flight from where the aircraft stands, lined up on a runway: takeoff straight ahead, a box to the
-   * right at 15,000 ft, and a landing back on the same runway; the lost-link route goes straight to that landing.
+   * right at boxFt (default 3,000 ft over the fix; js/plancheck.js localBoxFt picks the height the aircraft can climb to and come down from), and a landing back on the same runway; the lost-link route goes straight to that landing.
    * For flying from any airport FlightGear starts it at. here is [lat, lon], hdg the runway's course, elev the
    * ground's height there (ft).
    */
-  function localPlan(here, hdg, elev) {
+  function localPlan(here, hdg, elev, boxFt) {
     const r = (v) => Math.round(v * 1e6) / 1e6;
     const pt = (p, alt) => (alt === undefined ? [r(p[0]), r(p[1])] : [r(p[0]), r(p[1]), alt]);
     // the height over the fix the aircraft's capability asks for: the path comes down to it in time to be taken over cleanly (js/flightmath.js), the way the 90 deg corner at the fix takes counted
     const FM = typeof module !== 'undefined' && module.exports ? require('./flightmath.js') : root.GCS.flightmath;
-    const lead = FM.turn({ delta_deg: 90, alt_ft: elev + 3000, vg_fps: 250, kcas: FM.cap.approach.schedule_kcas }).lead_ft;
+    const lead = FM.turn({ delta_deg: 90, alt_ft: elev + 3000, vg_fps: 250 }).lead_ft;
     const fixAlt = Math.round((elev + FM.finalFixHeightAgl(10 * NM, 20000, lead)) / 100) * 100;
+    // the box's height: given (js/plancheck.js localBoxFt picks the highest the aircraft can climb to and come down from), else 3,000 ft over the fix: a descent that is 2 deg in the 15 nmi to it, at any field
+    const box = Number.isFinite(boxFt) ? boxFt : Math.round((fixAlt + 3000) / 500) * 500;
     const p1 = along(here, hdg, 12 * NM);
     const p2 = along(p1, hdg + 90, 15 * NM);
     const p3 = along(p2, hdg + 180, 22 * NM);
@@ -67,11 +69,11 @@
     const land = { kind: 'land', fix: pt(fix), aim: pt(aim) };
     return {
       id: 'local-from-here',
-      note: 'A local flight from where the aircraft stood: takeoff, a box at 15,000 ft, landing on the same runway.',
+      note: 'A local flight from where the aircraft stood: takeoff, a box at ' + box.toLocaleString('en-US') + ' ft, landing on the same runway.',
       field: { name: 'here', lat: r(here[0]), lon: r(here[1]), elev_ft: Math.round(elev) },
       items: [
         { kind: 'takeoff', start: pt(here), end: pt(along(here, hdg, 9000)) },
-        { kind: 'route', points: [pt(p1, 15000), pt(p2, 15000), pt(p3, 15000), pt(fix, fixAlt)] },
+        { kind: 'route', points: [pt(p1, box), pt(p2, box), pt(p3, box), pt(fix, fixAlt)] },
         land,
       ],
       lost_link: [{ kind: 'route', points: [pt(fix, fixAlt)] }, land],

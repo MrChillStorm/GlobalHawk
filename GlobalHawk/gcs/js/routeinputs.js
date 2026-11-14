@@ -14,12 +14,13 @@
 
   const landOf = (plan) => (plan && plan.items ? plan.items.find((i) => i.kind === 'land') : null) || null;
 
-  /** Where the route begins: the aircraft when it is flying, else the takeoff's end, else the field. { pos, alt_ft }. */
+  /** Where the route begins: the aircraft when it is flying, else the takeoff's end, else the field. { pos, alt_ft, hdg_deg? } (hdg_deg only at a takeoff's end). */
   function startOf(plan, flying, here, alt_ft) {
     const elev = plan.field.elev_ft || 0;
     if (flying && here && Number.isFinite(alt_ft)) return { pos: [here[0], here[1]], alt_ft };
     const t = plan.items.find((i) => i.kind === 'takeoff');
-    if (t) return { pos: [t.end[0], t.end[1]], alt_ft: elev + 100 }; // the forecast's takeoff ends 100 ft up
+    // the forecast's takeoff ends 100 ft up; hdg_deg: the course the aircraft arrives on at the first leg (the router joins a first point that is behind or beside it)
+    if (t) return { pos: [t.end[0], t.end[1]], alt_ft: elev + 100, hdg_deg: geo.course(t.start, t.end).deg };
     return { pos: [plan.field.lat, plan.field.lon], alt_ft: elev + 100 };
   }
 

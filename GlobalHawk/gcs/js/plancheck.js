@@ -13,6 +13,8 @@
   const MAX_ALT = 65000;
   const MAX_LEG_NM = 3000;
   const MIN_FINAL_NM = 8;
+  const MAX_DESCENT_DEG = 6; // a route leg goes down no more steeply than this on average (the aircraft's own check; docs/PLAN.md, "The aircraft refuses what it cannot fly")
+  const MIN_GRADIENT_LEG_NM = 2; // shorter legs are not judged on their slope
   const num = (x) => typeof x === 'number' && Number.isFinite(x);
   const g = (x) => String(Number(Number(x).toPrecision(6))); // as Python's %g prints
 
@@ -43,6 +45,16 @@
           if (bad) return bad;
         }
         for (let m = 0; m + 1 < pts.length; m++) if (geo.course(pts[m], pts[m + 1]).ft / geo.NM > MAX_LEG_NM) return `${w} (${kind}): a leg longer than ${MAX_LEG_NM} nmi`;
+        if (kind === 'route') {
+          for (let m = 0; m + 1 < pts.length; m++) {
+            const ft = geo.course(pts[m], pts[m + 1]).ft;
+            const drop = pts[m][2] - pts[m + 1][2];
+            if (drop > 0 && ft / geo.NM >= MIN_GRADIENT_LEG_NM) {
+              const deg = (Math.atan2(drop, ft) * 180) / Math.PI;
+              if (deg > MAX_DESCENT_DEG) return `${w} (route): point ${m + 1} to point ${m + 2} goes down ${drop.toFixed(0)} ft in ${(ft / geo.NM).toFixed(1)} nmi, ${deg.toFixed(1)} deg: the aircraft does not come down more steeply than ${MAX_DESCENT_DEG} deg`;
+            }
+          }
+        }
       } else if (kind === 'takeoff') {
         const bad = point(it.start, 2, `${w} (takeoff) start`) || point(it.end, 2, `${w} (takeoff) end`);
         if (bad) return bad;
@@ -123,7 +135,7 @@
         if (Math.abs(a.at[0] - b.from[0]) > 1e-9 || Math.abs(a.at[1] - b.from[1]) > 1e-9) continue;
         const delta = geo.turn(geo.course(a.from, a.at).deg, geo.course(b.from, b.at).deg);
         if (Math.abs(delta) < 2.5 || Math.abs(delta) > FM.cap.turn.fly_by_max_deg) continue;
-        const t = FM.turn({ delta_deg: delta, alt_ft: a.alt_ft, vg_fps: kts(a.alt_ft) * FM.KT, kcas: FM.cap.approach.schedule_kcas });
+        const t = FM.turn({ delta_deg: delta, alt_ft: a.alt_ft, vg_fps: kts(a.alt_ft) * FM.KT });
         const d = (Math.abs(delta) * Math.PI) / 180;
         const cut = Math.max(0, t.radius_ft * Math.tan(d / 2) - (t.radius_ft * d) / 2);
         a.dist_ft = Math.max(a.dist_ft - cut, a.dist_ft * 0.2);
@@ -142,7 +154,7 @@
    * cannot fly well, the legs too short for the turns at their ends, and a final it cannot take. Each is { kind, at, text, have, need }
    * in words with the numbers and what to change; nothing for a plan that has none (no noise). The numbers are the laws' own
    * (js/flightmath.js reads js/capability.js, written by fdm/capability.py): the radius from the ground speed on the schedule and the bank
-   * the aircraft uses at that height, the lead from it and the bank's delay. opts.weight_lb: the landing weight (default 20,000 lb).
+   * the aircraft uses at that height, the lead from it and the bank's delay. opts.weight_lb: the landing weight (default 20,000 lb); opts.field_wind: the wind at the landing field, { dir_deg, speed_kt, gust_kt, from }, for the crosswind check.
    */
   function assess(plan, opts) {
     const o = opts || {};
@@ -154,7 +166,10 @@
     for (const it of (plan && plan.items) || []) {
       if (it.kind === 'takeoff') {
         chain.length = 0;
-        chain.push({ p: it.end, alt: null, label: 'the end of the takeoff' });
+        // the takeoff's heading is the course the aircraft arrives on at the first leg: the run's start is the point before the corner at its end,
+        // which the aircraft turns right after lift-off (500 ft up)
+        chain.push({ p: it.start, alt: null, label: 'the start of the takeoff' });
+        chain.push({ p: it.end, alt: ((plan.field && plan.field.elev_ft) || 0) + 500, label: 'the end of the takeoff', takeoff: true });
       } else if (it.kind === 'route') {
         for (const p of it.points) chain.push({ p: [p[0], p[1]], alt: p[2], label: `point ${++n}` });
       } else if (it.kind === 'land') {
@@ -175,9 +190,16 @@
       if (c.aim || c.alt === null) continue;
       const delta = geo.turn(geo.course(chain[i - 1].p, c.p).deg, geo.course(c.p, chain[i + 1].p).deg);
       const vg = ktas(c.alt) * FM.KT;
-      const t = FM.turn({ delta_deg: delta, alt_ft: c.alt, vg_fps: vg, kcas: cap.approach.schedule_kcas });
+      const t = FM.turn({ delta_deg: delta, alt_ft: c.alt, vg_fps: vg, weight_lb: weight });
       corners.push({ i, c, delta, t, flown: Math.abs(delta) > 2.5 });
-      if (Math.abs(delta) > cap.turn.max_join_deg) {
+      const firstMax = c.takeoff ? FM.departureMaxDeg() : null;
+      if (c.takeoff && firstMax !== null && Math.abs(delta) > firstMax) {
+        out.push({
+          kind: 'corner', at: c.label, have: Math.abs(delta), need: firstMax,
+          text: `The first point is ${Math.round(Math.abs(delta))}° off the takeoff's heading: the first leg begins at lift-off, so the aircraft is turned onto it without the lead it takes between legs, goes up to ${Math.round(FM.departureOffFt(delta) / 100) * 100} ft off the line and is back on it ${FM.departureBackNm(delta).toFixed(1)} nmi from the end of the takeoff. `
+            + `Put a point ahead on the runway's extension (or a first point within ${Math.round(firstMax)}° of the runway's heading), so that no turn after it is over ${cap.turn.max_join_deg}°.`,
+        });
+      } else if (Math.abs(delta) > cap.turn.max_join_deg) {
         out.push({
           kind: 'corner', at: c.label, have: Math.abs(delta), need: cap.turn.max_join_deg,
           text: `The turn at ${c.label} is ${Math.round(Math.abs(delta))}°: the aircraft turns about ${Math.round(t.bank_deg)}° of bank there, a radius of ${nm(t.radius_ft)} nmi, and `
@@ -191,11 +213,28 @@
       const B = corners[a + 1];
       if (!A.flown || !B.flown || B.i !== A.i + 1 || B.c.aim) continue;
       const len = geo.course(A.c.p, B.c.p).ft;
-      const need = A.t.lead_ft + B.t.lead_ft;
+      const settle = A.c.takeoff && FM.departureBackNm(A.delta) !== null ? FM.departureBackNm(A.delta) * geo.NM : A.t.lead_ft; // after the takeoff's corner: until the aircraft is back on the line
+      const need = settle + B.t.lead_ft;
       if (len < need) {
         out.push({
           kind: 'leg', at: `${A.c.label} to ${B.c.label}`, have: len, need,
-          text: `The leg from ${A.c.label} to ${B.c.label} is ${nm(len)} nmi: the turns at its two ends take ${nm(A.t.lead_ft)} and ${nm(B.t.lead_ft)} nmi of it, ${nm(need)} nmi in all. Make the leg longer than that, or take one point out.`,
+          text: `The leg from ${A.c.label} to ${B.c.label} is ${nm(len)} nmi: the turns at its two ends take ${nm(settle)} and ${nm(B.t.lead_ft)} nmi of it, ${nm(need)} nmi in all. Make the leg longer than that, or take one point out.`,
+        });
+      }
+    }
+    // a descent the aircraft's cannot make in the length of the leg: from a point to the next that is lower by more than the flown descent allows in that distance
+    for (let i = 0; i + 1 < chain.length; i++) {
+      const a = chain[i];
+      const b = chain[i + 1];
+      if (b.aim || a.alt === null || b.alt === null || !(a.alt > b.alt + 200)) continue;
+      const len = geo.course(a.p, b.p).ft / geo.NM;
+      const need = descentNm(a.alt, b.alt, weight);
+      if (need > len * DESCENT_SLACK) {
+        const lower = descentFitsFrom(b.alt, len, weight);
+        out.push({
+          kind: 'descent', at: `${a.label} to ${b.label}`, have: len, need,
+          text: `The leg from ${a.label} (${Math.round(a.alt)} ft) down to ${b.label} (${Math.round(b.alt)} ft) is ${nm(len * geo.NM)} nmi: the aircraft's descent takes about ${nm(need * geo.NM)} nmi for ${Math.round(a.alt - b.alt)} ft, so it arrives about ${Math.round(a.alt - b.alt - Math.max(0, lower - b.alt))} ft too high. `
+            + `Lower ${a.label} to ${Math.round(lower)} ft or less, or put ${b.label} ${nm((need - len) * geo.NM)} nmi farther on.`,
         });
       }
     }
@@ -238,10 +277,66 @@
         }
       }
     }
+    // the crosswind on the final: the wind reported at the field (opts.field_wind: { dir_deg, speed_kt, gust_kt, from }) across the final's course, against what the landing holds its
+    // contracts in at this weight (fdm/landlimit.py): the gust counts, the limit being for a steady wind
+    const fw = o.field_wind;
+    const landIt = ((plan && plan.items) || []).find((it) => it.kind === 'land' && it.fix && it.aim);
+    const xwLimit = FM.crosswindLimitKt(weight);
+    if (fw && landIt && xwLimit !== null && Number.isFinite(fw.dir_deg) && Number.isFinite(fw.speed_kt)) {
+      const course = geo.course(landIt.fix, landIt.aim).deg;
+      const kt = Math.max(fw.speed_kt, fw.gust_kt || 0);
+      const xw = Math.abs(kt * Math.sin(((fw.dir_deg - course) * Math.PI) / 180));
+      if (xw > xwLimit) {
+        out.push({
+          kind: 'crosswind', at: 'the landing', have: xw, need: xwLimit,
+          text: `The wind at the field${fw.from ? ' (' + fw.from + ')' : ''} is from ${Math.round(fw.dir_deg)} deg at ${Math.round(fw.speed_kt)} kt${fw.gust_kt ? ', gusting ' + Math.round(fw.gust_kt) : ''}: ${Math.round(xw)} kt across the final (course ${Math.round(course)} deg). `
+            + `At ${Math.round(weight / 100) * 100} lb the aircraft's landing holds its limits to ${Math.round(xwLimit)} kt of crosswind (flown in the model, in steady wind: less in gusts). `
+            + 'Land on the other runway or at another field, land lighter, or wait for the wind to ease.',
+        });
+      }
+    }
     return out;
   }
 
-  const api = { checkPlan, checkItems, legs, assess, MAX_ALT };
+  /**
+   * How far the aircraft goes (nmi) in descending from one height to another at a weight: the flown descent rate (js/flightmath.js) at the speed the forecast
+   * flies, in steps of 250 ft. 0 for a climb or no change.
+   */
+  function descentNm(fromFt, toFt, weight) {
+    if (!(fromFt > toFt)) return 0;
+    let nm = 0;
+    for (let h = fromFt; h > toFt; h -= 250) {
+      const step = Math.min(250, h - toFt);
+      const mid = h - step / 2;
+      const rate = -FM.descentFpm(mid, weight); // ft/min, positive
+      const kt = FM.lerp(PERF.alt_ft, PERF.ktas, mid);
+      nm += (step * kt) / (60 * Math.max(rate, 50));
+    }
+    return nm;
+  }
+  /** How much longer than the leg the descent may be before the assessment says so: the flown descent varies 10 % with weight and wind, and the dangerous plans are a multiple off (the local flight that came to the fix 9,000 ft high needed 3 times the leg); mine. */
+  const DESCENT_SLACK = 1.1;
+  /** The highest start height from which a descent to toFt fits in lenNm (within DESCENT_SLACK), to 500 ft: the height to lower a point to. */
+  function descentFitsFrom(toFt, lenNm, weight) {
+    let h = toFt;
+    while (h + 500 <= MAX_ALT && descentNm(h + 500, toFt, weight) <= lenNm * DESCENT_SLACK) h += 500;
+    return h;
+  }
+  /**
+   * The height the station's local flight can have its box at: the highest of 15,000 ft down to the default (3,000 ft over the fix) at which the forecast reaches every height of the plan
+   * (the climb to the box, and the descent from it to the landing fix), in steps of 500 ft. fc: predict.make's; state: { alt_ft, weight_lb, fuel_lb }.
+   */
+  function localBoxFt(here, hdg, elev, fc, state) {
+    const lowest = geo.localPlan(here, hdg, elev).items[1].points[0][2]; // the default box: 3,000 ft over the fix
+    for (let h = 15000; h >= lowest; h -= 500) {
+      const plan = geo.localPlan(here, hdg, elev, h);
+      const f = fc.predict(legs(plan.items, null, plan.field), state);
+      if (!f.warnings.some((w) => /not reached/.test(w)) && !assess(plan, { weight_lb: state.weight_lb }).some((x) => x.kind === 'descent')) return h;
+    }
+    return lowest;
+  }
+
+  const api = { checkPlan, checkItems, legs, assess, descentNm, descentFitsFrom, localBoxFt, MAX_ALT };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else (root.GCS = root.GCS || {}).plancheck = api;
 })(typeof window !== 'undefined' ? window : globalThis);

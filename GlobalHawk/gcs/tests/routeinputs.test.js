@@ -10,11 +10,15 @@ const fc = predict.make(perf);
 let s = RI.startOf(plan, false, null, NaN);
 assert.deepStrictEqual(s.pos, plan.items[1].end);
 assert.strictEqual(s.alt_ft, plan.field.elev_ft + 100);
+// at a takeoff's end the route is arrived on the takeoff's heading (the router joins a first point behind or beside it); flying, or with no takeoff, there is none
+const tk = plan.items[0].kind === 'takeoff' ? plan.items[0] : plan.items.find((i) => i.kind === 'takeoff');
+assert.ok(Math.abs(s.hdg_deg - require('../js/geo.js').course(tk.start, tk.end).deg) < 1e-9 && s.hdg_deg >= 0 && s.hdg_deg < 360);
 s = RI.startOf(plan, true, [35.1, -117.6], 21000);
 assert.deepStrictEqual(s, { pos: [35.1, -117.6], alt_ft: 21000 });
 const noTakeoff = JSON.parse(JSON.stringify(plan));
 noTakeoff.items = noTakeoff.items.filter((i) => i.kind !== 'takeoff');
 assert.deepStrictEqual(RI.startOf(noTakeoff, false, null, NaN).pos, [plan.field.lat, plan.field.lon]);
+assert.strictEqual(RI.startOf(noTakeoff, false, null, NaN).hdg_deg, undefined);
 // the goal: the plan's own last point when it is at the fix, else the height over the ground the aircraft's capability asks for there (flightmath: the path comes down to it in time to be taken over cleanly), at the landing weight
 const FM = require('../js/flightmath.js');
 const geoR = require('../js/geo.js');

@@ -383,6 +383,82 @@ const site = (lat, lon, elev, name, tier) => ({ lat, lon, elev_ft: elev === unde
   assert.ok(plans.reduce((a, b) => a + b, 0) >= 5, 'about half of the arrivals need a join: ' + plans.join(''));
 }
 // the page's version lets it breathe between the ways of choosing, and says which is next, and gives the same cards
+// the join after the takeoff (D2 of docs/PLAN.md, "The turn after takeoff"): the first point behind or beside the runway is reached by a departure, and nothing else is changed
+{
+  const here = [60.33, 24.96];
+  const hdg = 153.1;
+  const elev = 174;
+  const end = geo.along(here, hdg, 9000);
+  const FMd = require('../js/flightmath.js');
+  let moved = 0;
+  let cases = 0;
+  const climbAlt = (nm) => Math.min(15000, elev + 100 + 500 * nm); // a climb: 500 ft a nautical mile, to 15,000 ft
+  const firstMax = FMd.departureMaxDeg(); // the first corner the aircraft flies within 700 ft of the line (flown: fdm/departure.py)
+  for (const dist of [6, 8, 40]) {
+    for (let b = -165; b <= 180; b += 15) {
+      const first = geo.along(end, hdg + b, dist * NM);
+      const fixPt = geo.along(first, hdg + b, 60 * NM);
+      const j = R.joinDeparture([end, first, fixPt], { start_hdg_deg: hdg, start_alt_ft: elev + 100, fc, climb_alt: climbAlt });
+      cases++;
+      const first_turn = Math.abs(geo.turn(hdg, geo.course(end, first).deg));
+      // the corners from the takeoff's end to the first original point: none over the join limit
+      const pts = j.points;
+      const k = pts.findIndex((p) => p[0] === first[0] && p[1] === first[1]);
+      assert.ok(k >= 1 && pts[0] === end && pts[pts.length - 1] === fixPt, `${b} deg, ${dist} nmi: the start, the first point and the last are kept`);
+      const turns = [Math.abs(geo.turn(hdg, geo.course(pts[0], pts[1]).deg))];
+      for (let i = 1; i <= k; i++) turns.push(Math.abs(geo.turn(geo.course(pts[i - 1], pts[i]).deg, geo.course(pts[i], pts[i + 1]).deg)));
+      assert.ok(Math.max(...turns) <= 90.6, `${b} deg, ${dist} nmi: corners ${turns.map(Math.round)}`);
+      assert.ok(turns[0] <= firstMax + 0.6, `${b} deg, ${dist} nmi: the first leg goes straight on (the first corner ${turns[0].toFixed(1)}, the table allows ${firstMax.toFixed(1)})`);
+      if (j.note === null) {
+        assert.deepStrictEqual(pts, [end, first, fixPt], `${b} deg, ${dist} nmi: nothing added when it is fine`);
+        assert.ok(first_turn <= firstMax + 0.6 && geo.course(end, first).ft >= FMd.departureBackNm(first_turn) * NM, `${b} deg, ${dist} nmi: left alone only when the first corner is fine and its leg long enough`);
+      } else {
+        moved++;
+        assert.ok(/^a departure of /.test(j.note) && j.added_nm >= -0.01, j.note);
+        assert.ok(pts.length >= 4, 'at least one point added: ' + j.note);
+      }
+      // the assessment of the whole plan has nothing to say (a straight run on from the first point to a fix and a final in line)
+      const fixAlt = Math.round((elev + FMd.finalFixHeightAgl(10 * NM, 20000)) / 100) * 100;
+      const aim = geo.along(fixPt, hdg + b, 10 * NM);
+      let run = 0; // each point at the height the climb gives there, as the router's own points have
+      const heights = pts.slice(1).map((p, i) => { run += geo.course(pts[i], p).ft / NM; return i === pts.length - 2 ? fixAlt : Math.max(elev + 100, Math.floor(climbAlt(run) / 100) * 100); });
+      const plan = { field: { name: 'x', lat: here[0], lon: here[1], elev_ft: elev }, items: [{ kind: 'takeoff', start: here, end },
+        { kind: 'route', points: pts.slice(1).map((p, i) => [p[0], p[1], heights[i]]) }, { kind: 'land', fix: fixPt, aim }] };
+      assert.deepStrictEqual(pc.assess(plan, { weight_lb: 20000 }).filter((x) => x.kind !== 'final'), [], `${b} deg, ${dist} nmi`);
+    }
+  }
+  assert.ok(moved >= 12 && moved < cases, `some of the ${cases} first points need a departure, not all: ${moved}`);
+  // a first point only 4 nmi from the takeoff's end, 45 to 75 deg to the side: the aircraft cannot be taken straight on and round to it with no corner over 90 deg (the first leg must hold the
+  // turn's lead); the router says so in its note and the corner stays under the aircraft's own limit of 120 deg
+  for (const b of [-75, -45, 45, 75]) {
+    const first = geo.along(end, hdg + b, 4 * NM);
+    const j = R.joinDeparture([end, first, geo.along(first, hdg + b, 60 * NM)], { start_hdg_deg: hdg, start_alt_ft: elev + 100, fc, climb_alt: climbAlt });
+    assert.ok(j.note && /^the first point is \d+° off the takeoff's heading and the best departure still turns (9\d|10\d|11\d)°/.test(j.note), `${b} deg at 4 nmi: ${j.note}`);
+    assert.ok(j.corner_deg <= 120, `${b} deg at 4 nmi: ${j.corner_deg}`);
+  }
+  // the aircraft flying (no heading): nothing is changed, whatever the first point
+  const behind = geo.along(end, hdg + 180, 20 * NM);
+  assert.deepStrictEqual(R.joinDeparture([end, behind, geo.along(behind, hdg + 180, 30 * NM)], { fc }).points.length, 3);
+  assert.strictEqual(R.joinDeparture([end, behind, geo.along(behind, hdg + 180, 30 * NM)], { fc }).note, null);
+  // the plan as a whole: a route from a takeoff's end to a goal behind the runway starts with a departure, and the plan's own forecast says what it costs
+  const goal = geo.along(here, hdg + 180, 140 * NM);
+  const aimG = geo.along(goal, 90, 10 * NM);
+  const legsFor = (pts) => pc.legs([{ kind: 'route', points: pts }, { kind: 'land', fix: [goal[0], goal[1]], aim: aimG }], end, elev);
+  const o = { start: end, start_alt_ft: elev + 100, goal, aim: aimG, fix_alt_ft: 3000, weight_lb: 22000, fuel_lb: 11000, fc, perf, wind: null, hours: 0, zones: [], hazards: [], now: T0, legsFor, altitudes: [20000] };
+  const behindPlan = R.plan(Object.assign({}, o, { start_hdg_deg: hdg }));
+  const noHeading = R.plan(o);
+  assert.ok(behindPlan.ok && noHeading.ok);
+  assert.ok(/a departure of/.test(behindPlan.best.join || ''), 'a goal straight behind the runway: ' + behindPlan.best.join);
+  assert.ok(noHeading.best.join === null || !/a departure of/.test(noHeading.best.join), 'without the heading: no departure');
+  assert.ok(behindPlan.best.points.length > noHeading.best.points.length, 'the departure adds points');
+  // the climb goes on through the departure's corners: its points carry the first route point's height (a level-off in the turn flew it 560 ft past its line), and 'not reached' is not said of them
+  const nd = behindPlan.best.departure_points;
+  assert.ok(nd >= 1 && noHeading.best.departure_points === 0);
+  for (let i = 0; i < nd; i++) assert.strictEqual(behindPlan.best.points[i][2], behindPlan.best.points[nd][2], `departure point ${i + 1}`);
+  assert.ok(behindPlan.best.points[nd][2] > elev + 1000, 'a climb, not a level');
+  assert.ok(!behindPlan.best.warnings.some((w) => new RegExp(`^point [1-${nd}]: .* is not reached by then`).test(w)), JSON.stringify(behindPlan.best.warnings));
+}
+
 (async () => {
   const o = mk(500, { altitudes: [45000], sites: [site(35, -118)], glide, siteMode: 'prefer', zones: [circle('R-X', 35.2, -112, 15)] });
   const steps = [];
