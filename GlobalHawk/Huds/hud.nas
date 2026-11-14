@@ -166,6 +166,8 @@ var HUD = {
         for (var k = 0; k < 9; k += 1) append(me.hdg_labels, me.text(me.hdg_clip, 13, "center-bottom"));
         me.hdg_y = hy;
         me.path(g, 1.6).moveTo(0, hy + 2).lineTo(-6, hy + 11).lineTo(6, hy + 11).close();
+        # the value's box has the same dark backing as the speed's and the height's frames (tape()), under the figures and the outline
+        g.createChild("path").setColorFill(0, 0, 0, 0.35).setStrokeLineWidth(0).rect(-27, hy - 53, 54, 23, { "border-radius": 3 });
         me.hdg_text = me.text(g, 19, "center-center", MONO).setTranslation(0, hy - 42);
         me.path(g, 1.3).rect(-27, hy - 53, 54, 23, { "border-radius": 3 });
         me.course = me.hdg_clip.createChild("group");

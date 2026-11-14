@@ -46,7 +46,7 @@
       <description>the wheel's own speed downwards: the aircraft's, with its roll and pitch about the centre of gravity</description>
       <function><sum>
         <property>velocities/v-down-fps</property>
-        <product><property>velocities/p-rad_sec</property><quotient><difference><value>-81.954</value><property>inertia/cg-y-in</property></difference><value>12</value></quotient></product>
+        <product><property>velocities/p-rad_sec</property><quotient><difference><value>-64.8</value><property>inertia/cg-y-in</property></difference><value>12</value></quotient></product>
         <product><value>-1</value><property>velocities/q-rad_sec</property><quotient><difference><property>inertia/cg-x-in</property><value>303.468</value></difference><value>12</value></quotient></product>
       </sum></function>
     </fcs_function>
@@ -77,7 +77,7 @@
       <description>the wheel's own speed downwards: the aircraft's, with its roll and pitch about the centre of gravity</description>
       <function><sum>
         <property>velocities/v-down-fps</property>
-        <product><property>velocities/p-rad_sec</property><quotient><difference><value>81.954</value><property>inertia/cg-y-in</property></difference><value>12</value></quotient></product>
+        <product><property>velocities/p-rad_sec</property><quotient><difference><value>64.8</value><property>inertia/cg-y-in</property></difference><value>12</value></quotient></product>
         <product><value>-1</value><property>velocities/q-rad_sec</property><quotient><difference><property>inertia/cg-x-in</property><value>303.468</value></difference><value>12</value></quotient></product>
       </sum></function>
     </fcs_function>

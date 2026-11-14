@@ -33,6 +33,7 @@
   <property value="0">ap/leg-lon1-deg</property>
   <property value="0">ap/rollout</property>
   <property value="0.667">ap/spoiler-base</property>
+  <property value="45">ap/flare-height-ft</property>
   <property value="0">ap/link-last-sec</property>
   <property value="30">ap/link-timeout-sec</property>
   <property value="0">ap/link-monitor</property>
@@ -539,12 +540,28 @@
       </test>
       <output>ap/rollout</output>
     </switch>
+    <fcs_function name="ap/flare-height-now-ft">
+      <description>the wheel height at which the flare would start now: the design height, or the time to touchdown at the present sink if that is higher</description>
+      <function>
+        <max>
+          <value>45</value>
+          <product><value>2.6</value><max><value>0</value><difference><product><value>-1</value><property>velocities/h-dot-fps</property></product><value>4</value></difference></max></product>
+        </max>
+      </function>
+      <clipto><min>45</min><max>150</max></clipto>
+    </fcs_function>
+    <switch name="ap/flare-height-ft">
+      <description>the flare's height, followed until the flare starts and held from then</description>
+      <default value="ap/flare-height-ft"/>
+      <test value="ap/flare-height-now-ft">ap/flare == 0</test>
+      <output>ap/flare-height-ft</output>
+    </switch>
     <switch name="ap/flare">
       <default value="0"/>
       <test logic="AND" value="1">
         ap/land-mode == 1
         ap/rollout == 0
-        aero/wheel-height-ft lt 45
+        aero/wheel-height-ft lt ap/flare-height-ft
       </test>
     </switch>
     <fcs_function name="ap/approach-keas">
@@ -602,7 +619,7 @@
     <pid name="ap/theta-speed-i-deg">
       <input>ap/speed-error-i-kt</input>
       <kp>0.0</kp>
-      <ki>0.03</ki>
+      <ki>0.08</ki>
       <kd>0</kd>
       <trigger>ap/trig-speed</trigger>
       <clipto><min>-20</min><max>20</max></clipto>
@@ -1066,7 +1083,7 @@
     <fcs_function name="ap/flare-sink-wanted-fps">
       <description>the sink wanted in the flare: the approach's, falling with height to 1.6 ft/s at the ground</description>
       <function>
-        <max><value>1.6</value><product><value>0.07782</value><property>velocities/vg-fps</property><quotient><property>aero/wheel-height-ft</property><value>45</value></quotient></product></max>
+        <max><value>1.6</value><product><value>0.07782</value><property>velocities/vg-fps</property><quotient><property>aero/wheel-height-ft</property><property>ap/flare-height-ft</property></quotient></product></max>
       </function>
     </fcs_function>
     <fcs_function name="ap/spoiler-flare">

@@ -5,7 +5,7 @@
   <property value="1">engine/master</property>
   <property value="0">engine/failed</property>
   <property value="1">cal/fuel-factor</property>
-  <property value="0.00586">cal/drag-increment</property>
+  <property value="0.00308">cal/drag-increment</property>
   <property value="0">engine/extra-power-kw</property>
   <channel name="engine">
     <fcs_function name="engine/pressure-altitude-ft">
@@ -68,6 +68,24 @@
             <independentVar lookup="row">engine/pressure-altitude-ft</independentVar>
             <independentVar lookup="column">velocities/mach</independentVar>
             <independentVar lookup="table">engine/delta-T-K</independentVar>
+            <tableData breakPoint="-40">
+                             0        0.1        0.2        0.3        0.4        0.5        0.6        0.7
+                   0      10765     9809.3     9006.8     8336.3       7780     7322.5     6949.1     6646.3
+                5000     9669.1     8891.5     8323.3     7737.5     7250.1     6847.5     6517.4       6248
+               1e+04     7990.1     7347.4     6879.7     6566.4     6394.7     6353.3     6089.5     5850.5
+             1.5e+04     6555.5       6028     5644.2       5387     5245.9     5211.7     5277.6     5438.6
+               2e+04       5337     4907.5     4594.9     4385.4     4270.4     4242.4     4295.8     4426.6
+             2.5e+04     4308.9       3962     3709.5     3540.3     3447.3     3424.6     3467.5     3572.9
+               3e+04     3447.5     3169.9     2967.8     2832.3     2757.8     2739.5     2773.7     2857.9
+             3.5e+04     2731.1     2511.2       2351     2243.6     2184.5     2169.9     2196.9     2263.5
+               4e+04     2148.2     1975.1     1849.2     1764.7     1718.2     1706.7     1727.9     1780.2
+             4.5e+04     1689.3     1553.2     1454.1     1387.7     1351.2     1342.1     1358.8     1399.9
+               5e+04     1328.4     1221.4     1143.5     1091.3     1062.5     1055.4     1068.5     1100.9
+             5.5e+04     1044.6      960.5      899.2      858.1      835.5      829.9      840.3      865.7
+               6e+04      821.5      755.3      707.1      674.8      657.1      652.7      660.8      680.8
+             6.5e+04        646        594      556.1      530.7      516.7      513.2      519.6      535.3
+               7e+04      508.3      467.4      437.6      417.6      406.6      403.9      408.9      421.3
+            </tableData>
             <tableData breakPoint="-20">
                              0        0.1        0.2        0.3        0.4        0.5        0.6        0.7
                    0       8962     8079.5     7344.1       6734     6231.1     5820.3     5488.7     5222.9
@@ -121,6 +139,24 @@
                6e+04      822.5      756.3      708.2      670.1      628.3      593.7      565.3      542.2
              6.5e+04      646.8      594.8      556.9      526.9      494.1      466.9      444.6      426.3
                7e+04        509        468      438.2      408.5      382.8      361.6      344.1      329.9
+            </tableData>
+            <tableData breakPoint="40">
+                             0        0.1        0.2        0.3        0.4        0.5        0.6        0.7
+                   0     5168.3     4433.3     3812.8     3283.3     2825.5     2422.9     2404.9     2342.1
+                5000     4515.9     3886.5     3353.5     2897.3     2765.6     2581.3     2423.8     2297.4
+               1e+04     4228.5     3705.7       3288     2955.1       2690     2479.5     2313.8     2184.8
+             1.5e+04     3849.7     3403.3     3038.6     2742.2     2502.8     2310.9     2158.7     2039.7
+               2e+04     3434.9     3058.5     2748.1     2493.4     2285.8       2118     1983.9     1878.2
+             2.5e+04     3029.9     2714.9     2453.7       2238     2061.1     1917.2     1801.7     1709.8
+               3e+04       2648     2386.5     2168.6     1987.9       1839     1717.4     1619.2     1540.6
+             3.5e+04     2294.5     2079.2     1899.1     1749.2     1625.1     1523.5     1441.1     1374.6
+               4e+04     1840.9       1670       1527     1407.9     1309.3     1228.4     1162.7     1109.7
+             4.5e+04     1447.6     1313.3     1200.8     1107.1     1029.6        966      914.3      872.6
+               5e+04     1138.4     1032.7      944.3      870.6      809.6      759.6        719      686.2
+             5.5e+04      895.2      812.1      742.6      684.6      636.7      597.4      565.4      539.6
+               6e+04        704      638.6      583.9      538.4      500.7      469.7      444.6      424.3
+             6.5e+04      553.6      502.2      459.2      423.4      393.7      369.4      349.6      333.7
+               7e+04      430.3      390.1      356.5      328.4      305.3      286.3      270.8      258.4
             </tableData>
           </table>
       </function>
@@ -237,13 +273,36 @@
         </product>
       </function>
     </fcs_function>
-    <lag_filter name="engine/thrust-lagged-lbf">
-      <input>engine/thrust-cmd-lbf</input>
-      <c1>0.5000</c1>
-    </lag_filter>
+    <fcs_function name="engine/fan-share-cmd">
+      <description>the fan speed the throttle asks for, as a share of the maximum here: thrust goes with its square</description>
+      <function><pow><quotient><property>engine/thrust-cmd-lbf</property><max><property>engine/max-thrust-lbf</property><value>1</value></max></quotient><value>0.5</value></pow></function>
+      <clipto><min>0</min><max>1.05</max></clipto>
+    </fcs_function>
+    <fcs_function name="engine/fan-rate">
+      <description>how fast the fan's speed share changes, per second: towards what the throttle asks with a time constant of 0.38 s (fitted to a Citation X's take-off), but never faster than 0.23 a second above a share of 0.6 (fitted) or 0.115 below it (an estimate) when rising, or 0.23 a second falling (no data), or 1.5 when the engine is failed or stopped</description>
+      <function>
+        <max>
+          <product><value>-1</value><ifthen><gt><product><property>engine/running</property><difference><value>1</value><property>engine/failed</property></difference></product><value>0.5</value></gt><value>0.23</value><value>1.5</value></ifthen></product>
+          <min>
+            <quotient><difference><property>engine/fan-share-cmd</property><property>engine/fan-share</property></difference><value>0.38</value></quotient>
+            <ifthen><lt><property>engine/fan-share</property><value>0.6</value></lt><value>0.115</value><value>0.23</value></ifthen>
+          </min>
+        </max>
+      </function>
+    </fcs_function>
+    <integrator name="engine/fan-share">
+      <description>the fan's speed as a share of its maximum here: the integral of the rate above (a rate-limited first-order lag, as a fan accelerating under its fuel schedule is)</description>
+      <input>engine/fan-rate</input>
+      <c1>1</c1>
+      <clipto><min>0</min><max>1.05</max></clipto>
+    </integrator>
+    <fcs_function name="engine/thrust-spooled-lbf">
+      <description>the thrust the spooled fan gives: the maximum here times its share squared</description>
+      <function><product><property>engine/max-thrust-lbf</property><pow><property>engine/fan-share</property><value>2</value></pow></product></function>
+    </fcs_function>
     <switch name="engine/thrust-lbf">
-      <description>the spool lag, or none when ctl/instant is set (trims)</description>
-      <default value="engine/thrust-lagged-lbf"/>
+      <description>the spooled fan's thrust, or the throttle's own when ctl/instant is set (trims)</description>
+      <default value="engine/thrust-spooled-lbf"/>
       <test value="engine/thrust-cmd-lbf">ctl/instant == 1</test>
       <output>external_reactions/thrust/magnitude</output>
     </switch>
@@ -551,7 +610,7 @@
           <gt><product><property>engine/running</property><difference><value>1</value><property>engine/failed</property></difference></product><value>0.5</value></gt>
           <max>
             <product><value>9</value><property>velocities/vc-kts</property></product>
-            <product><property>engine/spool</property><value>8290</value><pow><max><value>0</value><min><value>1.1</value><property>engine/thrust-fraction</property></min></max><value>0.5</value></pow></product>
+            <product><property>engine/spool</property><value>8290</value><min><value>1.05</value><product><property>engine/fan-share</property><pow><quotient><property>engine/max-thrust-lbf</property><max><property>engine/max-thrust-standard-lbf</property><value>1</value></max></quotient><value>0.5</value></pow></product></min></product>
           </max>
           <max>
             <product><value>9</value><property>velocities/vc-kts</property></product>

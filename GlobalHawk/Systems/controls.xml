@@ -4,8 +4,8 @@
 <system name="controls">
   <property value="0">ctl/instant</property>
   <property value="0">fcs/throttle-cmd-norm</property>   <!-- the model has no JSBSim engine, so nothing else makes this one -->
-  <property value="-0.5306">cal/spoiler-lift</property>
-  <property value="0.03941">cal/spoiler-drag</property>
+  <property value="-0.5312">cal/spoiler-lift</property>
+  <property value="0.03044">cal/spoiler-drag</property>
   <channel name="surfaces">
     <fcs_function name="ctl/manual-pitch-deg">
       <description>both ruddervators, trailing edge down positive: nose down</description>
