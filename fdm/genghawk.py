@@ -36,12 +36,29 @@ FLEX = json.load(open(os.path.join(D, 'flex.json')))
 _cal = os.path.join(D, 'calibration.json')
 # what the calibration against flight data adds: fdm/data/README.md, "Calibration"
 CAL = json.load(open(_cal)) if os.path.exists(_cal) else dict(drag_increment=0.0, fuel_factor=1.0)
-GEAR_DRAG = 0.0065                # gear down: a drag area of 3.5 ft2 on the wing area. An estimate
+GEAR_DRAG = 0.0133                # gear down, the gear itself (the doors are GEAR_DOOR_DRAG): 7.2 ft2 of drag area on the wing area, from the parts (docs/PLAN.md, "Main gear in the 3-D model, and the gear drag again"):
+                                  # the four 22 x 5.75 main tyres, the 18 x 6.5 nose tyre, the exposed struts and braces, the open bays. Band 4.1 to 11 ft2 (0.0076 to 0.0204). An estimate; it was 0.0065 (3.5 ft2)
+GEAR_DOOR_DRAG = 0.0015           # the gear's door plates (a flat plate beside each main leg, a panel by the nose wheel), lying within about 5 deg of the airflow: 0.81 ft2 of drag area on the
+                                  # wing area, 0.4 to 1.7 ft2 by the photographs' limits (docs/PLAN.md, "Gear-door drag"). An estimate; the spoilers' fit (phase5_checks.py --fit) was redone with it in
 SPOILER_MAX_DEG = 45.0            # the real aero model's largest spoiler angle (Eaton and Woolf)
 SPOILER_APPROACH_DEG = 30.0       # the setting the approach is taken to be flown at: an assumption
 IN = 12.0
 SURFACE_LIMIT_DEG = 20.0          # ailerons and ruddervators: an estimate
-SPOOL_SECONDS = 2.0               # thrust lag: a class estimate, no data
+SPOOL_SECONDS = 2.0               # the old thrust lag (SPOOL_MODEL 'lag'): a class estimate, no data
+# The engine's spool, 'fan' (the default): the fan's speed share n (thrust = maximum x n^2, the law the sound's rpm already had) is a state
+# that follows what the throttle asks through JSBSim's actuator, a lag and a rate limit. Fitted, by least squares, to a Citation X taking off
+# (the fan's tone tracked in a recording, docs/PLAN.md "Engine spool from recordings"; rms 0.019 of the final speed from 0.6 to 1):
+# above n = 0.6 the speed rises 0.23 of its final value a second and settles with a time constant of 0.38 s. Below n = 0.6 nothing is
+# measured: half that rate, 0.115 a second, is an estimate, between the measured rate and the 0.063 that would only just meet the 5 s of the
+# certification rule (15 to 95 % of take-off thrust, recalled, not checked). Down: the measured rate, no data; a failed or stopped engine
+# loses its speed at once.
+SPOOL_MODEL = 'fan'
+N1_TAU = 0.38                     # s, fitted
+N1_RATE_HIGH = 0.23               # per s above N1_RATE_BREAK, fitted
+N1_RATE_LOW = 0.115               # per s below it: an estimate
+N1_RATE_BREAK = 0.60
+N1_RATE_DOWN = 0.23               # per s, no data
+N1_RATE_FAILED = 1.5              # per s when the engine is failed or stopped
 # past the stall the tables go on as a flat plate, plainly: the autopilot stays far from it
 FLAT = dict(alpha=[-90.0, -30.0, -15.0], CL=[0.0, -0.95, -0.55], CD=[1.3, 0.55, 0.20], Cm=[0.3, 0.15, 0.05])
 FLAT_HI = dict(alpha=[20.0, 30.0, 90.0], CL=[0.75, 0.95, 0.0], CD=[0.35, 0.60, 1.3], Cm=[-0.15, -0.20, -0.35])
@@ -130,6 +147,7 @@ def aerodynamics(t):
                      'a constant drag coefficient added by the calibration against measured climb and cruise-climb'),
                   fn('aero/drag-ground-effect', product(*(qs + [ge('dCD_ge')])), 'induced drag lost near the ground'),
                   fn('aero/drag-gear', product(*(qs + [prop('ctl/gear-norm'), '          <value>%g</value>' % GEAR_DRAG])), 'gear down'),
+                  fn('aero/drag-gear-doors', product(*(qs + [prop('ctl/gear-norm'), '          <value>%g</value>' % GEAR_DOOR_DRAG])), 'the gear'+"'"+'s door plates, with the gear down'),
                   fn('aero/drag-spoilers', spoil('cal/spoiler-drag'), 'drag of the spoilers')]),
         ('SIDE', [term('side-sideslip', 'side force due to sideslip', qs, 'CYb', 'aero/beta-deg'),
                   term('side-ruddervators', 'side force due to the ruddervators against each other', qs, 'CY_dr', 'ctl/yaw-deg')]),
@@ -308,6 +326,58 @@ def controls_file():
        surf('yaw-deg', 'fcs/rudder-cmd-norm', 'ruddervators against each other, nose right positive'), ail)
 
 
+def spool_fragment():
+    """The engine's spool in the system's XML: the old single lag on thrust, or the fan speed as a state (see SPOOL_MODEL)."""
+    if SPOOL_MODEL == 'lag':
+        return '''    <lag_filter name="engine/thrust-lagged-lbf">
+      <input>engine/thrust-cmd-lbf</input>
+      <c1>%.4f</c1>
+    </lag_filter>
+    <fcs_function name="engine/fan-share">
+      <description>the fan's speed as a share of its maximum here, from the thrust (thrust goes with its square)</description>
+      <function><pow><quotient><property>engine/thrust-lbf</property><max><property>engine/max-thrust-lbf</property><value>1</value></max></quotient><value>0.5</value></pow></function>
+    </fcs_function>
+    <switch name="engine/thrust-lbf">
+      <description>the spool lag, or none when ctl/instant is set (trims)</description>
+      <default value="engine/thrust-lagged-lbf"/>
+      <test value="engine/thrust-cmd-lbf">ctl/instant == 1</test>
+      <output>external_reactions/thrust/magnitude</output>
+    </switch>''' % (1.0 / SPOOL_SECONDS)
+    return '''    <fcs_function name="engine/fan-share-cmd">
+      <description>the fan speed the throttle asks for, as a share of the maximum here: thrust goes with its square</description>
+      <function><pow><quotient><property>engine/thrust-cmd-lbf</property><max><property>engine/max-thrust-lbf</property><value>1</value></max></quotient><value>0.5</value></pow></function>
+      <clipto><min>0</min><max>1.05</max></clipto>
+    </fcs_function>
+    <fcs_function name="engine/fan-rate">
+      <description>how fast the fan's speed share changes, per second: towards what the throttle asks with a time constant of %g s (fitted to a Citation X's take-off), but never faster than %g a second above a share of %g (fitted) or %g below it (an estimate) when rising, or %g a second falling (no data), or %g when the engine is failed or stopped</description>
+      <function>
+        <max>
+          <product><value>-1</value><ifthen><gt><product><property>engine/running</property><difference><value>1</value><property>engine/failed</property></difference></product><value>0.5</value></gt><value>%g</value><value>%g</value></ifthen></product>
+          <min>
+            <quotient><difference><property>engine/fan-share-cmd</property><property>engine/fan-share</property></difference><value>%g</value></quotient>
+            <ifthen><lt><property>engine/fan-share</property><value>%g</value></lt><value>%g</value><value>%g</value></ifthen>
+          </min>
+        </max>
+      </function>
+    </fcs_function>
+    <integrator name="engine/fan-share">
+      <description>the fan's speed as a share of its maximum here: the integral of the rate above (a rate-limited first-order lag, as a fan accelerating under its fuel schedule is)</description>
+      <input>engine/fan-rate</input>
+      <c1>1</c1>
+      <clipto><min>0</min><max>1.05</max></clipto>
+    </integrator>
+    <fcs_function name="engine/thrust-spooled-lbf">
+      <description>the thrust the spooled fan gives: the maximum here times its share squared</description>
+      <function><product><property>engine/max-thrust-lbf</property><pow><property>engine/fan-share</property><value>2</value></pow></product></function>
+    </fcs_function>
+    <switch name="engine/thrust-lbf">
+      <description>the spooled fan's thrust, or the throttle's own when ctl/instant is set (trims)</description>
+      <default value="engine/thrust-spooled-lbf"/>
+      <test value="engine/thrust-cmd-lbf">ctl/instant == 1</test>
+      <output>external_reactions/thrust/magnitude</output>
+    </switch>''' % (N1_TAU, N1_RATE_HIGH, N1_RATE_BREAK, N1_RATE_LOW, N1_RATE_DOWN, N1_RATE_FAILED, N1_RATE_DOWN, N1_RATE_FAILED, N1_TAU, N1_RATE_BREAK, N1_RATE_LOW, N1_RATE_HIGH)
+
+
 def engine_file():
     T = ENG['tables']
     alts, machs, dts, fr = T['altitude_ft'], T['mach'], T['delta_T_K'], T['thrust_fraction']
@@ -399,16 +469,7 @@ def engine_file():
         </product>
       </function>
     </fcs_function>
-    <lag_filter name="engine/thrust-lagged-lbf">
-      <input>engine/thrust-cmd-lbf</input>
-      <c1>%.4f</c1>
-    </lag_filter>
-    <switch name="engine/thrust-lbf">
-      <description>the spool lag, or none when ctl/instant is set (trims)</description>
-      <default value="engine/thrust-lagged-lbf"/>
-      <test value="engine/thrust-cmd-lbf">ctl/instant == 1</test>
-      <output>external_reactions/thrust/magnitude</output>
-    </switch>
+%s
     <fcs_function name="engine/thrust-fraction">
       <description>thrust over the standard-day maximum here</description>
       <function><quotient><property>engine/thrust-lbf</property><max><property>engine/max-thrust-standard-lbf</property><value>1</value></max></quotient></function>
@@ -453,7 +514,7 @@ def engine_file():
           <gt><product><property>engine/running</property><difference><value>1</value><property>engine/failed</property></difference></product><value>0.5</value></gt>
           <max>
             <product><value>9</value><property>velocities/vc-kts</property></product>
-            <product><property>engine/spool</property><value>8290</value><pow><max><value>0</value><min><value>1.1</value><property>engine/thrust-fraction</property></min></max><value>0.5</value></pow></product>
+            <product><property>engine/spool</property><value>8290</value><min><value>1.05</value><product><property>engine/fan-share</property><pow><quotient><property>engine/max-thrust-lbf</property><max><property>engine/max-thrust-standard-lbf</property><value>1</value></max></quotient><value>0.5</value></pow></product></min></product>
           </max>
           <max>
             <product><value>9</value><property>velocities/vc-kts</property></product>
@@ -468,7 +529,7 @@ def engine_file():
        table3(alts, machs, dts, T['max_thrust_lbf'], HP, MACH, 'engine/delta-T-K'),
        table2(alts, machs, hpx_thrust, HP, MACH),
        table2(alts, machs, T['max_thrust_lbf'][dts.index(0.0)], HP, MACH),
-       table2(alts, machs, T['idle_thrust_lbf'], HP, MACH), 1.0 / SPOOL_SECONDS,
+       table2(alts, machs, T['idle_thrust_lbf'], HP, MACH), spool_fragment(),
        table3(alts, machs, fr, fuel, HP, MACH, 'engine/thrust-fraction'),
        table3(alts, machs, fr, hpx_fuel, HP, MACH, 'engine/thrust-fraction'))
 

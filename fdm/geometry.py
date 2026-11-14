@@ -8,7 +8,7 @@ Three sources, none of them complete (fdm/data/README.md, "Geometry", says what 
                       fuselage outline, nacelle, fin, gear and wing root positions along the length and in height
   NASA's 3-D model    an artist's model (NASA 3D Resources), not to scale as a whole: used for shapes seen from above
                       and from the front, which the side view can't give (planform taper and sweep, twist, tail
-                      dihedral, gear track, fuselage width)
+                      dihedral (no longer: see VTAIL_DIHEDRAL), gear track, fuselage width)
 
     python3 fdm/geometry.py            measure, write the JSON files, print the summary
     python3 fdm/geometry.py --plot     also draw fdm/out/geometry.png
@@ -24,7 +24,12 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_GEOM = os.path.join(HERE, 'data', 'geometry.json')
-MAIN_GEAR_OUT = 0.65                      # ft a side: the main legs stand this much further out than in NASA's 3-D model (after its height is squashed to 15.2 ft)
+VTAIL_DIHEDRAL = 50.0                     # deg from the horizontal. Jane's and a spec page give 50; head-on photographs measure 50.8 +-0.5 (docs/PLAN.md, "V-tail dihedral").
+                                          # NASA's 3-D model gave 47.1 from its raw slope, but its axes are not scaled alike, so that is kept only as vtail.mesh_dihedral_deg
+# Lateral dimensions, measured (docs/PLAN.md, "Lateral dimensions"): two photographs of RQ-4As, by two methods, agree within their errors. NASA's 3-D mesh is not isotropic, so its lateral numbers
+# (scaled by length: track 12.36 ft, V-tail tip 9.92 ft) are kept only as references. The earlier track, 13.659 ft, was that plus 0.65 ft a side, an estimate made so the folded gear would clear.
+MAIN_TRACK = 10.8                         # ft, leg to leg: 11.2 +-0.5 (2001 head-on view) and 10.1 +-0.7 (NASA 871/872 on the ramp, camera-model fit)
+VTAIL_TIP_Y = 10.2                        # ft, each tip's offset from the centreline: 10.7 +-0.5 and 10.06 +-0.2 (the same two photographs); the root offset follows from it, the rise and the dihedral
 OUT_MASS = os.path.join(HERE, 'data', 'mass.json')
 
 # ---- published (fdm/data/README.md has the sources)
@@ -217,7 +222,7 @@ def build(mesh):
                         thrust_line_z=round((ex_top[1] + ex_bot[1]) / 2, 3), top_z=round(sv_point((0, SV['nacelle_top']))[1], 3))
 
     # V-tail: height and chords from the side view, dihedral from the mesh
-    dih = mesh['tail_dihedral_deg']
+    dih = VTAIL_DIHEDRAL
     tip_a, tip_f = sv_point((SV['fin_tip_x'][0], SV['fin_tip_y'])), sv_point((SV['fin_tip_x'][1], SV['fin_tip_y']))
     root_a, root_f = sv_point((SV['fin_root_x'][0], SV['fin_root_y'])), sv_point((SV['fin_root_x'][1], SV['fin_root_y']))
     hv = tip_f[1] - root_f[1]
@@ -227,11 +232,12 @@ def build(mesh):
     c_mean = (c_r + c_t) / 2
     x_c4_root, x_c4_tip = root_f[0] + 0.25 * c_r, tip_f[0] + 0.25 * c_t
     frac = (1 + 2 * c_t / c_r) / (3 * (1 + c_t / c_r))
-    g['vtail'] = dict(dihedral_deg=round(dih, 1), panel_span=round(panel, 3), root_chord=round(c_r, 3),
+    g['vtail'] = dict(dihedral_deg=round(dih, 1), mesh_dihedral_deg=round(mesh['tail_dihedral_deg'], 1), panel_span=round(panel, 3), root_chord=round(c_r, 3),
                       tip_chord=round(c_t, 3), area_each=round(area_panel, 1), area_total=round(2 * area_panel, 1),
                       area_projected_horizontal=round(2 * area_panel * np.cos(np.radians(dih)) ** 2, 1),
                       area_projected_vertical=round(2 * area_panel * np.sin(np.radians(dih)) ** 2, 1),
-                      root_z=round(root_f[1], 3), tip_z=round(tip_f[1], 3), root_y=round(mesh['fuselage_width'] * k_len / 4, 3),
+                      root_z=round(root_f[1], 3), tip_z=round(tip_f[1], 3), root_y=round(VTAIL_TIP_Y - panel * np.cos(np.radians(dih)), 3), tip_y=VTAIL_TIP_Y,
+                      mesh_tip_y_by_length=round(mesh['tail_tip_x'] * k_len, 3), earlier_root_y=round(mesh['fuselage_width'] * k_len / 4, 3),
                       root_le_x=round(root_f[0], 3), tip_le_x=round(tip_f[0], 3), mean_chord=round(c_mean, 3),
                       quarter_x=round(x_c4_root + frac * (x_c4_tip - x_c4_root), 3),
                       quarter_z=round(root_f[1] + frac * hv, 3), section='symmetric, 10 % thick (assumed)')
@@ -241,16 +247,14 @@ def build(mesh):
     g['vtail']['vertical_volume'] = round(g['vtail']['area_projected_vertical'] * g['vtail']['arm_from_wing_quarter']
                                           / (AREA * b), 4)
 
-    # gear: along the length and in height from the side view. The track is the mesh's plus MAIN_GEAR_OUT a side:
-    # at the mesh's own track a leg folded inboard puts its tyres 0.45 ft into the fuselage's side, so the mesh has
-    # its legs too close in. MAIN_GEAR_OUT is the least that lets the gear fold clear (an estimate, not a measurement).
+    # gear: along the length and in height from the side view; the track is MAIN_TRACK (measured). main_out is the offset of NASA's mesh gear (scaled by length) to it, a side, for the visual model.
     main, nose = sv_point(SV['main_axle']), sv_point(SV['nose_axle'])
     g['gear'] = dict(main_x=round(main[0], 3), nose_x=round(nose[0], 3), wheelbase=round(main[0] - nose[0], 3),
-                     main_track=round(2 * (mesh['main_track_half'] * k_len + MAIN_GEAR_OUT), 3), main_out=MAIN_GEAR_OUT,
+                     main_track=MAIN_TRACK, main_out=round(MAIN_TRACK / 2 - mesh['main_track_half'] * k_len, 3), mesh_track_by_length=round(2 * mesh['main_track_half'] * k_len, 3),
                      main_wheel_spacing=round(mesh['main_wheel_spacing'] * k_len, 3),
                      main_wheel_diameter=round(2 * SV['main_wheel_radius'] * FT_PER_PX, 3),
                      nose_wheel_diameter=round(2 * SV['nose_wheel_radius'] * FT_PER_PX, 3),
-                     main_axle_z=round(main[1], 3), nose_axle_z=round(nose[1], 3), wheels='two per main leg, two on the nose leg')
+                     main_axle_z=round(main[1], 3), nose_axle_z=round(nose[1], 3), wheels='two per main leg, one on the nose leg (photographs, NASA mesh)')
     g['side_view'] = dict(symbol_x=round(sv_point(SV['symbol'])[0], 3), symbol_z=round(sv_point(SV['symbol'])[1], 3),
                           symbol_percent_mac=round(100 * (sv_point(SV['symbol'])[0] - mac_le_x) / mac, 1),
                           height=round((PX_GROUND - PX_TOP) * FT_PER_PX, 3),

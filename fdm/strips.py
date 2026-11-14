@@ -59,6 +59,14 @@ TAIL_INCIDENCE = -3.0
 # (Karman-Tsien) 19 %. K is found by fdm/section_study.py, which also reports what it does to S1-S3 and to the speed mode:
 # the tables' Mach growth of the moment is what made the bare airframe's speed mode unstable at the cruise.
 CM_MACH_K = 0.65
+# The wing section's drag at Mach numbers above 0.45 gets the CFD's rise with Mach number, at equal lift, where NeuralFoil's is far smaller
+# (fdm/cfd/wave_drag.py writes data/cfd_wave_drag.json; docs/PLAN.md "Wave drag from the CFD"). Not a fit to flight data. False leaves NeuralFoil's drag as it came.
+CD_WAVE = True
+WAVE_FILE = os.path.join(HERE, 'data', 'cfd_wave_drag.json')
+# The wing section's lift at Mach 0.6 above 3.5 deg: the tunnel's maximum height with the CFD's shape past it, a named fit (fdm/cfd/stall_fit.py writes
+# data/cfd_stall_m06.json; docs/PLAN.md "Stall at Mach 0.6 fitted to the tunnel"). False leaves NeuralFoil's stall as it came.
+STALL_FIT = True
+STALL_FILE = os.path.join(HERE, 'data', 'cfd_stall_m06.json')
 
 
 def section_tables():
@@ -68,6 +76,28 @@ def section_tables():
         # the wing's moment: NeuralFoil's, taken from beta^-1 to beta^-K of Mach number (CM_MACH_K above)
         beta = np.sqrt(1 - np.array(out['mach']) ** 2)
         out['wing']['cm'] = (np.array(out['wing']['cm']) * (beta ** (1 - CM_MACH_K))[:, None, None]).tolist()
+        if CD_WAVE and os.path.exists(WAVE_FILE):
+            w = json.load(open(WAVE_FILE))
+            grid_m = [w['reference_mach']] + list(w['mach'])
+            grid_d = [np.zeros(len(w['cl']))] + [np.array(d) for d in w['d']]
+            cl, cd = np.array(out['wing']['cl']), np.array(out['wing']['cd'])
+            for j, m in enumerate(out['mach']):
+                if m <= w['reference_mach'] + 1e-9:
+                    continue
+                # the correction at this table Mach number: between the correction's own Mach numbers, held beyond the last
+                k = int(np.clip(np.searchsorted(grid_m, m) - 1, 0, len(grid_m) - 2))
+                f = float(np.clip((m - grid_m[k]) / (grid_m[k + 1] - grid_m[k]), 0, 1))
+                dm = (1 - f) * grid_d[k] + f * grid_d[k + 1]
+                cd[j] = cd[j] + np.interp(np.abs(cl[j]), w['cl'], dm)
+            out['wing']['cd'] = cd.tolist()
+        if STALL_FIT and os.path.exists(STALL_FILE):
+            st = json.load(open(STALL_FILE))
+            assert np.allclose(st['alpha'], out['alpha']), 'the stall file is for another angle grid'
+            j = list(out['mach']).index(st['mach'])
+            cl = np.array(out['wing']['cl'])
+            wgt = np.array(st['weight'])[None, :]
+            cl[j] = (1 - wgt) * cl[j] + wgt * np.array(st['target'])
+            out['wing']['cl'] = cl.tolist()
         return out
     import aerosandbox as asb
     out = dict(alpha=ALPHAS.tolist(), reynolds=REYNOLDS, mach=MACHS,

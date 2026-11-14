@@ -72,6 +72,29 @@ def main():
         for i, what in ((0, 'maximum thrust'), (1, 'fuel flow at it')):
             check('B3x', '%s with 20 kW taken off, at %d ft, Mach %.2f: change, %%' % (what, alt, mach), 100 * (got[20.0][i] / got[0.0][i] - 1),
                   100 * (want[20.0][i] / want[0.0][i] - 1), 2.0, 'generated')
+    # B3s the engine's spool: a throttle step from idle to maximum on the ground. The fan's speed share against what a Citation X's take-off
+    # recording gives (the fan tone tracked in citationx_takeoff_pdx; the model's rate and lag were fitted to the same track, so the first two are
+    # after the fit): 0.60 to 0.90 of the final speed in 1.24 s and to 0.98 in 1.76 s, each within 20 %; and thrust from 15 to 95 % of the
+    # maximum within 5.0 s (the rule for transport engines, recalled: a bound). Limits: docs/PLAN.md, "Engine spool from recordings".
+    H.state(f, dict(alt=0, mach=0.0, weight=25000), 0.0, 0.0, 0.0)
+    f['ctl/instant'] = 0
+    f['ap/engaged'] = 0
+    f['fcs/throttle-cmd-norm'] = 0.0
+    for _ in range(int(15 * H.HZ)):
+        f.run()
+    f['fcs/throttle-cmd-norm'] = 1.0
+    log = []
+    for i in range(int(16 * H.HZ)):
+        f.run()
+        log.append((i / H.HZ, f['engine/fan-share'], f['engine/thrust-lbf'] / f['engine/max-thrust-lbf']))
+    log = np.array(log)
+    tt, share, frac = log[:, 0], log[:, 1] / log[:, 1].max(), log[:, 2]
+    at = lambda x, lv: tt[np.argmax(x >= lv)]
+    check('B3s', 'fan speed from 0.60 to 0.90 of the final after a throttle step, s', at(share, 0.90) - at(share, 0.60), 1.24, 20.0, 'after the fit')
+    check('B3s', 'fan speed from 0.60 to 0.98 of the final after a throttle step, s', at(share, 0.98) - at(share, 0.60), 1.76, 20.0, 'after the fit')
+    d = at(frac, 0.95) - at(frac, 0.15)
+    passfail('B3s', 'thrust from 15 to 95 % of the maximum after a throttle step within 5.0 s', d <= 5.0, '%.2f s (a bound, not this engine\'s figure)' % d, 'generated')
+    f['fcs/throttle-cmd-norm'] = 0.0
     ac = strips.Aircraft()
     trims = {}
     for build in ('ships', 'ref'):

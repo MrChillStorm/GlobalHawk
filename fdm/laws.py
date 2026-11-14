@@ -15,7 +15,7 @@ ap/throttle-cmd. ap/gain-scale multiplies every loop gain (for the gain-margin c
 # gains at a dynamic pressure of 50 psf (docs/FLIGHT-LAWS.md, section 3)
 G = dict(K_theta=1.4, K_q=0.6, K_theta_i=0.4, K_phi=0.5, K_phi_i=0.0, K_p=0.6, K_r=0.5, K_beta=1.5, K_beta_i=0.15, K_ari=0.0,
          K_alpha=3.0, K_slow=0.4,
-         K_v=0.5, K_v_i=0.03, K_h=0.012, K_h_i=0.0012, K_hd=0.06, K_psi=1.2, K_thr=0.04, K_thr_i=0.004)
+         K_v=0.5, K_v_i=0.08, K_h=0.012, K_h_i=0.0012, K_hd=0.06, K_psi=1.2, K_thr=0.04, K_thr_i=0.004)
 SURFACE = dict(lag=20.0, rate=40.0, limit=20.0)          # actuators: 0.05 s lag, 40 deg/s, 20 deg. Estimates
 SCHEDULE = [(0.0, 0.0), (22000.0, 0.345), (55000.0, 0.60), (80000.0, 0.60)]     # pressure altitude, Mach above FL220
 SCHEDULE_KCAS = 150.0
@@ -37,6 +37,9 @@ FLARE_HEIGHT = 45.0              # ft of wheel height
 FLARE_PITCH = 2.4                # deg: the measured touchdowns
 FLARE_SINK = 1.6                 # ft/s wanted at the ground (0.5 m/s)
 FLARE_GAIN = 0.6                 # spoiler travel per ft/s of sink error in the flare
+FLARE_TTG = 2.6                  # s: the flare starts at this many seconds to touchdown at the sink it has beyond FLARE_SLACK, if that is higher than FLARE_HEIGHT
+FLARE_SLACK = 4.0                # ft/s of sink that is not a downdraft: the approach's own is 17.2 and gusts of light turbulence reach 21, so only more
+                                 # than about 21 ft/s makes the flare earlier (a first version, with no slack, floated 300-600 ft further in light turbulence)
 ROTATE_KIAS, ROTATE_PITCH = 120.0, 6.5
 DECEL_G = 0.235                  # the measured rollout
 WING_AREA = 540.0
@@ -233,7 +236,7 @@ def laws_file():
         ('throttle-cmd', 0.5), ('gain-scale', 1), ('bias-pitch-deg', 0), ('bias-yaw-deg', 0), ('bias-throttle', 0),
         ('theta-latched-deg', 0), ('theta-delta-deg', 0), ('theta-speed-bias-deg', 0), ('land-mode', 0), ('ground-steer', 0), ('taxi-speed-kt', 0),
         ('spoiler-mode', 0), ('spoiler-cmd', 0), ('rwy-elev-ft', 0), ('leg-lat0-deg', 0), ('leg-lon0-deg', 0), ('leg-lat1-deg', 0.01),
-        ('leg-lon1-deg', 0), ('rollout', 0), ('spoiler-base', 0.667), ('link-last-sec', 0), ('link-timeout-sec', 30), ('link-monitor', 0),
+        ('leg-lon1-deg', 0), ('rollout', 0), ('spoiler-base', 0.667), ('flare-height-ft', FLARE_HEIGHT), ('link-last-sec', 0), ('link-timeout-sec', 30), ('link-monitor', 0),
         ('link-lost', 0), ('manual', 0), ('direct-pitch-deg', 0), ('direct-roll-deg', 0), ('direct-yaw-deg', 0)))
     props += ''.join('  <property value="0">limits/%s</property>\n' % k for k in ('overstress', 'failed', 'reset'))
     ch = []
@@ -323,14 +326,30 @@ def laws_file():
       </test>
       <output>ap/rollout</output>
     </switch>
+    <fcs_function name="ap/flare-height-now-ft">
+      <description>the wheel height at which the flare would start now: the design height, or the time to touchdown at the present sink if that is higher</description>
+      <function>
+        <max>
+          <value>%g</value>
+          <product><value>%g</value><max><value>0</value><difference><product><value>-1</value><property>velocities/h-dot-fps</property></product><value>%g</value></difference></max></product>
+        </max>
+      </function>
+      <clipto><min>%g</min><max>150</max></clipto>
+    </fcs_function>
+    <switch name="ap/flare-height-ft">
+      <description>the flare's height, followed until the flare starts and held from then</description>
+      <default value="ap/flare-height-ft"/>
+      <test value="ap/flare-height-now-ft">ap/flare == 0</test>
+      <output>ap/flare-height-ft</output>
+    </switch>
     <switch name="ap/flare">
       <default value="0"/>
       <test logic="AND" value="1">
         ap/land-mode == 1
         ap/rollout == 0
-        aero/wheel-height-ft lt %g
+        aero/wheel-height-ft lt ap/flare-height-ft
       </test>
-    </switch>''' % FLARE_HEIGHT)
+    </switch>''' % (FLARE_HEIGHT, FLARE_TTG, FLARE_SLACK, FLARE_HEIGHT))
     ch.append(_fn('ap/approach-keas', '        <quotient><pow><quotient>%s%s</quotient>%s</pow>%s</quotient>' % (
         _p('inertia/weight-lbs'), _v(APPROACH_CL * WING_AREA * 0.5 * 0.0023769), _v(0.5), _v(1.6878099)),
         'the speed for a lift coefficient of %g at this weight' % APPROACH_CL))
@@ -578,7 +597,7 @@ def laws_file():
       <output>ap/spoiler-base</output>
     </switch>''')
     ch.append(_fn('ap/flare-sink-wanted-fps', '        <max>%s<product>%s%s<quotient>%s%s</quotient></product></max>' % (
-        _v(FLARE_SINK), _v(GLIDE_TAN), _p('velocities/vg-fps'), _p('aero/wheel-height-ft'), _v(FLARE_HEIGHT)),
+        _v(FLARE_SINK), _v(GLIDE_TAN), _p('velocities/vg-fps'), _p('aero/wheel-height-ft'), _p('ap/flare-height-ft')),
         'the sink wanted in the flare: the approach\'s, falling with height to %.1f ft/s at the ground' % FLARE_SINK))
     ch.append(_fn('ap/spoiler-flare', '        <sum>%s<product>%s<sum>%s%s</sum></product></sum>' % (
         _p('ap/spoiler-base'), _v(FLARE_GAIN), _p('velocities/h-dot-fps'), _p('ap/flare-sink-wanted-fps')),

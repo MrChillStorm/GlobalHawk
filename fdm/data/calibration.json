@@ -1,7 +1,7 @@
 {
- "drag_increment": 0.00586,
+ "drag_increment": 0.00308,
  "fuel_factor": 1.0,
  "fan_speed_factor": 1.01,
- "spoiler_lift": -0.5306,
- "spoiler_drag": 0.03941
+ "spoiler_lift": -0.5312,
+ "spoiler_drag": 0.03044
 }

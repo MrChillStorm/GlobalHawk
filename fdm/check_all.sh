@@ -21,6 +21,10 @@ run() {
     tail -n 3 "$LOG/$name.txt" | grep -a "checks,\|exit " >&2
 }
 if [ "${2:-}" = "fg" ]; then
+    # one FlightGear run at a time: a second instance waits on the first's lock (the loader shows "wait-on-shared-lock") and both runs fight over port 5477
+    FGLOCK=/tmp/globalhawk-fg-checks.lock
+    mkdir "$FGLOCK" 2>/dev/null || { echo "another FlightGear check run is in progress ($FGLOCK; remove it if none is)" >&2; exit 1; }
+    trap 'rmdir "$FGLOCK"' EXIT INT TERM
     for c in phase9a phase9b phase9c phase9d; do run ${c}_checks sh -c "$PY -u fdm/${c}_checks.py 2>&1 | grep -a -v '^\[sentry\]'"; done
 else
     run engine $PY fdm/engine.py
@@ -28,7 +32,7 @@ else
     run engine_pycycle $PY fdm/engine_pycycle.py          # needs tools/pycycle (fdm/mkpycycle.sh)
     run attrex_lift $PY fdm/attrex_lift.py                # needs the ATTREX records in refs/
     run phase4_checks $PY fdm/phase4_checks.py            # after attrex_lift: it reads fdm/data/attrex_lift.json
-    for c in phase1 phase3 phase5 phase6 phase7a phase7b phase7c phase7d phase8a phase8b phase8c phase8d phase8e; do run ${c}_checks $PY fdm/${c}_checks.py; done
+    for c in phase1 phase3 phase5 phase6 phase7a phase7b phase7c phase7d phase8a phase8b phase8c phase8d phase8e phase11; do run ${c}_checks $PY fdm/${c}_checks.py; done
     run gcs_tests sh -c "cd GlobalHawk/gcs && npm test"
 fi
 git rev-parse --short HEAD > "$LOG/commit.txt" 2>/dev/null

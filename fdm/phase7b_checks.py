@@ -142,6 +142,15 @@ def mission(f):
         add('M3', 'takeoff', np.abs(log['xt'][k]).max() <= 15 and log['theta'][k][lift] < 8 and abs(t130 / 37.5 - 1) <= 0.15 and 120 <= log['keas'][k][lift] <= 145,
             '130 KIAS %.1f s after the start (Pastor 37.5); nose through 1 deg at %.1f s; liftoff at %.0f KEAS and %.1f deg; within %.1f ft of the centreline' % (
                 t130, first_cmd, log['keas'][k][lift], log['theta'][k][lift], np.abs(log['xt'][k]).max()))
+        # M3b the climb 30 to 40 s after lift-off against the ATTREX records' first seconds (limits written 2026-11-13, the
+        # speed's after it had missed by 2 kt: 147 to 151 KEAS, 10 to 14 deg, 2,250 to 3,650 ft/min)
+        tl = t[lift]                                         # the take-off item ends at the climb's start: the window is in the whole log
+        w = (log['t'] >= tl + 30) & (log['t'] <= tl + 40)
+        if w.any():
+            keas, th = float(np.mean(log['keas'][w])), float(np.mean(log['theta'][w]))
+            roc = float((log['alt'][w][-1] - log['alt'][w][0]) / (log['t'][w][-1] - log['t'][w][0]) * 60.0)
+            add('M3b', 'takeoff: climb 30 to 40 s after lift-off', 147 <= keas <= 151 and 10 <= th <= 14 and 2250 <= roc <= 3650,
+                '%.1f KEAS (147-151), %.1f deg (10-14), %.0f ft/min (2,250-3,650)' % (keas, th, roc))
     # M4 enroute
     k = log['item'] == 2
     if k.any():

@@ -21,8 +21,8 @@ The source documents themselves are not in this repository. Each is public; the 
 The RQ-4B is a different aircraft (span 130.9 ft, length 47.6 ft, height 15.3 ft, 32,250 lb [USAF fact sheet]) and none
 of its numbers are used.
 
-Wing sweep, taper, dihedral, twist, the V-tail's size and angle, the control-surface outlines and the gear positions
-are not published anywhere we found. Where they come from is the next section.
+Wing sweep, taper, dihedral, twist, the V-tail's chords, the control-surface outlines and the gear positions
+are not published anywhere we found (the V-tail's 50 deg angle, 11.4 ft span and 42.8 ft² per surface are: Jane's, through a spec page). Where they come from is the next section.
 
 ## Geometry: what was built, and from what
 
@@ -41,8 +41,8 @@ NASA's drawing:
 | Positions along the length and heights: fuselage outline, nacelle, fin, wing root, axles | NASA's side-view drawing of the payload bays (a slide in NASA's Global Hawk briefings), digitised by hand to about 2 pixels, 0.1 ft | published length, 44.4 ft |
 | Wing span stations | 3-D model | published span, 116.2 ft |
 | Wing chords | 3-D model's planform: taper, sweep and the root fillet | **a fit:** scaled so the straight-tapered wing, carried to the centreline, has the published 540 ft² |
-| Widths: fuselage, gear track; V-tail dihedral | 3-D model | published length |
-| Main gear track | 3-D model's, plus 0.65 ft a side | **an estimate:** at the model's own track the gear, folded inboard, cuts into the fuselage side; 0.65 ft is what lets it fold clear once the model is squashed to the published 15.2 ft height (`MAIN_GEAR_OUT` in `fdm/geometry.py`) |
+| Width: fuselage | 3-D model | published length |
+| Main gear track | 10.8 ft | **measured, two photographs of RQ-4As:** 11.2 +- 0.5 ft (the 2001 head-on view, scaled by the tyre, a person and the aircraft's height) and 10.1 +- 0.7 ft (NASA 871 and 872 on the ramp, a camera-model fit of both aircraft). NASA's 3-D model gave 12.36 ft at the scale of the length (it is not isotropic); the earlier 13.66 ft was that plus an estimate of 0.65 ft a side (`MAIN_TRACK` in `fdm/geometry.py`; docs/PLAN.md, "Lateral dimensions") |
 
 | Wing | Value | |
 |---|---|---|
@@ -58,11 +58,13 @@ NASA's drawing:
 
 | V-tail, fuselage, engine, gear | Value | |
 |---|---|---|
-| V-tail | two panels at 47 deg from the horizontal, each 12.2 ft long, chords 4.86 and 2.47 ft, 44.8 ft² | height and chords from the drawing, angle from the model |
+| V-tail | two panels at 50 deg from the horizontal, each 11.7 ft long, chords 4.86 and 2.47 ft, 42.8 ft² | height and chords from the drawing; the angle from Jane's and a spec page (50 deg) and head-on photographs (50.8 +-0.5), not the 3-D model, whose raw slope gave 47.1 (its axes are not scaled alike). The published 42.8 ft² per surface is matched by the drawing's chords and this angle; the published 11.4 ft span is 2.6 % shorter than the model's 11.7 (cause not established, left as drawn) |
 | V-tail projected areas | 41.6 ft² horizontal, 48.0 ft² vertical; arm 17.9 ft; volumes 0.277 and 0.0137 | derived |
+| V-tail lateral position | tips 10.2 ft from the centreline, roots 2.68 ft (follows from the tip, the rise and the 50 deg) | **measured, the same two photographs:** 10.7 +- 0.5 and 10.06 +- 0.2 ft; NASA's 3-D model gave 9.9 ft at the scale of the length; the earlier root offset, 1.26 ft, was a quarter of the model's fuselage width, a guess (`VTAIL_TIP_Y`) |
 | Fuselage | 44.4 ft long, 5.05 ft wide, 7.3 ft deep at the nose bulge | drawing; width from the model |
 | Nacelle | inlet lip at x = 22.5 ft, exhaust at 39.9 ft, thrust line 8.43 ft above the ground, 3.1 ft above the centre of gravity | drawing |
-| Gear | main axles at x = 25.29 ft, nose at 10.55 ft: wheelbase 14.74 ft; track 12.4 ft; two wheels a leg; wheels 1.85 and 1.59 ft across | drawing; track from the model |
+| Gear | main axles at x = 25.29 ft, nose at 10.55 ft: wheelbase 14.74 ft; track 10.8 ft; two wheels on each main leg, one on the nose leg; wheels 1.85 and 1.59 ft across in the drawing | drawing; track from two photographs; wheel counts from photographs |
+| Tyres | nose 18 x 6.5-8 (0.457 x 0.165 m), mains 22 x 5.75-12 (0.559 x 0.146 m) | **assumed, unverified:** no source for the nose size (the F-5's nose gear is said to be the origin of the unit: airforce-technology.com); the mains from the Learjet 45's Goodyear 226K08-4 and a parts catalogue's Goodyear 226K23-2 for the RQ-4A. The 3-D model's nose wheel is the nose size; its main tyres (about 16.5 in) are not yet the main size |
 
 Checks (limits set before measuring):
 
@@ -198,7 +200,14 @@ moment is multiplied by beta^(1-K) with beta = sqrt(1 - M^2), so that it grows a
 root doubling in 10.4 s; with each table of the aerodynamic model held at its Mach 0.45 values above that Mach, one at a time, only
 holding the moment's removed it (the lift's and the drag's left it at 8.7 and 11.1 s). With the exponent it is a phugoid of 176 s,
 damping 0.06. The trimmed lift-curve slope is 2.8 and 5.6 % over the flights' (limit 10 %), and the mission's drag increment was
-refitted, 0.00564 to 0.00586, because the time to 55,000 ft had gone to -6.1 % (limit 5 %); the fan-speed factor stays 1.01.
+refitted, 0.00564 to 0.00586, because the time to 55,000 ft had gone to -6.1 % (limit 5 %); the fan-speed factor stays 1.01. (Fitted again, 0.00355, with the CFD's wave drag: see below.)
+
+**A transonic RANS run (2026-11-13; `fdm/cfd/`).** SU2 8.6.0 on a 40,000-cell wall-resolved mesh, Spalart-Allmaras, fully turbulent, 42 cases (Mach 0.2 at Re 1
+million, 0 to 16 deg; Mach 0.6 at Re 1 and 2 million, -2 to 10 deg; Mach 0.65 at Re 1.5 million, 0 to 8 deg). Written first: trusted for the stall only if its moment
+at the tunnel's lifts is within 0.02 of the tunnel's at both Mach 0.6 cases and its maximum lift within 10 % at Re 1 million. **It is not (moment -0.0283 and
+-0.0256), so the tables are unchanged.** What it shows: maximum lift at Mach 0.6 1.374 and 1.396 (tunnel 1.312 and 1.423, the model 1.196 and 1.198); the fall from Mach 0.6
+to 0.65 -21.8 % (the model's -18 %); the moment's growth from Mach 0.2 to 0.6 at the tunnel's lifts 1.105 (tunnel 1.139, XFOIL 1.187, tables before the exponent 1.237).
+Fully turbulent drag at lift 0.7 is 0.0192 (Mach 0.6, Re 1 million) against the tunnel's 0.0096 free-transition figure at its lifts: reported, not limited.
 
 ### Against the Air Force's flight test of the Block 20
 
@@ -242,7 +251,7 @@ model was built.
 
 ### The two models against each other
 
-At Mach 0.6 and 60,000 ft, 2.5 deg, moments about 27 % of the mean chord (`fdm/out/aero_compare.txt`,
+*(Phase 3 record; not refreshed since: see the 2026-11-13 section above.)* At Mach 0.6 and 60,000 ft, 2.5 deg, moments about 27 % of the mean chord (`fdm/out/aero_compare.txt`,
 `aero_compare.json`). The plan set no limits here: the spread between the models is each quantity's uncertainty.
 
 | | Strips | Build-up | Vortex lattice | |
@@ -297,7 +306,8 @@ modes in the tables below are from before the calibration.
   tables' ends (-6 and 12 deg) they run on to a flat plate, plainly.
 - **Engine:** not JSBSim's turbine but system channels, generated from `engine.json`: maximum thrust over pressure
   altitude, Mach number and the temperature's offset from standard, idle thrust, fuel flow against thrust, a 2 s
-  lag for the spool (a class estimate), thrust applied on the nacelle's axis.
+  spool as the fan's speed (a rate-limited first-order lag fitted to a recording, see "The engine's spool" below; it was a 2 s lag, a class estimate),
+  thrust applied on the nacelle's axis.
 - **Fuel: our own design**, since the real system isn't public. Six tanks: an inboard and an outboard tank in each
   wing, and a forward and an aft tank in the fuselage, sized so that all the fuel together has its centre at the
   centre-of-gravity target, 22 % of the mean chord. The management draws from every tank in proportion to its
@@ -346,6 +356,40 @@ What already disagrees with flight data, before any calibration:
 - **Six degrees of ruddervator in trim** is a lot, and it comes from the wing section's nose-down moment and the
   forward centre of gravity. The real tail will have an incidence that carries this; ours has none yet.
 
+### Off the design conditions: days, wind and turbulence (2026-11-13; `fdm/phase11_checks.py`)
+
+Limits were written first (docs/PLAN.md, Q2 and Q3); no source holds any of them, so they are design requirements. **Non-standard days:** the
+property `atmosphere/delta-T` (the engine tables' temperature axis now runs -40 to +40 K; the old rows are unchanged). The laws hold height within 0.5 ft
+and speed within 0.02 kt hands-off at three conditions on days of -20, +15 and +30 K; the maximum thrust at 20,000 ft falls 0.55 %/K cold to standard and
+0.87 %/K from standard to +15 K; the 2013 landing is as on a standard day at -20 and +30 K. The climb at maximum thrust on the schedule is compared in
+pressure altitude (a first version compared geometric height and took a 4,500 ft difference of the day's pressure altitude at 55,000 ft for a slow climb):
+the rate goes with true airspeed at a given Mach (the schedule is in Mach above FL220), so a cold day climbs 3 % *slower* above FL220 (3,479 s from 10,000 to 55,000 ft against 3,369 s), the
+limit that it should grow with temperature is wrong and stays a miss; the service ceiling (100 ft/min) falls to about 54,000 ft at +15 K and 50,000 ft at +30 K.
+**Wind and turbulence:** JSBSim's wind is set back to zero by every initial-conditions call (`H.state`, `H.engage`, `H.on_ground`), so it is brought up over 30 s
+in the run loops (`Gale`); trims are made in calm air and the turbulence started after the laws engage (trimming with turbulence on fails, and a first version
+that did so showed hard landings that were that artefact). MIL-F-8785C turbulence in JSBSim gives nothing at altitude at severity 1 (0.00 m/s at 20,000 ft
+and above), 2.0 m/s at 60,000 ft at severity 5 and 1.1 m/s at 20,000 ft at severity 3 (1.9 m/s at 3,000 ft): those were used. One deterministic realisation
+(JSBSim's fixed seed), not statistics: a different draw can move a figure by tens of feet. Results: the cruise holds height within 75 and 69 ft and bank
+within 0.9 and 1.8 deg with no structural flag, load factor 0.71-1.25 and 0.77-1.23 (pass); the airspeed varies by 11.7 kt (limit 5: a miss, since the gust
+along the heading varies by 25 and 15 kt); the whole mission in a 25 kt headwind with light turbulence completes (40 min) with 94 % of the route inside 0.25
+nmi (95 % was the limit: a miss; phase 7b's own 80 % passes); the 2013 landing in a 10 kt crosswind with light turbulence is down within 8 ft of the
+centreline at 0.31 m/s (pass), at 20 kt within 7 ft at 0.50 m/s, in severe turbulence (severity 5) 50 ft off at 1.26 m/s. **The flare** now starts at the time
+to touchdown when the sink is higher than a downdraft's (`laws.FLARE_TTG` 2.6 s, `FLARE_SLACK` 4 ft/s): with the fixed 45 ft flare the severity-5 landing came
+down at 3.33 m/s, 460 ft short of the aiming point and 167 ft off the centreline; with it 1.26 m/s. Without the slack the change floated 300-600 ft further in
+light turbulence, so the slack was added; calm landings are unchanged.
+
+### The short period from ATTREX at 20 Hz (2026-11-13; `fdm/attrex_shortperiod.py`, `data/attrex_shortperiod.json`)
+
+The 20 Hz records have pitch (0.01 deg), angle of attack, vertical acceleration, Mach number and the dynamic pressure (the column called Q is that, in hPa,
+not a pitch rate). In 260 steady, level segments above 50,000 ft (16 flights) the spectra of pitch rate (the derivative of pitch), angle of attack, pitch and
+vertical acceleration all have a peak 3 times over the band's median (the limit: half of at least 20 segments): all 260 do. The pitch-rate peak: median
+0.293 Hz, middle half 0.244-0.352 Hz, damping about 0.15 (from the half-power width). **By campaign: 2013 flights 0.24-0.26 Hz, 2014-2015 flights 0.33-0.40 Hz**
+(not explained: a flight control or configuration change is the candidate); by height 0.42 Hz at 50-53,000 ft to 0.24 Hz above 60,000 ft. The model:
+the bare airframe 0.234-0.279 Hz (damping 0.27-0.28); the laws' closed loop in MIL turbulence 0.303-0.322 Hz. Fixed reading: within 30 % of the closed loop
+(0.293 against 0.30-0.32) leaves the 22 % centre of gravity and the margin standing. The frequency goes with dynamic pressure to the power 1.05 (correlation
+0.61), the model's bare airframe to 0.43 and its closed loop to about 0: the data are neither, so they cannot say whether the real flight control or the bare
+airframe sets it. They do say the real pitch stiffness is at least the model's.
+
 ### Frame rate (2026-11-13)
 
 120 Hz, which is FlightGear's. `GH_HZ=240` (480, 960) in the environment runs every check script at that rate (`harness.HZ`);
@@ -379,24 +423,50 @@ at sea level.** So the rating is read as one limit on turbine temperature, the o
 level, held at every height. Nothing was fitted for it. With it the climb rates from 10,000 to 40,000 ft come out
 within 3 % of Pastor's. Above about 27,000 ft the fan-speed limit is the lower one.
 
+### The CFD's wave drag, the 50 deg V-tail and the withdrawn stall fit (2026-11-13)
+
+Limits and every result are in `docs/PLAN.md` ("Wave drag from the CFD", "Stall at Mach 0.6 fitted to the tunnel", "V-tail dihedral"); the summary:
+
+- **Wave drag.** `fdm/cfd/wave_drag.py` takes the SU2 runs at Re 1.5 million (95 cases, Mach 0.45 to 0.7, -3 to 10 deg) and writes
+  `data/cfd_wave_drag.json`, which `strips.section_tables()` adds to the wing's drag at Mach above 0.45: the solver's rise of drag with Mach at equal lift, less the table's own rise
+  (a difference within the solver: its absolute drag is about twice the tunnel's). Named, CFD-derived, no flight data in it. At lift 0.4 / 0.6 / 0.8 / 0.95 it is +10 / +12 / +13 / +22 counts at
+  Mach 0.6 and +21 / +43 / +73 / +170 at 0.65. **Deviation from the first rule, recorded:** cases are used by lift spread under 0.01 alone (the density-residual rule dropped well-converged cases and kept worse
+  ones) and a lift counts as supported only between used cases at most 0.30 apart; `wave_drag.py --rule A` reproduces the first. Deleting the file removes the change. Best lift-to-drag in the tables:
+  Mach 0.6 37.2 to 34.1, Mach 0.65 31.1 to 24.3.
+- **The drag increment** was fitted again, **0.00308** (0.00355 when the CFD's wave drag went in, before the tail's and the gear's lateral positions were measured; 0.00564 and 0.00586 before that), fan-speed factor 1.01: below the 0.0040 to 0.0075 band written beforehand (the wave drag took about 0.0023 of the old value).
+  After it **10 of 11 mission checks pass; the time from 10,000 to 55,000 ft is 9.0 % short (limit 5)**, the 40,000 to 55,000 ft climb rates +11.1 and +15.6 %, the cruise-climb heights -453, -570, -881 and +386 ft
+  (limit 1,000), endurance 34.9 h (35.1 with no ceiling), cruise lift-to-drag 29.9. The fit of the lateral-dimension change is the one that rule allowed; no further fit.
+- **V-tail dihedral 50 deg** (published, and 50.8 +- 0.5 in two head-on photographs), from the 3-D model's raw 47.1: panel 11.70 ft, 42.8 ft2 each, horizontal tail volume 0.277 to 0.236. Static margin
+  at the 22 % centre of gravity (strip model, +-0.5 deg): 9.8 to 8.5 % at 60,000 ft, 5.6 to 4.6 % at 50,000 ft (20,000 lb) and 5.3 to 4.3 % at 55,000 ft (17,000 lb) (the 50 deg alone took about 1.9; the measured lateral position gave 0.6 to 0.8 back); the bare short period 0.279 / 0.266 / 0.234
+  to 0.230 / 0.220 / 0.185 Hz; the closed loop 0.303 / 0.322 / 0.322 Hz against the flights' 0.293 (+3, +10 and +10 %: within 30 %), so the centre of gravity stays. The published span (11.4 ft) is 2.6 % under the model's 11.70
+  (cause not established, left as drawn); the head-on RQ-4A photograph's tail width against its gear track (1.82) disagreed with the model's (1.29): **resolved**, the track is 10.8 ft and the tail tips 10.2 ft from the centreline (rows above; PLAN, "Lateral dimensions").
+- **What moved in the checks, found by taking each change out in turn** (one at a time against the full state): A1 at Mach 0.59 to 0.62 (+15.6 %, limit 10) is the wave drag (three of six weights no longer
+  trim at full throttle at 57,293 ft); 7d H3 (cruise, full forward stick: Mach 0.653, limit under 0.65) was the tail angle (+0.003) and the wave drag (+0.001) together, and passes (0.643) with the tail tips at their measured 10.2 ft; the climb-time misses (mission P1, 7a A10) are the
+  one-number calibration's compromise.
+- **The stall fit is withdrawn.** `fdm/cfd/stall_fit.py` (the tunnel's maximum lift with the CFD's shape) met S3, but its blend back to the table's own deep stall after the CFD's last angle (10 to 12 deg) falls 0.26 to
+  0.37 per deg against the CFD's steepest 0.13, which its limit (d) forbids; the tables stay as they were and S3 at Mach 0.6, Re 2 million stays a miss (-15.8 %). Its result is in `fdm/cfd/withdrawn/`.
+- **Not refreshed:** the Phase 3 table "The two models against each other" below (neutral points 29.8 and 32.5 %) does not match `aero_compare.json` even before this change; kept as the Phase 3 record.
+
 ### What was fitted
 
 | Fit | Value | Fitted to |
 |---|---|---|
-| A constant added to the drag coefficient | 0.00564 | Pastor's climb rates from 40,000 to 55,000 ft and his four cruise-climb heights, together with the next |
+| A constant added to the drag coefficient | 0.00308 (0.00355 before the lateral dimensions were measured; 0.00564 before the moment fit, 0.00586 after it, before the CFD's wave drag) | Pastor's climb rates from 40,000 to 55,000 ft and his four cruise-climb heights, together with the next |
 | A factor on the engine's fan-speed limit | 1.01 | the same. The limit came from the Citation X's engine in Phase 2 |
 | The wing's incidence | 2.0 deg | the ATTREX lift curve: the model's trimmed lift at a given angle of attack |
-| A fuel-flow factor | not used | allowed if endurance missed; it misses by 0.3 h and is left alone |
+| A fuel-flow factor | not used | allowed if endurance missed; the endurance, 34.9 h, is inside its window (29 to 35 h), and it is left alone |
 
 - **Why two numbers.** More drag slows the climb above 40,000 ft, as measured, but also lowers the cruise-climb,
   which already matched. The best pair sits in a shallow valley: fan-speed factors from 1.00 to 1.02 with drag
   increments from 0.0046 to 0.0068 fit almost equally well. Thrust and drag can't be told apart with this data.
-- **The drag increment adds 26 % to the model's own drag at cruise.** It stands for everything the strip model doesn't
+- **The drag increment adds 11 % to the model's own drag at cruise** (it was 26 % before the CFD's wave drag went in). It stands for everything the strip model doesn't
   have: the section's own drag shortfall against the tunnel (about 6 %), antennas, radomes, leaks, the nacelle's
-  inlet, the tail's induced drag, the flexible wing's shape. Lift-to-drag falls from 32.7 to 25.9 at the 15,000 lb cruise trim; in the cruise-climb, at a higher lift
-  coefficient, it is 30.
+  inlet, the tail's induced drag, the flexible wing's shape. Lift-to-drag falls from 33.7 to 30.4 at a lift coefficient of 0.96 (Mach 0.6; the mission's cruise-climb, with trim drag, 29.9).
 - **The tail's incidence, -3.0 deg, is a choice,** not a fit: it leaves the ruddervators within a degree of
-  neutral in cruise and climb.
+  neutral in cruise and climb. Two side photographs of RQ-4s just off the runway (the tail panels' tip edges for
+  the chord; the drawn profile's belly or the wheel-axle line for the body axis) read -3.8 +-2 deg (an RQ-4D) and
+  -2.7 +-1.5 deg (a USAF RQ-4, long lens): consistency checks, not constraints, and not independent (the incidence
+  and the centre of gravity trade off 3 deg for 0.11 in Cm).
 - `fdm/data/calibration.json` holds the numbers; the generator and the engine tables read it.
 
 ### Checks
@@ -624,8 +694,9 @@ the ground station with the link's delay, so one can see why nobody does. `ap/ma
 | | | |
 |---|---|---|
 | Ground effect | lift, drag and moment against height and angle of attack | from the strip model's own vortices mirrored in the ground: at the wheels' height it adds 0.05 of lift coefficient and takes away 60 % of the induced drag |
-| Gear drag | 0.0065 | an estimate: 3.5 ft² of drag area |
-| Spoilers | lift -0.354 and drag +0.0263 at the approach setting | **a fit** to the 2013 approach (speed, glide and angle of attack at idle thrust). The setting is taken as 30 of 45 deg: an assumption, as is the straight line to 45 deg |
+| Gear drag | 0.0133 (0.0065 before 2026-11-13) | **an estimate, from the parts:** 7.2 ft² of drag area (band 4.1 to 11): the four 22 x 5.75 main tyres 1.8, the 18 x 6.5 nose tyre 0.4, two exposed main struts 2.0, side braces and links 1.0, the nose fork and strut 0.5, three open bays 1.2, hubs, brakes and lights 0.3 (handbook coefficients for wheels, cylinders and cavities, none from a source for this aircraft). The old 3.5 ft² lay below the whole band. The approach fixes only the total with the spoilers; docs/PLAN.md, "Main gear in the 3-D model, and the gear drag again" |
+| Gear-door drag | 0.0015 | **an estimate, sized from photographs (2026-11-13):** the main legs' flat door plates (about 6 ft² a side, 2.6 to 3.6 ft below the wing root) and the nose door panel (about 7 ft², 1.55 ft tall) lie within about 5 deg of the airflow (thin rods in the head-on view), so their drag is friction (0.14 ft²), edges (0.31), toe (0.22) and interference (0.15): 0.81 ft², band 0.4 to 1.7 ft² (0.0007 to 0.0031). Scaled by the gear position; docs/PLAN.md, "Gear-door drag". The records cannot test it: the 2013 approach fixes only the total, so the spoilers' fit takes up the rest |
+| Spoilers | lift -0.354 and drag +0.0203 at the approach setting (+0.0263 before the 2026-11-13 changes; +0.0271 with the door term, before the gear drag was set from its parts) | **a fit** to the 2013 approach (speed, glide and angle of attack at idle thrust), redone with the door term in: without it the same model needs +0.0286, so the door term takes 0.0015 of the spoilers' drag; the rest of the change from 0.0263 is the lower drag increment (0.00586 to 0.00308), which the approach shares. The setting is taken as 30 of 45 deg: an assumption, as is the straight line to 45 deg |
 | Brakes, steering, retraction | JSBSim's wheel brakes; 60 deg of nose-wheel steering; 8 s gear travel | estimates |
 | Structure | contact points at the wing tips, nose, tail and belly | so a bad landing shows |
 
@@ -642,7 +713,7 @@ the ground station with the link's delay, so one can see why nobody does. `ap/ma
 | 2014 approach with the spoilers fitted on 2013: angle of attack | 4.79 deg | 4.29 deg | 1 deg | pass, predicted |
 | The same: thrust | idle, 0.008 g left over | | idle to 30 % | pass, predicted |
 | Touchdown | 131 KEAS, sink 0.63 m/s | 130 KEAS, 0.66 m/s | sink under 1.5 m/s | pass |
-| Rollout from touchdown to 43 kt at 0.235 g | 3,557 ft | 3,485 ft | 15 % | pass |
+| Rollout from touchdown to 43 kt at 0.235 g | 3,496 ft (3,557 in an earlier state of the model) | 3,485 ft | 15 % | pass |
 | Rest to rest without NaN | yes | | | pass |
 
 - **The takeoff is 12 % quick and the first climb 11 % quick,** both inside their limits and both the same way:
@@ -918,6 +989,24 @@ a lift-to-drag ratio of 25 to 35 needs 430 to 600 lbf of the 640 available and b
 average about 470 lb/h over 31 h with the climb in it. Breguet endurance with TSFC 0.637 and all 15,300 lb of fuel
 is 33 h at a lift-to-drag ratio of 25 and 40 h at 30.
 
+### The engine's spool (2026-11-13; `genghawk.spool_fragment`, check B3s)
+
+Thrust used to follow one first-order lag of 2.0 s ("a class estimate, no data"). **Evidence:** the Citation X take-off at Portland (`citationx_takeoff_pdx`, outside, audio
+only, from the sound work's git-ignored recordings): the fan's blade-passing tone and its second harmonic, tracked in 0.08 s windows, come up out of the noise at about
+1,700 Hz at 18.0 s, ramp and settle at 2,885 Hz (21-22.8 s). Normalised to the plateau: 0.60 at 18.26 s, 0.80 at 18.92, 0.90 at 19.50, 0.95 at 19.76, 0.98 at
+20.02 s. The aircraft is nearly standing (Doppler under 3 %). A first-order lag alone would take 0.34 s for 0.6 to 0.8; it took 0.66 s: the early rise is a rate
+limit. **Fit** (least squares over 210 points of the track, rms 0.019 of the final speed): n' = min(0.23 per s, (1 - n) / 0.38 s) from n = 0.6. **Not measured:** the
+rise from idle (the tone is under the noise below about 0.6), the throttle's motion (a snap is assumed), the fall in speed, and that it is a Citation X's AE 3007C1,
+not the AE 3007H (same family and fan, a higher rating). The other recordings (the start, the cockpit, the FADEC check, the Global Hawk's own) have no usable ridge.
+**The model:** the fan's speed share n of the maximum here is a state, an integral of that rate; thrust is the maximum times n squared (the law the sound's rpm
+already had: 2,230 rpm at idle against 8,290 at take-off is 0.27, 7 % thrust); the command is sqrt(commanded thrust / maximum); below n = 0.6 the rate limit is half
+the measured, 0.115 per s (an estimate, between the measured rate and the 0.063 that would just meet the 5 s of the certification rule for transport engines, 15 to
+95 % of take-off thrust, which I recall and have not checked); down the measured rate (no data); a failed or stopped engine loses its speed at 1.5 per s. The fan's
+rpm for the sound and the 3-D model is now the state itself. **Checks:** 0.60 to 0.90 of the final fan speed in 1.31 s against 1.24 and to 0.98 in 1.92 s against
+1.76 (+5.5 and +8.9 %, limit 20 %, after the fit); thrust 15 to 95 % in 3.67 s (bound 5.0; the old lag 5.67 s, over it). What changed in flight: the plain take-off's 130
+KIAS time from 32.8 to 34.2 s (-12.5 % to -8.8 % of Pastor's 37.5), the laws' take-off from 32.4 to 32.7 s, nothing else outside the checks' limits. Not a fit to
+Pastor's times.
+
 ### Power taken off the engine (2026-11-13)
 
 Not in the first model; the Air Force's paper names it a condition of the endurance. `Turbofan.run(..., hpx=)` in `fdm/engine.py` takes
@@ -928,7 +1017,7 @@ linear); the flight model has `engine/extra-power-kw` (0 or more, default 0: **e
 which scales the maximum thrust and the fuel flow. The part-power fuel law of the ICAO points has no extraction in it, so below 0.4 of
 the maximum the sensitivity at 0.4 is used. At 60,000 ft: 20 kW costs +2.1 % fuel at the model's cruise trim (+2.5 % at 500 lbf) and
 -0.5 % maximum thrust; at 10,000 ft +0.6 % fuel at a climb's thrust. The efficiency of the extra fuel is 0.47 (H3, limits 0.2 to 0.6).
-The mission's endurance falls from 34.7 h to 34.0 at 20 kW and 33.2 at 40 kW. **The size of the effect has nothing to be held to**: no
+The mission's endurance, in the model before the CFD's wave drag, falls from 34.7 h to 34.0 at 20 kW and 33.2 at 40 kW. **The size of the effect has nothing to be held to**: no
 engine data is in the ATTREX records (their columns are pressure, temperature, speed, wind, position and attitude).
 
 ## How the real aircraft is flown (for the flight laws and the ground station)

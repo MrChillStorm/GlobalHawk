@@ -366,7 +366,7 @@ def tables(e):
     alts = list(range(0, 70001, 5000))
     machs = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
     fracs = [0.0, 0.07, 0.2, 0.4, 0.6, 0.8, 1.0]
-    dts = [-20.0, 0.0, 20.0]
+    dts = [-40.0, -20.0, 0.0, 20.0, 40.0]
     t = dict(altitude_ft=alts, mach=machs, thrust_fraction=fracs, delta_T_K=dts, max_thrust_lbf=[], limit=[],
              idle_thrust_lbf=[], fuel_lbh=[], opr_at_max=[])
     for dt in dts:
