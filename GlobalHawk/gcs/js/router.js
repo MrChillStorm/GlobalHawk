@@ -21,6 +21,7 @@
   const node = typeof module !== 'undefined' && module.exports;
   const geo = node ? require('./geo.js') : root.GCS.geo;
   const A = node ? require('./airspace.js') : root.GCS.airspace;
+  const FM = node ? require('./flightmath.js') : root.GCS.flightmath;
   const NM = geo.NM;
   const RAD = Math.PI / 180;
   const HARD_KINDS = ['restricted', 'prohibited', 'danger', 'tfr'];
@@ -40,6 +41,8 @@
   const MAX_NODES = 6000;
   const ALTITUDES = [10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000, 55000, 60000, 65000]; // the heights tried when none is chosen: the ones the route is long enough to climb to and come down from are solved
   const MIN_GS_KT = 30;
+  const JOIN_AT_FIX_DEG = 20; // a corner at the fix over this is moved out onto the final's extension: the aircraft is back on the line before the fix, and the height asked for over the fix counts no way for the turn; mine
+  const JOIN_DEG = 90; // the corner the join onto the final may have (the aircraft's own limit is 120: this leaves room for wind); mine
 
   const flatNm = (a, b) => geo.course(a, b).ft / NM;
   // a number for each 1/40 degree cell (1.5 nmi): a Map keyed by numbers is several times quicker than one keyed by strings, and these are looked up half a million times
@@ -580,6 +583,56 @@
    * Turn a thinned path (start first, landing fix last) into route points with heights: the climb as the table allows, a top-of-descent point,
    * the descent to the fix. Returns [[lat, lon, alt_ft]] without the start.
    */
+
+  /**
+   * The join onto the final. The route's last leg meets the final's line at the fix; a corner there that the aircraft cannot fly well (a turn
+   * over the limit in the capability file, or a leg too short for its lead) is avoided by a point on the final's extension, out from the fix,
+   * that the last leg goes to, and when the route arrives from the far side of the line (the runway side of the fix) by a turning point beside it
+   * first (a teardrop: out past the line, round, and onto it): [..., prev, T, J, fix] with J on the extension and T off it on the side the route
+   * comes from. The search takes the join and the offset that keep the larger of the two corners smallest, each leg at least as long as the
+   * turns at its ends need (the aircraft's own lead, from the capability file at the fix's height). Without an aiming point (o.aim) nothing is
+   * changed. Returns { points, note }.
+   */
+  function joinFinal(points, o) {
+    if (!o.aim || points.length < 2) return { points, note: null };
+    const lim = FM.cap.turn.max_join_deg;
+    const fix = points[points.length - 1];
+    const prev = points[points.length - 2];
+    const F = geo.course(fix, o.aim).deg;
+    const vg = (o.fc ? o.fc.ktas(o.fix_alt_ft) : 200) * FM.KT;
+    const lead = (delta) => FM.turn({ delta_deg: delta, alt_ft: o.fix_alt_ft, vg_fps: vg, kcas: FM.cap.approach.schedule_kcas }).lead_ft;
+    const turnAt = (a, b, c) => Math.abs(geo.turn(geo.course(a, b).deg, geo.course(b, c).deg));
+    const fixTurn = turnAt(prev, fix, o.aim);
+    if (fixTurn <= JOIN_AT_FIX_DEG && geo.course(prev, fix).ft >= lead(fixTurn)) return { points, note: null };
+    const ext = (nm) => geo.along(fix, F + 180, nm * NM);
+    // which side of the final's line the route comes from: right of it (looking down the final) is positive
+    const side = Math.sin(((geo.course(fix, prev).deg - F) * Math.PI) / 180) >= 0 ? 1 : -1; // +1: on the right of the final's line, looking down it
+    let best = null;
+    const consider = (pts, corners) => {
+      const worst = Math.max(...corners.map((c) => c.d));
+      const ok = corners.every((c, i) => c.leg >= lead(c.d) + (i + 1 < corners.length ? lead(corners[i + 1].d) : 0));
+      const score = worst + (ok ? 0 : 1000);
+      if (!best || score < best.score - 1e-9) best = { score, pts, worst, ok };
+    };
+    for (let L = 4; L <= 40; L += 1) {
+      const J = ext(L);
+      consider([J], [{ d: turnAt(prev, J, fix), leg: geo.course(prev, J).ft }, { d: 0, leg: geo.course(J, fix).ft }]);
+    }
+    if (!best || best.worst > JOIN_DEG || !best.ok) {
+      for (let L = 8; L <= 30; L += 2) {
+        for (let D = 4; D <= 14; D += 2) {
+          const J = ext(L);
+          const T = geo.along(J, F + 90 * side, D * NM); // off the extension, on the side the route comes from
+          consider([T, J], [{ d: turnAt(prev, T, J), leg: geo.course(prev, T).ft }, { d: turnAt(T, J, fix), leg: geo.course(T, J).ft }, { d: 0, leg: geo.course(J, fix).ft }]);
+        }
+      }
+    }
+    if (!best) return { points, note: null };
+    const made = points.slice(0, -1).concat(best.pts.map((p) => [p[0], p[1]]), [fix]);
+    const note = best.worst > lim ? `the route arrives ${Math.round(fixTurn)}° off the final and the best join still turns ${Math.round(best.worst)}°` : `joined onto the final by ${best.pts.length === 1 ? 'a point' : 'two points'} ${best.pts.length === 1 ? '' : 'a teardrop '}out on its extension (the corner at the fix was ${Math.round(fixTurn)}°)`;
+    return { points: made, note, corner_deg: best.worst };
+  }
+
   function withHeights(path, cruise, fixAlt, climb, descent, margin) {
     const mk_ = margin || { k: 1.05, extra: 3 };
     const total = path.slice(1).reduce((s, p, i) => s + flatNm(path[i], p), 0);
@@ -682,7 +735,9 @@
         return null;
       }
       const free = (a, b) => !bl.along(a, b, 2) && (!cover || mode !== 'require' || sampleCovered(cover, a, b));
-      const thinned = shortcut(thin(s.points, 3, free), s.chordCost, free, cruiseWeight);
+      const thinned0 = shortcut(thin(s.points, 3, free), s.chordCost, free, cruiseWeight);
+      const joined = joinFinal(thinned0, o);
+      const thinned = joined.points;
       // the descent at the weight it will really have, and with the wind where the path really goes: its tail at the middle of the descent and of the climb
       const rough = descentProfile(fc, perf, alt, o.fix_alt_ft, cruiseWeight - s.fuel_lb, tailDown);
       if (!rough) {
@@ -722,7 +777,7 @@
         if (!f.warnings.some((w) => /not reached/.test(w))) break;
       }
       const cov = mode !== 'off' && useCover ? coverageOf([[o.start[0], o.start[1], o.start_alt_ft]].concat(h.points), o.sites, o.glide, { short: o.shortStrips, profile: f.profile }) : null;
-      return { alt_ft: alt, points: h.points, fuel_lb: f.total.fuel_used_lb, time_s: f.total.t_s, dist_nm: f.total.dist_ft / NM, warnings: f.warnings, soft_nm: s.soft_nm, path_nm: h.total_nm, step_deg: s.step_deg, nodes: s.nodes, tod: h.tod, blockers: bl.hard.length, coverage: cov, quick: !useCover };
+      return { alt_ft: alt, join: joined.note, points: h.points, fuel_lb: f.total.fuel_used_lb, time_s: f.total.t_s, dist_nm: f.total.dist_ft / NM, warnings: f.warnings, soft_nm: s.soft_nm, path_nm: h.total_nm, step_deg: s.step_deg, nodes: s.nodes, tod: h.tod, blockers: bl.hard.length, coverage: cov, quick: !useCover };
     };
     // with sites in mind each height costs about four times as much: so the heights are ranked first without them (cheap), and only the best of them are solved with them
     // (more of them while Require finds none: it needs the heights where the glide is long)
@@ -885,7 +940,7 @@
     return assemble(o, results, ctx);
   }
 
-  const api = { blocker, coverage, coverageOf, climbProfile, descentProfile, solve, thin, shortcut, withHeights, plan, alternatives, alternativesAsync, similar, offChord, REACH_FACTOR, ENTRY_NM, NEAR_SITE_NM, PREFER_PENALTY, SHORT_STRIP, CAUTIOUS_BUFFERS, ALTITUDES, HARD_KINDS, SOFT_KINDS, ZONE_BUFFER_NM, CONVECTIVE_BUFFER_NM, HOME_RADIUS_NM };
+  const api = { joinFinal, blocker, coverage, coverageOf, climbProfile, descentProfile, solve, thin, shortcut, withHeights, plan, alternatives, alternativesAsync, similar, offChord, REACH_FACTOR, ENTRY_NM, NEAR_SITE_NM, PREFER_PENALTY, SHORT_STRIP, CAUTIOUS_BUFFERS, ALTITUDES, HARD_KINDS, SOFT_KINDS, ZONE_BUFFER_NM, CONVECTIVE_BUFFER_NM, HOME_RADIUS_NM };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else (root.GCS = root.GCS || {}).router = api;
 })(typeof window !== 'undefined' ? window : globalThis);

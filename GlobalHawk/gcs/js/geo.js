@@ -55,7 +55,10 @@
   function localPlan(here, hdg, elev) {
     const r = (v) => Math.round(v * 1e6) / 1e6;
     const pt = (p, alt) => (alt === undefined ? [r(p[0]), r(p[1])] : [r(p[0]), r(p[1]), alt]);
-    const fixAlt = Math.round((elev + 3500) / 100) * 100;
+    // the height over the fix the aircraft's capability asks for: the path comes down to it in time to be taken over cleanly (js/flightmath.js), the way the 90 deg corner at the fix takes counted
+    const FM = typeof module !== 'undefined' && module.exports ? require('./flightmath.js') : root.GCS.flightmath;
+    const lead = FM.turn({ delta_deg: 90, alt_ft: elev + 3000, vg_fps: 250, kcas: FM.cap.approach.schedule_kcas }).lead_ft;
+    const fixAlt = Math.round((elev + FM.finalFixHeightAgl(10 * NM, 20000, lead)) / 100) * 100;
     const p1 = along(here, hdg, 12 * NM);
     const p2 = along(p1, hdg + 90, 15 * NM);
     const p3 = along(p2, hdg + 180, 22 * NM);

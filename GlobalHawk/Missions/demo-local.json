@@ -1,6 +1,6 @@
 {
  "id": "demo-local",
- "note": "A local flight from a made-up field: taxi, takeoff, three legs at 20,000 ft, landing. For trying the station.",
+ "note": "A local flight from a made-up field: taxi, takeoff, three legs (20,000 ft, then down to the landing fix), landing. For trying the station.",
  "field": {
   "name": "Demo field",
   "lat": 34.9,
@@ -57,12 +57,12 @@
     [
      34.51477,
      -117.478299,
-     20000.0
+     14000.0
     ],
     [
      34.695722,
      -118.088997,
-     7500.0
+     6500.0
     ]
    ]
   },

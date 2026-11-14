@@ -6,7 +6,9 @@
 For each height and weight, on the speed schedule (fdm/mission.py), standard atmosphere, no wind:
     climb    at maximum thrust: rate (ft/min, with the correction for speed rising with height), fuel flow (lb/h)
     level    fuel flow (lb/h); null where the aircraft cannot hold height there
-    descent  at idle with half spoilers, as the mission manager descends: rate (ft/min, negative), fuel flow
+    descent  as the mission manager flies it (idle thrust, half spoilers, the speed schedule): rate (ft/min, negative), fuel flow; from
+             fdm/data/capability_flown.json, which `python3 fdm/capability.py measure` makes by flying the laws (the idle trim this table
+             used to take was 10 to 15 % steeper than the aircraft's descent)
 and the true airspeed (kt) of the schedule at each height.
 
 And the landing, for each weight at two field heights: the flight model's own approach and landing (as
@@ -23,6 +25,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import harness as H         # noqa: E402
 import mission as M         # noqa: E402
+import capability as CAP    # noqa: E402
 
 ALT = [2500.0, 5000.0, 10000.0, 15000.0, 20000.0, 25000.0, 30000.0, 35000.0, 40000.0, 45000.0, 50000.0, 55000.0, 60000.0, 65000.0]
 WEIGHT = [11500.0, 15000.0, 19000.0, 23000.0, 26700.0]
@@ -55,19 +58,20 @@ def landing_roll(f, weight, elev):
 
 def main():
     f = H.load()
+    flown = json.load(open(CAP.DATA))
+    assert flown['alt_ft'] == ALT and flown['weight_lb'] == WEIGHT, 'fdm/data/capability_flown.json is for other heights or weights: python3 fdm/capability.py measure'
     t = dict(alt_ft=ALT, weight_lb=WEIGHT, ktas=[round(M.true_airspeed(a) / H.KT, 1) for a in ALT],
              climb_fpm=[], climb_pph=[], level_pph=[], descent_fpm=[], descent_pph=[])
-    for a in ALT:
+    for ia, a in enumerate(ALT):
         rows = {k: [] for k in ('climb_fpm', 'climb_pph', 'level_pph', 'descent_fpm', 'descent_pph')}
-        for w in WEIGHT:
+        for iw, w in enumerate(WEIGHT):
             roc, flow, _ = M.point(f, a, w)
             rows['climb_fpm'].append(round(float(roc), 1))
             rows['climb_pph'].append(round(float(flow), 1))
             lv = H.trim(f, alt=a, weight=w, **M.schedule(a))
             rows['level_pph'].append(round(lv['fuel_flow'], 1) if lv['ok'] and lv['throttle'] < 0.999 else None)
-            d = H.trim(f, alt=a, weight=w, throttle=0.0, spoiler=0.5, **M.schedule(a))
-            rows['descent_fpm'].append(round(float(d['ktas'] * H.KT * np.sin(np.radians(d['cond']['gamma'])) * 60.0), 1))
-            rows['descent_pph'].append(round(d['fuel_flow'], 1))
+            rows['descent_fpm'].append(flown['descent_fpm'][ia][iw])
+            rows['descent_pph'].append(flown['descent_pph'][ia][iw])
         for k in rows:
             t[k].append(rows[k])
         print('%6.0f ft: climb %s ft/min, level %s lb/h, descent %s ft/min' % (a, rows['climb_fpm'], rows['level_pph'], rows['descent_fpm']), flush=True)

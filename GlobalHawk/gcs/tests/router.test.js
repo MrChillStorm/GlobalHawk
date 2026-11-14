@@ -345,6 +345,43 @@ const site = (lat, lon, elev, name, tier) => ({ lat, lon, elev_ft: elev === unde
   assert.ok(hard.errors.length >= 1 && /landing site in glide reach/.test(hard.errors[0]), JSON.stringify(hard.errors));
   assert.ok(hard.notes.some((n) => /Cautious/.test(n)));
 }
+
+// the join onto the final (P4 of docs/PLAN.md, "The planner uses the aircraft's capability tables"): the route's own corner at the fix, and the teardrop when it arrives from the far side
+{
+  const cap = require('../js/capability.js');
+  const aim = [35, -118];
+  const final = 90;
+  const fix = geo.along(aim, final + 180, 10 * NM);
+  const corners = (pts) => { const out = []; for (let i = 1; i + 1 < pts.length; i++) out.push(Math.abs(geo.turn(geo.course(pts[i - 1], pts[i]).deg, geo.course(pts[i], pts[i + 1]).deg))); return out; };
+  for (const bearing of [0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330]) { // where the route comes from, bearing from the fix
+    const prev = geo.along(fix, bearing, 80 * NM);
+    const j = R.joinFinal([prev, fix], { aim, fc, fix_alt_ft: 5800 });
+    const turns = corners(j.points.concat([aim]));
+    assert.ok(Math.max(...turns) <= 96 && Math.max(...turns) <= cap.turn.max_join_deg, `from ${bearing}: corners ${turns.map(Math.round)}`);
+    const here = Math.abs(geo.turn(geo.course(prev, fix).deg, final));
+    if (here <= 20) assert.strictEqual(j.points.length, 2, `from ${bearing}: a corner of ${Math.round(here)} deg is left alone`);
+    else assert.ok(j.points.length > 2 && j.note, `from ${bearing}: a corner of ${Math.round(here)} deg is moved out onto the final`);
+    assert.ok(Math.abs(geo.turn(geo.course(j.points[j.points.length - 2], fix).deg, final)) < 0.5 || j.points.length === 2, 'the last leg is down the final');
+  }
+  // without an aiming point nothing is changed
+  assert.deepStrictEqual(R.joinFinal([geo.along(fix, 90, 80 * NM), fix], { fc, fix_alt_ft: 5800 }).points.length, 2);
+  // the router's own plans on twenty arrivals: no corner over the limit, no leg too short, the fix under the path with room to slow: the assessment has nothing to say
+  const plans = [];
+  for (let k = 0; k < 20; k++) {
+    const F = (k * 47) % 360;
+    const fx = geo.along(aim, F + 180, 10 * NM);
+    const start = geo.along(fx, (k * 83 + 11) % 360, (90 + ((k * 37) % 300)) * NM);
+    const legsFor = (pts) => pc.legs([{ kind: 'route', points: pts }, { kind: 'land', fix: fx, aim }], start, 2300);
+    const FMr = require('../js/flightmath.js');
+    const fixAlt = Math.round((2300 + FMr.finalFixHeightAgl(10 * NM, 22000)) / 100) * 100; // the height the aircraft's capability asks for over the fix
+    const r = R.plan({ start, start_alt_ft: 2400, goal: fx, aim, fix_alt_ft: fixAlt, weight_lb: 22000, fuel_lb: 11000, fc, perf, wind: null, hours: 0, zones: [], hazards: [], now: T0, legsFor, altitudes: [20000, 30000] });
+    assert.ok(r.ok, `case ${k}: ${r.error}`);
+    const plan = { field: { lat: aim[0], lon: aim[1], elev_ft: 2300 }, items: [{ kind: 'route', points: r.best.points }, { kind: 'land', fix: fx, aim, elev_ft: 2300 }] };
+    assert.deepStrictEqual(pc.assess(plan, { weight_lb: 22000 }), [], `case ${k}`);
+    plans.push(r.best.join ? 1 : 0);
+  }
+  assert.ok(plans.reduce((a, b) => a + b, 0) >= 5, 'about half of the arrivals need a join: ' + plans.join(''));
+}
 // the page's version lets it breathe between the ways of choosing, and says which is next, and gives the same cards
 (async () => {
   const o = mk(500, { altitudes: [45000], sites: [site(35, -118)], glide, siteMode: 'prefer', zones: [circle('R-X', 35.2, -112, 15)] });

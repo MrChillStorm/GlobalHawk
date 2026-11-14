@@ -15,13 +15,18 @@ assert.deepStrictEqual(s, { pos: [35.1, -117.6], alt_ft: 21000 });
 const noTakeoff = JSON.parse(JSON.stringify(plan));
 noTakeoff.items = noTakeoff.items.filter((i) => i.kind !== 'takeoff');
 assert.deepStrictEqual(RI.startOf(noTakeoff, false, null, NaN).pos, [plan.field.lat, plan.field.lon]);
-// the goal: the plan's own last point when it is at the fix, else 3,500 ft over the field
+// the goal: the plan's own last point when it is at the fix, else the height over the ground the aircraft's capability asks for there (flightmath: the path comes down to it in time to be taken over cleanly), at the landing weight
+const FM = require('../js/flightmath.js');
+const geoR = require('../js/geo.js');
 let g = RI.goalOf(plan);
 assert.deepStrictEqual(g.fix, plan.items[3].fix);
-assert.strictEqual(g.fix_alt_ft, 7500);
+assert.strictEqual(g.fix_alt_ft, 6500);
 const other = JSON.parse(JSON.stringify(plan));
 other.items[2].points[3] = [34.2, -117.0, 9000];
-assert.strictEqual(RI.goalOf(other).fix_alt_ft, 5800, '2,300 + 3,500, to 100 ft');
+const askFor = (elev, land, w) => Math.round((elev + FM.finalFixHeightAgl(geoR.course(land.fix, land.aim).ft, w)) / 100) * 100;
+assert.strictEqual(RI.goalOf(other).fix_alt_ft, askFor(2300, other.items[3], 20000), 'the field\'s 2,300 ft and the capability\'s height over it, to 100 ft');
+assert.ok(RI.goalOf(other, 26700).fix_alt_ft <= RI.goalOf(other, 12000).fix_alt_ft + 3000 && Number.isFinite(RI.goalOf(other, 12000).fix_alt_ft), 'the weight is taken');
+assert.ok(RI.goalOf(other).fix_alt_ft - 2300 <= FM.pathHeightFt(geoR.course(other.items[3].fix, other.items[3].aim).ft) - FM.captureGapFt() + 50, 'the path is the gap above the aircraft at the fix');
 assert.strictEqual(RI.goalOf({ field: plan.field, items: [plan.items[0]] }), null);
 
 // the sites that count: the plan's, and airports by what the landing needs

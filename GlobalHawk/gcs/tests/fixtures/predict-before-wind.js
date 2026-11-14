@@ -1,4 +1,6 @@
 // A frozen copy of js/predict.js as it was before its wind option, kept as the oracle for tests/predictwind.test.js (R1: no wind, no change).
+// One change since it was frozen, made here and in js/predict.js alike so that the oracle still says what the wind option does: the approach speed is the
+// aircraft's own (js/flightmath.js, from js/capability.js) in place of a typed 140 kt (2026-11-14, docs/PLAN.md, "The planner uses the aircraft's capability tables").
 /**
  * The station's forecast: time, fuel and height along a list of legs, from a table sampled from the flight model
  * (js/perfdata.js, written by fdm/gcs_perf.py). The aircraft does not use this: it is what the station draws
@@ -7,9 +9,10 @@
 (function (root) {
   'use strict';
   const NM = 6076.1;
+  const FM = typeof module !== 'undefined' && module.exports ? require('../../js/flightmath.js') : root.GCS.flightmath;
+  const sigma = (h) => Math.pow(Math.max(1 - 6.8756e-6 * h, 0.2), 4.2559);
   const STEP_S = 20;
   const CAPTURE_FT = 150; // the manager flies level within this of a commanded height
-  const APPROACH_KT = 140; // true airspeed down the final, about
   const TAKEOFF = { seconds: 95, fuel_lb: 55, climb_ft: 100 }; // start of the roll to the manager's "airborne": measured in fdm/phase8c_checks.py
   const RESERVE_LB = 765; // 5 % of full tanks
   const ROLL_MARGIN = 1.15; // runway asked for over the forecast roll: an assumed allowance (no wind, a dry level runway, in the table)
@@ -99,7 +102,7 @@
           let rate = 0; // ft/s
           let flow; // lb/h
           if (leg.kind === 'land') {
-            v = APPROACH_KT * (NM / 3600);
+            v = (FM.approachKcas(w) / Math.sqrt(sigma(leg.alt_ft))) * (NM / 3600);
             rate = alt > leg.alt_ft ? -Math.min((alt - leg.alt_ft) / Math.max(left / v, 1), 40) : 0;
             flow = look(P.descent_pph, alt, w);
           } else if (alt < leg.alt_ft - CAPTURE_FT) {

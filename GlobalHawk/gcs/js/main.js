@@ -522,7 +522,7 @@
   async function findRoutes() {
     if (!editor || editor.which !== 'route') return;
     const plan = editor.plan;
-    const goal = G.routeinputs.goalOf(plan);
+    const goal = G.routeinputs.goalOf(plan, stateNow(plan.field.elev_ft).weight_lb);
     const status = (t) => ($('rp-status').textContent = t);
     if (!goal) return status('The plan has no landing to route to.');
     const flying = enrouteNow();
@@ -553,7 +553,7 @@
       const siteInfo = G.routeinputs.sites(plan, ov.airports.list, forecast, state.weight_lb);
       if (siteMode !== 'off') notes.push('Landing sites: ' + siteInfo.note + '.');
       const out = await G.router.alternativesAsync({
-        start: st.pos, start_alt_ft: st.alt_ft, goal: goal.fix, fix_alt_ft: goal.fix_alt_ft, weight_lb: state.weight_lb, fuel_lb: state.fuel_lb, fc: forecast, perf: G.perfdata,
+        start: st.pos, start_alt_ft: st.alt_ft, goal: goal.fix, aim: goal.land.aim, fix_alt_ft: goal.fix_alt_ft, weight_lb: state.weight_lb, fuel_lb: state.fuel_lb, fc: forecast, perf: G.perfdata,
         wind: windOk ? (la, lo, alt, h) => ov.wind.at(la, lo, alt, h) : null, hours: ov.prefs.windHours, zones: ov.zones(), hazards: ov.hazardList(), now: Date.now(), altitudes,
         legsFor: (pts) => G.plancheck.legs([{ kind: 'route', points: pts }, goal.land], st.pos, plan.field),
         sites: siteInfo.list, glide: (a, e) => G.reach.radius(a, e) / geo.NM, siteMode, shortStrips: $('rp-short').checked,
@@ -627,6 +627,8 @@
         rowsHtml += `<tr class="${cls}" data-row="${mine ? leg.index : ''}"><td>${name}</td><td>${altCell}${pt.reached ? '' : ' <span class="bad" title="not reached by then">!</span>'}</td><td>${(leg.dist_ft / geo.NM).toFixed(1)}</td><td>${hms(pt.t_s)}</td><td>${fmtAlt(pt.fuel_lb)}</td><td>${mine ? `<button data-del="${leg.index}" title="delete this point">×</button>` : ''}</td></tr>`;
       });
       warn = warn.concat(fc.r.warnings.map(esc));
+      // what the aircraft's capability says about the plan (its turns, its legs, its final): the planner's word, in words with the numbers
+      warn = warn.concat(G.plancheck.assess(plan, { weight_lb: stateNow(plan.field.elev_ft).weight_lb }).map((a) => esc(a.text)));
       const roll = landingWords(fc.r, plan.field);
       if (roll) warn.push(`<span class="small">${esc(roll[0].toUpperCase() + roll.slice(1))}.</span>`);
       warn.push(`<span class="small">Forecast from ${fc.from}: ${hms(fc.r.total.t_s)}, ${fmtAlt(fc.r.total.fuel_used_lb)} lb of fuel, ${(fc.r.total.dist_ft / geo.NM).toFixed(0)} nmi. No wind.</span>`);

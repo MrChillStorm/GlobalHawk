@@ -8,6 +8,7 @@
   const node = typeof module !== 'undefined' && module.exports;
   const geo = node ? require('./geo.js') : root.GCS.geo;
   const AP = node ? require('./airports.js') : root.GCS.airports;
+  const FM = node ? require('./flightmath.js') : root.GCS.flightmath;
   const NM = geo.NM;
   const SHORT_STRIP = 0.75; // the MV-22B finder's FORCED_RUN: a strip that cannot hold the whole landing but is the best ground in reach
 
@@ -22,15 +23,15 @@
     return { pos: [plan.field.lat, plan.field.lon], alt_ft: elev + 100 };
   }
 
-  /** The landing fix, and the height to be at over it: the plan's own last route point there, else 3,500 ft over the field. null with no landing. */
-  function goalOf(plan) {
+  /** The landing fix, and the height to be at over it: the plan's own last route point there, else the height the aircraft's capability asks for over the ground (js/flightmath.js: the path comes down to it in time to be taken over cleanly) at the landing weight. null with no landing. */
+  function goalOf(plan, weight_lb) {
     const land = landOf(plan);
     if (!land) return null;
-    const elev = plan.field.elev_ft || 0;
+    const elev = Number.isFinite(land.elev_ft) ? land.elev_ft : plan.field.elev_ft || 0; // the landing's own, as the aircraft takes it
     const route = plan.items.filter((i) => i.kind === 'route').pop();
     const last = route && route.points[route.points.length - 1];
     const same = last && Math.abs(last[0] - land.fix[0]) < 0.001 && Math.abs(last[1] - land.fix[1]) < 0.001;
-    return { fix: [land.fix[0], land.fix[1]], fix_alt_ft: same ? last[2] : Math.round((elev + 3500) / 100) * 100, land };
+    return { fix: [land.fix[0], land.fix[1]], fix_alt_ft: same ? last[2] : Math.round((elev + FM.finalFixHeightAgl(geo.course(land.fix, land.aim).ft, weight_lb || 20000)) / 100) * 100, land };
   }
 
   /**

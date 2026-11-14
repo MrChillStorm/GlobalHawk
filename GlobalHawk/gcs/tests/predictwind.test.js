@@ -94,7 +94,8 @@ for (const [name, dir, kt] of [['tailwind', 270, 60], ['headwind', 90, 60], ['st
   assert.ok(lastW.t_s !== lastCalm.t_s, 'the legs before the landing feel the wind');
   const finalCalm = calm.points[calm.points.length - 1].t_s - calm.points[calm.points.length - 2].t_s;
   const finalW = w.points[w.points.length - 1].t_s - w.points[w.points.length - 2].t_s;
-  assert.ok(Math.abs(finalCalm - finalW) < 1e-6, 'the final approach takes as long: ' + finalCalm + ' ' + finalW);
+  // (the approach speed is the aircraft's own for the weight it arrives with, and that differs by the fuel the wind cost on the legs before: a fraction of a second)
+  assert.ok(Math.abs(finalCalm - finalW) < 0.5, 'the final approach takes as long: ' + finalCalm + ' ' + finalW);
 }
 // the legs know where they start
 {

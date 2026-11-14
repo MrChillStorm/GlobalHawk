@@ -1,16 +1,18 @@
 /**
  * The station's forecast: time, fuel and height along a list of legs, from a table sampled from the flight model
- * (js/perfdata.js, written by fdm/gcs_perf.py). The aircraft does not use this: it is what the station draws
- * before a command is sent. Standard atmosphere, no turns, and no wind unless a wind is given (opts.wind of predict: the ground speed then
+ * (js/perfdata.js, written by fdm/gcs_perf.py; the approach speed from js/capability.js, the aircraft's own). The aircraft does not use this:
+ * it is what the station draws before a command is sent. Standard atmosphere, turns only as the arcs plancheck.legs cuts at the corners, and no wind unless a wind is given (opts.wind of predict: the ground speed then
  * follows the wind along each leg; without it every answer is what it was before the option existed).
  */
 (function (root) {
   'use strict';
-  const geo = typeof module !== 'undefined' && module.exports ? require('./geo.js') : root.GCS.geo;
+  const node = typeof module !== 'undefined' && module.exports;
+  const geo = node ? require('./geo.js') : root.GCS.geo;
+  const FM = node ? require('./flightmath.js') : root.GCS.flightmath;
   const NM = 6076.1;
   const STEP_S = 20;
   const CAPTURE_FT = 150; // the manager flies level within this of a commanded height
-  const APPROACH_KT = 140; // true airspeed down the final, about
+  const sigma = (h) => Math.pow(Math.max(1 - 6.8756e-6 * h, 0.2), 4.2559); // the density ratio at a height, standard atmosphere
   const TAKEOFF = { seconds: 95, fuel_lb: 55, climb_ft: 100 }; // start of the roll to the manager's "airborne": measured in fdm/phase8c_checks.py
   const RESERVE_LB = 765; // 5 % of full tanks
   const ROLL_MARGIN = 1.15; // runway asked for over the forecast roll: an assumed allowance (no wind, a dry level runway, in the table)
@@ -105,7 +107,7 @@
           let rate = 0; // ft/s
           let flow; // lb/h
           if (leg.kind === 'land') {
-            v = APPROACH_KT * (NM / 3600);
+            v = (FM.approachKcas(w) / Math.sqrt(sigma(leg.alt_ft))) * (NM / 3600); // the approach speed at this weight, the aircraft's own (js/capability.js), as true airspeed at the field
             rate = alt > leg.alt_ft ? -Math.min((alt - leg.alt_ft) / Math.max(left / v, 1), 40) : 0;
             flow = look(P.descent_pph, alt, w);
           } else if (alt < leg.alt_ft - CAPTURE_FT) {
