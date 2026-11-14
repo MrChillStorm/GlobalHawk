@@ -205,7 +205,7 @@ landing fix, and shows it as **cards**, as a map program does. Choose, then **Fi
   **Require** never leaves the reach of a site and may find no route (over the sea, for one: it then says how long the direct route's gap is); **Off** does not look at sites at all. The sites are
   the plan's own and the airports that can hold the landing at the present weight (a paved runway of what the landing forecast asks plus 800 ft); "count shorter strips too" adds paved runways of
   at least three quarters of that (a landing that may run off its end: the MV-22B's engine-out finder keeps such strips as a last resort too) and marks them. With no airports loaded only the plan's sites count, and it says so.
-- **Height:** the best of 20,000 to 65,000 ft in 5,000 ft steps (the ones the route is long enough to climb to and come down from, at the weight, by the station's own tables), or one you choose.
+- **Height:** the best of 10,000 to 65,000 ft in 5,000 ft steps (the ones the route is long enough to climb to and come down from, at the weight, by the station's own tables), or one you choose.
 - **The winds aloft** (Open-Meteo, the pressure level of each height, now or +3 to +24 h from the Layers panel) change the ground speed along each join, so the route leans on a tailwind and
   keeps out of a headwind; the editor then also shows the forecast **with** them (the aircraft does not use it, and the forecast above it stays the no-wind one).
 - **What it goes round:** restricted, prohibited, danger and TFR areas at the cruise height (2 nmi of room; the aircraft's own home airspace, which cannot be avoided, is left out), turbulence and icing

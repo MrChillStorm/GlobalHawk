@@ -38,7 +38,7 @@
   const HOME_RADIUS_NM = 10; // within this of the start and the landing nothing blocks: the aircraft has to get out of and into there
   const SAMPLE_NM = 4;
   const MAX_NODES = 6000;
-  const ALTITUDES = [20000, 25000, 30000, 35000, 40000, 45000, 50000, 55000, 60000, 65000]; // the heights tried when none is chosen: the ones the route is long enough to climb to and come down from are solved
+  const ALTITUDES = [10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000, 55000, 60000, 65000]; // the heights tried when none is chosen: the ones the route is long enough to climb to and come down from are solved
   const MIN_GS_KT = 30;
 
   const flatNm = (a, b) => geo.course(a, b).ft / NM;

@@ -40,6 +40,7 @@
       this.listeners = [];
       this.state = { mode: 'idle' };
       this.beating = false;
+      this.beatMs = BEAT_MS;
       this.lastDown = null; // when anything last came down
       this.messages = []; // newest last: { station, n, text, t (ms, the sender's clock), mine }
       this.chatN = Math.floor(this.now() / 1000) % 1000000000; // never reused after a reload
@@ -74,9 +75,18 @@
         const b = `${this.station}:${this.beat}`;
         this.later(() => this.t.send('/gcs/up/heartbeat', b));
         this.expire();
-        this.timer(tick, BEAT_MS);
+        this.timer(tick, this.beatMs);
       };
       tick();
+    }
+
+    /**
+     * How often to beat, in real milliseconds. The aircraft counts the silence in its own seconds, so when the simulation runs `k` times as fast as the clock the
+     * station has to beat `k` times as often, or the aircraft sees a gap of `k` seconds between beats and says it has not heard the station: the page does that at
+     * `?speed=` in the demo and when FlightGear's speed-up is on. Between 100 ms and the usual second.
+     */
+    setBeatMs(ms) {
+      this.beatMs = Math.max(100, Math.min(BEAT_MS, Math.round(ms)));
     }
 
     /** Stop beating: to the aircraft this is a lost link. */

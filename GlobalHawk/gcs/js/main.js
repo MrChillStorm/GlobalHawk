@@ -22,7 +22,7 @@
     pitch: '/orientation/pitch-deg', roll: '/orientation/roll-deg', alpha: J + 'aero/alpha-deg', alphaLimit: J + 'ap/alpha-limit-deg',
     gamma: J + 'flight-path/gamma-deg', trackRad: J + 'flight-path/psi-gt-rad', udot: J + 'accelerations/udot-ft_sec2', vt: J + 'velocities/vt-fps',
     bankLimit: J + 'ap/bank-limit-deg', thrust: J + 'engine/thrust-lbf', ff: J + 'engine/fuel-flow-pph', failed: J + 'engine/failed',
-    miscompare: J + 'nav/miscompare', weight: J + 'inertia/weight-lbs',
+    miscompare: J + 'nav/miscompare', weight: J + 'inertia/weight-lbs', speedup: '/sim/speed-up',
   };
   const TANKS = [['wing in L', 1736.5], ['wing in R', 1736.5], ['wing out L', 1557.3], ['wing out R', 1557.3], ['fus fwd', 5624.4], ['fus aft', 3088.0]];
   TANKS.forEach((t, i) => (TELEMETRY['tank' + i] = `${J}propulsion/tank[${i}]/contents-lbs`));
@@ -887,6 +887,8 @@
   /* ------------------------------------------------------------- showing */
   function render() {
     mapUp();
+    // the aircraft counts the silence in its own seconds: with the simulation faster than the clock the station beats faster (FlightGear's speed-up, or the demo's)
+    link.setBeatMs(1000 / Math.max(1, Number.isFinite(tel.speedup) && tel.speedup >= 1 ? tel.speedup : demo ? demoSpeed : 1));
     const s = link.status;
     const live = link.state.mode === 'live' && link.lastDown !== null && Date.now() - link.lastDown < 3000 + link.latency;
     // only the station that has control commands (before anyone has it, the first to speak gets it)
