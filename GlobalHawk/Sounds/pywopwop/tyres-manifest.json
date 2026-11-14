@@ -36,7 +36,7 @@
    ],
    "width_m": 0.165,
    "diameter_m": 0.457,
-   "count": 2,
+   "count": 1,
    "static_compression_ft": 0.2990718459951873
   },
   {
@@ -44,7 +44,7 @@
    "gear": 1,
    "position": [
     -7.7080872000000005,
-    2.0816316,
+    1.6459200000000003,
     0.0
    ],
    "width_m": 0.146,
@@ -57,7 +57,7 @@
    "gear": 2,
    "position": [
     -7.7080872000000005,
-    -2.0816316,
+    -1.6459200000000003,
     0.0
    ],
    "width_m": 0.146,
@@ -78,8 +78,8 @@
    "tyre": "nose",
    "view": "side",
    "groundspeed_kt": 5.0,
-   "oaspl_db": 38.55,
-   "dba": 35.75,
+   "oaspl_db": 35.54,
+   "dba": 32.73,
    "limited_samples": 0
   },
   {
@@ -87,19 +87,19 @@
    "tyre": "nose",
    "view": "cockpit",
    "groundspeed_kt": 5.0,
-   "oaspl_db": 68.81,
-   "dba": 55.05,
+   "oaspl_db": 65.8,
+   "dba": 52.04,
    "limited_samples": 0,
-   "airborne_dba": 45.54,
-   "structure_dba": 55.26
+   "airborne_dba": 42.53,
+   "structure_dba": 52.25
   },
   {
    "file": "tyre_nose_10kt_side.wav",
    "tyre": "nose",
    "view": "side",
    "groundspeed_kt": 10.0,
-   "oaspl_db": 46.65,
-   "dba": 44.23,
+   "oaspl_db": 43.64,
+   "dba": 41.22,
    "limited_samples": 0
   },
   {
@@ -107,19 +107,19 @@
    "tyre": "nose",
    "view": "cockpit",
    "groundspeed_kt": 10.0,
-   "oaspl_db": 73.9,
-   "dba": 61.32,
+   "oaspl_db": 70.89,
+   "dba": 58.31,
    "limited_samples": 0,
-   "airborne_dba": 53.7,
-   "structure_dba": 61.11
+   "airborne_dba": 50.69,
+   "structure_dba": 58.1
   },
   {
    "file": "tyre_nose_20kt_side.wav",
    "tyre": "nose",
    "view": "side",
    "groundspeed_kt": 20.0,
-   "oaspl_db": 54.06,
-   "dba": 52.47,
+   "oaspl_db": 51.05,
+   "dba": 49.46,
    "limited_samples": 0
   },
   {
@@ -127,19 +127,19 @@
    "tyre": "nose",
    "view": "cockpit",
    "groundspeed_kt": 20.0,
-   "oaspl_db": 77.61,
-   "dba": 66.53,
+   "oaspl_db": 74.6,
+   "dba": 63.52,
    "limited_samples": 0,
-   "airborne_dba": 61.11,
-   "structure_dba": 65.59
+   "airborne_dba": 58.1,
+   "structure_dba": 62.58
   },
   {
    "file": "tyre_nose_30kt_side.wav",
    "tyre": "nose",
    "view": "side",
    "groundspeed_kt": 30.0,
-   "oaspl_db": 58.1,
-   "dba": 57.12,
+   "oaspl_db": 55.09,
+   "dba": 54.11,
    "limited_samples": 0
   },
   {
@@ -147,19 +147,19 @@
    "tyre": "nose",
    "view": "cockpit",
    "groundspeed_kt": 30.0,
-   "oaspl_db": 79.57,
-   "dba": 69.49,
+   "oaspl_db": 76.56,
+   "dba": 66.47,
    "limited_samples": 0,
-   "airborne_dba": 65.19,
-   "structure_dba": 67.81
+   "airborne_dba": 62.18,
+   "structure_dba": 64.8
   },
   {
    "file": "tyre_nose_45kt_side.wav",
    "tyre": "nose",
    "view": "side",
    "groundspeed_kt": 45.0,
-   "oaspl_db": 62.16,
-   "dba": 61.82,
+   "oaspl_db": 59.15,
+   "dba": 58.81,
    "limited_samples": 0
   },
   {
@@ -167,19 +167,19 @@
    "tyre": "nose",
    "view": "cockpit",
    "groundspeed_kt": 45.0,
-   "oaspl_db": 81.13,
-   "dba": 72.4,
+   "oaspl_db": 78.12,
+   "dba": 69.39,
    "limited_samples": 0,
-   "airborne_dba": 69.54,
-   "structure_dba": 69.7
+   "airborne_dba": 66.53,
+   "structure_dba": 66.69
   },
   {
    "file": "tyre_nose_60kt_side.wav",
    "tyre": "nose",
    "view": "side",
    "groundspeed_kt": 60.0,
-   "oaspl_db": 65.43,
-   "dba": 65.51,
+   "oaspl_db": 62.42,
+   "dba": 62.5,
    "limited_samples": 0
   },
   {
@@ -187,19 +187,19 @@
    "tyre": "nose",
    "view": "cockpit",
    "groundspeed_kt": 60.0,
-   "oaspl_db": 82.82,
-   "dba": 75.05,
+   "oaspl_db": 79.81,
+   "dba": 72.04,
    "limited_samples": 0,
-   "airborne_dba": 73.1,
-   "structure_dba": 71.25
+   "airborne_dba": 70.09,
+   "structure_dba": 68.24
   },
   {
    "file": "tyre_nose_75kt_side.wav",
    "tyre": "nose",
    "view": "side",
    "groundspeed_kt": 75.0,
-   "oaspl_db": 68.28,
-   "dba": 68.61,
+   "oaspl_db": 65.27,
+   "dba": 65.6,
    "limited_samples": 0
   },
   {
@@ -207,19 +207,19 @@
    "tyre": "nose",
    "view": "cockpit",
    "groundspeed_kt": 75.0,
-   "oaspl_db": 84.77,
-   "dba": 77.6,
+   "oaspl_db": 81.76,
+   "dba": 74.59,
    "limited_samples": 0,
-   "airborne_dba": 76.2,
-   "structure_dba": 72.72
+   "airborne_dba": 73.19,
+   "structure_dba": 69.71
   },
   {
    "file": "tyre_nose_90kt_side.wav",
    "tyre": "nose",
    "view": "side",
    "groundspeed_kt": 90.0,
-   "oaspl_db": 70.83,
-   "dba": 71.31,
+   "oaspl_db": 67.82,
+   "dba": 68.3,
    "limited_samples": 0
   },
   {
@@ -227,19 +227,19 @@
    "tyre": "nose",
    "view": "cockpit",
    "groundspeed_kt": 90.0,
-   "oaspl_db": 86.21,
-   "dba": 79.95,
+   "oaspl_db": 83.2,
+   "dba": 76.94,
    "limited_samples": 0,
-   "airborne_dba": 78.93,
-   "structure_dba": 74.16
+   "airborne_dba": 75.92,
+   "structure_dba": 71.15
   },
   {
    "file": "tyre_left_main_5kt_side.wav",
    "tyre": "left_main",
    "view": "side",
    "groundspeed_kt": 5.0,
-   "oaspl_db": 37.59,
-   "dba": 34.33,
+   "oaspl_db": 37.69,
+   "dba": 34.43,
    "limited_samples": 0
   },
   {
@@ -248,9 +248,9 @@
    "view": "cockpit",
    "groundspeed_kt": 5.0,
    "oaspl_db": 69.44,
-   "dba": 55.1,
+   "dba": 55.11,
    "limited_samples": 0,
-   "airborne_dba": 37.19,
+   "airborne_dba": 37.33,
    "structure_dba": 55.83
   },
   {
@@ -258,8 +258,8 @@
    "tyre": "left_main",
    "view": "side",
    "groundspeed_kt": 10.0,
-   "oaspl_db": 45.62,
-   "dba": 42.8,
+   "oaspl_db": 45.72,
+   "dba": 42.91,
    "limited_samples": 0
   },
   {
@@ -270,7 +270,7 @@
    "oaspl_db": 74.41,
    "dba": 61.03,
    "limited_samples": 0,
-   "airborne_dba": 45.28,
+   "airborne_dba": 45.42,
    "structure_dba": 61.62
   },
   {
@@ -278,8 +278,8 @@
    "tyre": "left_main",
    "view": "side",
    "groundspeed_kt": 20.0,
-   "oaspl_db": 52.92,
-   "dba": 51.01,
+   "oaspl_db": 53.03,
+   "dba": 51.11,
    "limited_samples": 0
   },
   {
@@ -290,7 +290,7 @@
    "oaspl_db": 78.08,
    "dba": 65.66,
    "limited_samples": 0,
-   "airborne_dba": 52.48,
+   "airborne_dba": 52.62,
    "structure_dba": 66.0
   },
   {
@@ -298,8 +298,8 @@
    "tyre": "left_main",
    "view": "side",
    "groundspeed_kt": 30.0,
-   "oaspl_db": 56.72,
-   "dba": 55.51,
+   "oaspl_db": 56.83,
+   "dba": 55.62,
    "limited_samples": 0
   },
   {
@@ -308,9 +308,9 @@
    "view": "cockpit",
    "groundspeed_kt": 30.0,
    "oaspl_db": 79.88,
-   "dba": 68.02,
+   "dba": 68.03,
    "limited_samples": 0,
-   "airborne_dba": 56.39,
+   "airborne_dba": 56.53,
    "structure_dba": 68.17
   },
   {
@@ -318,8 +318,8 @@
    "tyre": "left_main",
    "view": "side",
    "groundspeed_kt": 45.0,
-   "oaspl_db": 60.76,
-   "dba": 60.23,
+   "oaspl_db": 60.87,
+   "dba": 60.33,
    "limited_samples": 0
   },
   {
@@ -328,9 +328,9 @@
    "view": "cockpit",
    "groundspeed_kt": 45.0,
    "oaspl_db": 81.23,
-   "dba": 70.06,
+   "dba": 70.08,
    "limited_samples": 0,
-   "airborne_dba": 60.57,
+   "airborne_dba": 60.71,
    "structure_dba": 70.01
   },
   {
@@ -338,8 +338,8 @@
    "tyre": "left_main",
    "view": "side",
    "groundspeed_kt": 60.0,
-   "oaspl_db": 64.0,
-   "dba": 63.91,
+   "oaspl_db": 64.1,
+   "dba": 64.02,
    "limited_samples": 0
   },
   {
@@ -348,9 +348,9 @@
    "view": "cockpit",
    "groundspeed_kt": 60.0,
    "oaspl_db": 82.99,
-   "dba": 71.85,
+   "dba": 71.88,
    "limited_samples": 0,
-   "airborne_dba": 64.05,
+   "airborne_dba": 64.19,
    "structure_dba": 71.57
   },
   {
@@ -358,8 +358,8 @@
    "tyre": "left_main",
    "view": "side",
    "groundspeed_kt": 75.0,
-   "oaspl_db": 66.93,
-   "dba": 67.13,
+   "oaspl_db": 67.04,
+   "dba": 67.23,
    "limited_samples": 0
   },
   {
@@ -368,9 +368,9 @@
    "view": "cockpit",
    "groundspeed_kt": 75.0,
    "oaspl_db": 84.91,
-   "dba": 73.75,
+   "dba": 73.78,
    "limited_samples": 0,
-   "airborne_dba": 67.11,
+   "airborne_dba": 67.25,
    "structure_dba": 73.06
   },
   {
@@ -378,8 +378,8 @@
    "tyre": "left_main",
    "view": "side",
    "groundspeed_kt": 90.0,
-   "oaspl_db": 69.48,
-   "dba": 69.83,
+   "oaspl_db": 69.59,
+   "dba": 69.94,
    "limited_samples": 0
   },
   {
@@ -388,9 +388,9 @@
    "view": "cockpit",
    "groundspeed_kt": 90.0,
    "oaspl_db": 86.47,
-   "dba": 75.53,
+   "dba": 75.57,
    "limited_samples": 0,
-   "airborne_dba": 69.83,
+   "airborne_dba": 69.97,
    "structure_dba": 74.55
   },
   {
@@ -398,8 +398,8 @@
    "tyre": "right_main",
    "view": "side",
    "groundspeed_kt": 5.0,
-   "oaspl_db": 38.66,
-   "dba": 35.37,
+   "oaspl_db": 38.54,
+   "dba": 35.26,
    "limited_samples": 0
   },
   {
@@ -408,9 +408,9 @@
    "view": "cockpit",
    "groundspeed_kt": 5.0,
    "oaspl_db": 69.46,
-   "dba": 55.17,
+   "dba": 55.18,
    "limited_samples": 0,
-   "airborne_dba": 37.19,
+   "airborne_dba": 37.33,
    "structure_dba": 55.83
   },
   {
@@ -418,8 +418,8 @@
    "tyre": "right_main",
    "view": "side",
    "groundspeed_kt": 10.0,
-   "oaspl_db": 46.64,
-   "dba": 43.86,
+   "oaspl_db": 46.52,
+   "dba": 43.75,
    "limited_samples": 0
   },
   {
@@ -430,7 +430,7 @@
    "oaspl_db": 74.62,
    "dba": 61.16,
    "limited_samples": 0,
-   "airborne_dba": 45.28,
+   "airborne_dba": 45.42,
    "structure_dba": 61.62
   },
   {
@@ -438,8 +438,8 @@
    "tyre": "right_main",
    "view": "side",
    "groundspeed_kt": 20.0,
-   "oaspl_db": 53.92,
-   "dba": 52.03,
+   "oaspl_db": 53.8,
+   "dba": 51.92,
    "limited_samples": 0
   },
   {
@@ -448,9 +448,9 @@
    "view": "cockpit",
    "groundspeed_kt": 20.0,
    "oaspl_db": 78.25,
-   "dba": 65.73,
+   "dba": 65.74,
    "limited_samples": 0,
-   "airborne_dba": 52.48,
+   "airborne_dba": 52.62,
    "structure_dba": 66.0
   },
   {
@@ -458,8 +458,8 @@
    "tyre": "right_main",
    "view": "side",
    "groundspeed_kt": 30.0,
-   "oaspl_db": 57.8,
-   "dba": 56.58,
+   "oaspl_db": 57.68,
+   "dba": 56.46,
    "limited_samples": 0
   },
   {
@@ -468,9 +468,9 @@
    "view": "cockpit",
    "groundspeed_kt": 30.0,
    "oaspl_db": 79.83,
-   "dba": 67.98,
+   "dba": 67.99,
    "limited_samples": 0,
-   "airborne_dba": 56.39,
+   "airborne_dba": 56.53,
    "structure_dba": 68.17
   },
   {
@@ -478,8 +478,8 @@
    "tyre": "right_main",
    "view": "side",
    "groundspeed_kt": 45.0,
-   "oaspl_db": 61.81,
-   "dba": 61.27,
+   "oaspl_db": 61.69,
+   "dba": 61.15,
    "limited_samples": 0
   },
   {
@@ -488,9 +488,9 @@
    "view": "cockpit",
    "groundspeed_kt": 45.0,
    "oaspl_db": 81.34,
-   "dba": 70.1,
+   "dba": 70.12,
    "limited_samples": 0,
-   "airborne_dba": 60.57,
+   "airborne_dba": 60.71,
    "structure_dba": 70.01
   },
   {
@@ -498,8 +498,8 @@
    "tyre": "right_main",
    "view": "side",
    "groundspeed_kt": 60.0,
-   "oaspl_db": 65.11,
-   "dba": 65.01,
+   "oaspl_db": 64.99,
+   "dba": 64.9,
    "limited_samples": 0
   },
   {
@@ -508,9 +508,9 @@
    "view": "cockpit",
    "groundspeed_kt": 60.0,
    "oaspl_db": 82.91,
-   "dba": 71.86,
+   "dba": 71.88,
    "limited_samples": 0,
-   "airborne_dba": 64.05,
+   "airborne_dba": 64.19,
    "structure_dba": 71.57
   },
   {
@@ -518,8 +518,8 @@
    "tyre": "right_main",
    "view": "side",
    "groundspeed_kt": 75.0,
-   "oaspl_db": 67.99,
-   "dba": 68.17,
+   "oaspl_db": 67.87,
+   "dba": 68.06,
    "limited_samples": 0
   },
   {
@@ -528,9 +528,9 @@
    "view": "cockpit",
    "groundspeed_kt": 75.0,
    "oaspl_db": 84.71,
-   "dba": 73.74,
+   "dba": 73.77,
    "limited_samples": 0,
-   "airborne_dba": 67.11,
+   "airborne_dba": 67.25,
    "structure_dba": 73.06
   },
   {
@@ -538,8 +538,8 @@
    "tyre": "right_main",
    "view": "side",
    "groundspeed_kt": 90.0,
-   "oaspl_db": 70.58,
-   "dba": 70.94,
+   "oaspl_db": 70.46,
+   "dba": 70.82,
    "limited_samples": 0
   },
   {
@@ -548,9 +548,9 @@
    "view": "cockpit",
    "groundspeed_kt": 90.0,
    "oaspl_db": 86.24,
-   "dba": 75.46,
+   "dba": 75.5,
    "limited_samples": 0,
-   "airborne_dba": 69.83,
+   "airborne_dba": 69.97,
    "structure_dba": 74.55
   }
  ],

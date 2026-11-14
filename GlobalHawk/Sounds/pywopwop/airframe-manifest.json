@@ -24,7 +24,7 @@
    "file": "airframe_airframe_110kt_side.wav",
    "layer": "airframe",
    "airspeed_kt": 110.0,
-   "oaspl_db": 44.46,
+   "oaspl_db": 44.45,
    "dba": 43.67
   },
   {
@@ -38,8 +38,8 @@
    "file": "airframe_airframe_130kt_side.wav",
    "layer": "airframe",
    "airspeed_kt": 130.0,
-   "oaspl_db": 43.88,
-   "dba": 42.88
+   "oaspl_db": 43.85,
+   "dba": 42.87
   },
   {
    "file": "airframe_brakes_130kt_side.wav",
@@ -52,7 +52,7 @@
    "file": "airframe_airframe_150kt_side.wav",
    "layer": "airframe",
    "airspeed_kt": 150.0,
-   "oaspl_db": 44.45,
+   "oaspl_db": 44.39,
    "dba": 42.59
   },
   {
@@ -66,8 +66,8 @@
    "file": "airframe_airframe_170kt_side.wav",
    "layer": "airframe",
    "airspeed_kt": 170.0,
-   "oaspl_db": 48.98,
-   "dba": 47.63
+   "oaspl_db": 48.94,
+   "dba": 47.62
   },
   {
    "file": "airframe_brakes_170kt_side.wav",
@@ -80,8 +80,8 @@
    "file": "airframe_airframe_190kt_side.wav",
    "layer": "airframe",
    "airspeed_kt": 190.0,
-   "oaspl_db": 49.1,
-   "dba": 46.18
+   "oaspl_db": 49.04,
+   "dba": 46.17
   },
   {
    "file": "airframe_brakes_190kt_side.wav",

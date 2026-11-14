@@ -38,7 +38,7 @@ NOSE_SHARE = 0.174                   # of the weight on the nose leg (fdm/data/m
 # legs were taken from (Janes, as the flight model's notes have it); two side by side on every leg.
 SPRING = dict(nose=11636.0, main=22096.0)                  # lb/ft, the flight model's
 TYRES = [
-    dict(name='nose', gear=0, position=(-G['nose_x'] * FT, 0.0, 0.0), width_m=0.165, diameter_m=0.457, count=2,
+    dict(name='nose', gear=0, position=(-G['nose_x'] * FT, 0.0, 0.0), width_m=0.165, diameter_m=0.457, count=1,      # one wheel on the nose leg
          static_compression_ft=NOSE_SHARE * WEIGHT_LB / SPRING['nose']),
     dict(name='left_main', gear=1, position=(-G['main_x'] * FT, G['main_track'] / 2 * FT, 0.0), width_m=0.146, diameter_m=0.559, count=2,
          static_compression_ft=(1 - NOSE_SHARE) / 2 * WEIGHT_LB / SPRING['main']),
@@ -60,7 +60,7 @@ GROUPS = [
     dict(name='main', tyre_type='22x5.75-12', damping=2754.0 * LBFTS, spring=SPRING['main'] * LBFT, static_load_n=(1 - NOSE_SHARE) / 2 * WEIGHT_LB * 4.4482,
          tyres=2, wheels=[dict(gear=1, position=TYRES[1]['position']), dict(gear=2, position=TYRES[2]['position'])]),
     dict(name='nose', tyre_type='18x6.5-8', damping=1297.0 * LBFTS, spring=SPRING['nose'] * LBFT, static_load_n=NOSE_SHARE * WEIGHT_LB * 4.4482,
-         tyres=2, wheels=[dict(gear=0, position=TYRES[0]['position'])]),
+         tyres=1, wheels=[dict(gear=0, position=TYRES[0]['position'])]),
 ]
 SLIPS_KT = (40.0, 60.0, 80.0, 100.0, 120.0, 140.0)          # the model lands at 100 to 140 kt over the ground
 AIRFRAME = 'p2006t'                  # whose structure's transfer the tyres' roll takes inside, scaled by mass (PyWopWop's STRUCTURES)
