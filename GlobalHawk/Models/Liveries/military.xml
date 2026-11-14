@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<!-- A livery of the Global Hawk, written by fdm/mkmodel.py (LIVERIES): FlightGear's livery selector copies these properties into sim/model/livery. Each group: base colour in linear light and roughness. -->
+<PropertyList>
+ <sim>
+  <model>
+   <livery>
+    <name type="string">Dark grey (military)</name>
+    <index type="int">2</index>
+    <paint>
+     <red type="float">0.058</red>
+     <green type="float">0.064</green>
+     <blue type="float">0.072</blue>
+     <roughness type="float">0.9</roughness>
+    </paint>
+    <stripe>
+     <red type="float">0.058</red>
+     <green type="float">0.064</green>
+     <blue type="float">0.072</blue>
+     <roughness type="float">0.9</roughness>
+    </stripe>
+    <pin>
+     <red type="float">0.058</red>
+     <green type="float">0.064</green>
+     <blue type="float">0.072</blue>
+     <roughness type="float">0.9</roughness>
+    </pin>
+    <fan>
+     <red type="float">0.54</red>
+     <green type="float">0.5</green>
+     <blue type="float">0.47</blue>
+     <roughness type="float">0.35</roughness>
+    </fan>
+    <spinner>
+     <red type="float">0.05</red>
+     <green type="float">0.05</green>
+     <blue type="float">0.06</blue>
+     <roughness type="float">0.4</roughness>
+    </spinner>
+    <markings type="bool">false</markings>
+   </livery>
+  </model>
+ </sim>
+</PropertyList>

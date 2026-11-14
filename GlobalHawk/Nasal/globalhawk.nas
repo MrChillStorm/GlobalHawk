@@ -278,3 +278,20 @@ var lamps = maketimer(0.5, func {
     setprop(LAMPS ~ "nav", (getprop("/controls/lighting/nav-lights") and dim) ? 1 : 0);
 });
 lamps.start();
+
+# The livery selector: FlightGear's own (aircraft.livery, as in the UH-60 and the Bo 105): it lists the files of Models/Liveries (written by fdm/mkmodel.py), copies the chosen one's properties into sim/model/livery
+# (the paint's colour and roughness, whether the stripe shows) and remembers the choice for the next start. Sorted by the livery's index, so that the white one, the default, is first.
+aircraft.livery.init("Aircraft/GlobalHawk/Models/Liveries", "sim/model/livery/name", "sim/model/livery/index");
+
+# FlightGear's Canvas dialogs (fgdata of 2026-10-15 on) filter a list by its value: the livery picked would be the only one left in the selector. Once the selector's own listener has applied the pick,
+# the value is cleared (the Bo 105's way).
+var livery_result = aircraft.livery.dialog.result;
+setlistener(livery_result, func(n) {
+    if (n.getValue() == "")
+        return;
+    settimer(func {
+        livery_result.setValue("");
+        if (aircraft.livery.dialog.is_open())
+            fgcommand("dialog-update", props.Node.new({ "dialog-name": aircraft.livery.dialog.dialog_name }));
+    }, 0);
+});

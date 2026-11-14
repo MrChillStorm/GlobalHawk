@@ -161,14 +161,14 @@ def build():
         # ctl/pitch-deg: both trailing edges down positive; ctl/yaw-deg: nose right positive, which is the right
         # panel's trailing edge down and the left one's up... as seen from each panel's own upper side
         anims.append(dict(obj='ruddervator-%s' % sn, expr=(J + 'ctl/pitch-deg', J + 'ctl/yaw-deg', 1.0 if side < 0 else -1.0), a=r0, b=r1, down=side))
-    # gear: a leg and two wheels each; shown while the gear is not up
+    # gear: a leg and two wheels on each main, one on the nose (photographs); shown while the gear is not up
     g = G['gear']
     for name, x, y, axle, d in (('gear-nose', g['nose_x'], 0.0, g['nose_axle_z'], g['nose_wheel_diameter']),
                                 ('gear-left', g['main_x'], -g['main_track'] / 2, g['main_axle_z'], g['main_wheel_diameter']),
                                 ('gear-right', g['main_x'], g['main_track'] / 2, g['main_axle_z'], g['main_wheel_diameter'])):
         o = Obj(name, DARK)
         sp = g['main_wheel_spacing'] if 'nose' not in name else 0.5
-        for s in (-1, 1):
+        for s in ((0,) if 'nose' in name else (-1, 1)):
             cylinder(o, (x, y + s * sp / 2 - 0.22, axle), (x, y + s * sp / 2 + 0.22, axle), d / 2, axis='y')
         top = G['wing']['z'] - 0.3 if 'nose' not in name else 3.6
         leg = [(x - 0.15, y - 0.15), (x + 0.15, y - 0.15), (x + 0.15, y + 0.15), (x - 0.15, y + 0.15)]

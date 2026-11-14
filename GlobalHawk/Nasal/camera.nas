@@ -286,3 +286,50 @@ setlistener("/sim/signals/fdm-initialized", func {
     });
     loop.start();
 }, 0, 0);
+
+# Scrolling through the views with V: the aircraft's own first (the nose camera, the belly camera, the logo, as FlightGear numbers them they come after its own nine), then the usual ones in
+# their order. FlightGear's view.stepView() goes by its list's order and cannot be told another; this does the same (skips a disabled view, names the view in a pop-up) from a list of our own,
+# and switches with view.setView(), which takes FlightGear's own place in its list, so the two cannot disagree.
+var VIEW_ORDER = ["Nose Camera", "Belly Camera", "Logo, right side", "Logo, left side"];
+
+var cycle_view = func(step) {
+    step = step > 0 ? 1 : -1;
+    var all = [];
+    forindex (var i; view.views) {
+        var nm = view.views[i].getNode("name");
+        var en = view.views[i].getNode("enabled");
+        if (nm == nil or (en != nil and !en.getBoolValue())) continue;
+        append(all, nm.getValue());
+    }
+    var order = [];
+    foreach (var n; VIEW_ORDER)
+        foreach (var a; all)
+            if (a == n) append(order, n);
+    foreach (var a; all) {
+        var found = 0;
+        foreach (var n; order) if (n == a) found = 1;
+        if (!found) append(order, a);
+    }
+    if (!size(order)) return;
+    var cur = getprop("/sim/current-view/name");
+    var k = 0;
+    forindex (var i; order) if (order[i] == cur) k = i;
+    k = math.mod(k + step + size(order), size(order));
+    var idx = view.indexof(order[k]);
+    if (idx == nil) return;
+    view.setView(idx);
+    var popup = getprop("/sim/view-name-popup");
+    if (popup == 1 or popup == nil) gui.popupTip(order[k]);
+}
+
+# FlightGear's V and Shift-V keys call view.stepView(), and FlightGear's own keyboard bindings replace any an aircraft's set file gives for them (tried: the merged key still ran
+# view.stepView), so with this aircraft view.stepView() itself is taken over. Any other aircraft gets FlightGear's own, which is kept the first time this file is loaded.
+if (!contains(view, "gh_step_view")) {
+    view.gh_step_view = view.stepView;
+    view.stepView = func(step, force = 0) {
+        if (getprop("/sim/aircraft") == "GlobalHawk")
+            cycle_view(step);
+        else
+            view.gh_step_view(step, force);
+    }
+}

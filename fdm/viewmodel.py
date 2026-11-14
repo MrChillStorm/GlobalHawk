@@ -39,6 +39,17 @@ def posed(objs, anims, gear=1.0, aileron=0.0, pitch=0.0, spoiler=0.0, flex=0.0):
         for a in reversed(mine):
             if a.get('hide_up') or a.get('spin'):
                 continue
+            if a.get('lift'):                                   # a translation up, ft
+                v = v.copy()
+                v[:, 2] += float(np.interp(gear, [e[0] for e in a['lift']], [e[1] for e in a['lift']]))
+                continue
+            if a.get('scale'):                                  # telescopic: scaled along y about the point given
+                f = 1.0
+                for m, fa, fb in a['scale']:
+                    f *= min(1.0, max(m, fa * gear + fb))
+                v = v.copy()
+                v[:, 1] = a['a'][1] + (v[:, 1] - a['a'][1]) * f
+                continue
             if 'table' in a:
                 deg = float(np.interp(gear, [e[0] for e in a['table']], [e[1] for e in a['table']]))
             elif 'expr' in a:

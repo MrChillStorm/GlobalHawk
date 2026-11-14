@@ -1,0 +1,2 @@
+<?xml version="1.0"?>
+<PropertyList><name>gh-marking</name><inherits-from>Effects/model-pbr-transparent</inherits-from><parameters><metallic-factor type="float">0</metallic-factor><roughness-factor type="float">0.6</roughness-factor></parameters></PropertyList>

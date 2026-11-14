@@ -14,7 +14,46 @@
   <minimum-fg-version>2020.3.0</minimum-fg-version>
   <flight-model>jsb</flight-model>
   <aero>GlobalHawk</aero>
-  <model><path>Aircraft/GlobalHawk/Models/GlobalHawk.xml</path></model>
+  <model>
+   <path>Aircraft/GlobalHawk/Models/GlobalHawk.xml</path>
+   <!-- the livery as it is without a choice: the white one (Models/Liveries/default.xml, written by fdm/mkmodel.py: keep these the same; mkmodel.py's self-test compares them) -->
+   <livery>
+    <name type="string">White</name>
+    <index type="int">1</index>
+    <file type="string"/>
+    <paint>
+     <red type="float">0.86</red>
+     <green type="float">0.86</green>
+     <blue type="float">0.88</blue>
+     <roughness type="float">0.35</roughness>
+    </paint>
+    <stripe>
+     <red type="float">0.055</red>
+     <green type="float">0.21</green>
+     <blue type="float">0.52</blue>
+     <roughness type="float">0.35</roughness>
+    </stripe>
+    <pin>
+     <red type="float">0.96</red>
+     <green type="float">0.97</green>
+     <blue type="float">0.06</blue>
+     <roughness type="float">0.35</roughness>
+    </pin>
+    <fan>
+     <red type="float">0.54</red>
+     <green type="float">0.5</green>
+     <blue type="float">0.47</blue>
+     <roughness type="float">0.35</roughness>
+    </fan>
+    <spinner>
+     <red type="float">0.05</red>
+     <green type="float">0.05</green>
+     <blue type="float">0.06</blue>
+     <roughness type="float">0.4</roughness>
+    </spinner>
+    <markings type="bool">false</markings>
+   </livery>
+  </model>
   <sound><path>Aircraft/GlobalHawk/Sounds/globalhawk-sound.xml</path></sound>
   <rating><FDM type="int">3</FDM><systems type="int">2</systems><cockpit type="int">0</cockpit><model type="int">1</model></rating>
   <tags><tag>uav</tag><tag>jet</tag><tag>high-altitude</tag><tag>nasa</tag></tags>
@@ -49,11 +88,49 @@
     <limits><enabled type="bool">false</enabled></limits>
    </config>
   </view>
+  <!-- the logo (FlightGear's badge) on each side of the nacelle is small from the usual views: these two look straight at it from 2.4 m out, fixed to the aircraft (the model's own frame: 9.46 m aft of the
+       nose, 2.73 m up, 0.61 m out to either side), with the logo about half the picture, so that the mouse wheel zooms in from there. V scrolls through the views in the order of globalhawk.cycle_view() (camera.nas, which takes over
+       view.stepView() for this aircraft): the nose camera, the belly camera, the two logo views, then FlightGear's own -->
+  <view n="101">
+   <name>Logo, right side</name>
+   <type>lookfrom</type>
+   <internal type="bool">false</internal>
+   <config>
+    <from-model type="bool">true</from-model>
+    <from-model-idx type="int">0</from-model-idx>
+    <ground-level-nearplane-m type="double">0.3</ground-level-nearplane-m>
+    <x-offset-m type="double">3.0</x-offset-m>
+    <y-offset-m type="double">2.73</y-offset-m>
+    <z-offset-m type="double">9.46</z-offset-m>
+    <heading-offset-deg type="double">90</heading-offset-deg>
+    <pitch-offset-deg type="double">0</pitch-offset-deg>
+    <default-field-of-view-deg type="double">30</default-field-of-view-deg>
+    <limits><enabled type="bool">false</enabled></limits>
+   </config>
+  </view>
+  <view n="102">
+   <name>Logo, left side</name>
+   <type>lookfrom</type>
+   <internal type="bool">false</internal>
+   <config>
+    <from-model type="bool">true</from-model>
+    <from-model-idx type="int">0</from-model-idx>
+    <ground-level-nearplane-m type="double">0.3</ground-level-nearplane-m>
+    <x-offset-m type="double">-3.0</x-offset-m>
+    <y-offset-m type="double">2.73</y-offset-m>
+    <z-offset-m type="double">9.43</z-offset-m>
+    <heading-offset-deg type="double">-90</heading-offset-deg>
+    <pitch-offset-deg type="double">0</pitch-offset-deg>
+    <default-field-of-view-deg type="double">30</default-field-of-view-deg>
+    <limits><enabled type="bool">false</enabled></limits>
+   </config>
+  </view>
   <chase-distance-m type="double" archive="y">-55</chase-distance-m>
   <menubar>
    <default>
     <menu n="100">
      <label>Global Hawk</label>
+     <item><label>Select livery...</label><binding><command>nasal</command><script>aircraft.livery.dialog.open()</script></binding></item>
      <item><label>Autostart</label><binding><command>nasal</command><script>globalhawk.autostart()</script></binding></item>
      <item><label>Shutdown</label><binding><command>nasal</command><script>globalhawk.shutdown()</script></binding></item>
      <item><label>Belly camera: lock and slew...</label><binding><command>dialog-show</command><dialog-name>globalhawk-camera</dialog-name></binding></item>
