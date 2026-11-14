@@ -14,6 +14,7 @@ import numpy as np
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import harness as H         # noqa: E402
+import mission as M          # noqa: E402
 import missionmgr as MM     # noqa: E402
 
 NM = 6076.1
@@ -38,7 +39,7 @@ def landing_case(f, name, weight, elev, meas):
     keas = math.sqrt(weight / (0.645 * 540 * 0.5 * 0.0023769)) / H.KT
     t = H.trim(f, alt=elev + 5.3 + d0 * 0.07782, kcas=keas, weight=weight, gamma=-4.45, gear=1.0, spoiler=2 / 3, lat=start[0], lon=start[1],
                psi=COURSE, terrain=elev)
-    H.engage(f, t, pitch_mode=1, roll_mode=2, ground_steer=1, land_mode=1, rwy_elev_ft=elev, leg_lat0_deg=far[0], leg_lon0_deg=far[1],
+    H.engage(f, t, pitch_mode=1, roll_mode=3, ground_steer=1, land_mode=1, rwy_elev_ft=elev, leg_lat0_deg=far[0], leg_lon0_deg=far[1],
              leg_lat1_deg=aim[0], leg_lon1_deg=aim[1])
     log = H.run(f, 260, every=6)
     add('M6', '%s landing: approach speed chosen by the law' % name, abs(log['target'][5] - meas['app']) <= 2, '%.1f KEAS (measured %d)' % (log['target'][5], meas['app']))
@@ -86,6 +87,63 @@ def capture_matrix(f):
         '%d crossings beyond 5 ft (limit 0)' % (over, under, crossings))
 
 
+def entry_case(f, weight, above):
+    """The landing item begun at the fix 10 nmi out, level, ABOVE the glide path by a height (docs/PLAN.md, "The aircraft refuses what it cannot fly"). Returns the
+    go-around's start (s) and its lowest height against the height it came down to (ft), the glide error after the path was taken (the M5b figures), and the
+    touchdown: feet past the aiming point, sink (m/s) and distance off the line (ft)."""
+    elev = 174.0
+    u = unit(90.0)
+    fld = MM.Field(60.3, 24.96, elev)
+    aim, fix = fld.ll(0, 0), fld.ll(*(-10 * NM * u))
+    path10 = 5.3 + MM.GLIDE_TAN * 10 * NM
+    t = H.trim(f, alt=elev + path10 + above, kcas=M.schedule(0)['kcas'], weight=weight, lat=fix[0], lon=fix[1], psi=90.0, terrain=elev)
+    H.engage(f, t, pitch_mode=2, thrust_mode=3)
+    plan = [dict(kind='land', fix=fix, aim=aim, elev=elev)]
+    mgr = MM.Manager(f, plan)
+    f['ap/engaged'] = 1
+    t0, ga_t, low, err, td = f['simulation/sim-time-sec'], None, 1e9, [], None
+    for _ in range(int(2400 * H.HZ)):
+        mgr.step()
+        if not f.run():
+            break
+        it = mgr.plan[min(mgr.i, len(mgr.plan) - 1)]
+        if it['kind'] == 'go_around':
+            ga_t = ga_t if ga_t is not None else f['simulation/sim-time-sec'] - t0
+            low = min(low, f['position/h-sl-ft'] - it['alt'])
+        if it['kind'] == 'land' and it.get('_on_path') and f['ap/flare'] == 0 and f['ap/on-mains'] == 0 and f['ap/leg-togo-ft'] > 1500:
+            err.append(f['ap/glide-error-ft'])
+        if f['ap/on-mains'] > 0:
+            td = (-f['ap/leg-togo-ft'], -f['velocities/h-dot-fps'] * 0.3048, abs(f['ap/leg-xt-ft']))
+            break
+    e = np.array(err) if err else np.array([float('nan')])
+    reached = int(np.argmax(e >= -10.0)) if (e >= -10).any() else len(e)
+    big = e[reached:][np.abs(e[reached:]) > 5]
+    return dict(ga_t=ga_t, low=low if low < 1e8 else None, over=float(np.nanmax(e)) if err else float('nan'), under=float(e[reached:].min()) if reached < len(e) else float('nan'),
+                cross=int(np.sum(np.diff(np.sign(big)) != 0)) if len(big) > 1 else 0, td=td)
+
+
+def entry_contract():
+    """M10: the landing task's entry contract. Above the path by more than the limit (0.8 of what the capture takes at the weight, at 10 nmi: 400, 1,200 and 1,600 ft) the go-around task takes the aircraft at once: it circles
+    down to the height the final is begun from (never more than 300 ft under it), goes back onto the final and lands within M5b's glide limits, M7's sink and M8's
+    line; within the limit (0.8 of the height the capture was flown to take over at that weight) it takes the path over as it always did, with no go-around."""
+    n0 = MM.Manager.go_arounds
+    lines, ok = [], True
+    for w in (12000.0, 20000.0, 26000.0):
+        cap = {12000.0: 500.0, 20000.0: 1500.0, 26000.0: 2000.0}[w]
+        for above, around in ((0.7 * cap, False), (1.3 * cap, True), (cap + 3000.0, True)):
+            r = entry_case(H.load(rebuild=False), w, above)
+            td = r['td']
+            good = td is not None and (r['ga_t'] is not None) == around and 0.2 <= td[1] <= 1.2 and -50 <= td[0] <= 2000 and td[2] <= 15.0
+            if around:
+                good = good and r['ga_t'] < 5.0 and r['low'] >= -300.0 and r['over'] <= 8.0 and r['under'] >= -12.0      # M5b's over and under; the crossings are not counted: after the circle the settle may pass 5 ft once (5.6 ft seen)
+            ok = ok and good
+            lines.append('%d lb +%d ft: %s, %s' % (w, above, ('go-around at %.0f s, %.0f ft under its height at the least, then glide +%.1f/%.1f ft (%d crossings)' % (r['ga_t'], r['low'], r['over'], r['under'], r['cross'])
+                          if r['ga_t'] is not None else 'no go-around, path taken (highest %.0f ft above it)' % r['over']),
+                          'not down' if td is None else 'down %.0f ft past the aiming point, %.2f m/s, %.1f ft off the line%s' % (td[0], td[1], td[2], '' if good else '  <-- MISS')))
+    add('M10', 'landing begun above the glide path: the entry contract, 9 cases', ok, '; '.join(lines))
+    return MM.Manager.go_arounds - n0
+
+
 def judge_landing(log, name, meas=None):
     air = log['mains'] == 0
     if not (log['mains'] > 0).any():
@@ -119,8 +177,10 @@ def mission(f):
     plan = [
         dict(kind='taxi', points=[P(-400), P(0)], speed=15, turn_speed=8, stop=True),
         dict(kind='takeoff', start=P(0), end=P(10000), elev=elev),
-        dict(kind='route', points=[P(25 * NM) + (20000.0,), P(25 * NM, 25 * NM) + (20000.0,),
-                                   fld.ll(*(25 * NM * u + 25 * NM * r + 25 * NM * unit(COURSE + 210.0))) + (20000.0,),
+        # 14,000 ft, not 20,000: the last leg is 26 nmi, from 20,000 ft down to the fix at 6,500 ft that is 5 deg and the aircraft needs 50 nmi: it began the landing 2,345 ft over
+        # the path (the go-around task caught it, docs/PLAN.md "The aircraft refuses what it cannot fly"); from 14,000 ft it is 2.7 deg
+        dict(kind='route', points=[P(25 * NM) + (14000.0,), P(25 * NM, 25 * NM) + (14000.0,),
+                                   fld.ll(*(25 * NM * u + 25 * NM * r + 25 * NM * unit(COURSE + 210.0))) + (14000.0,),
                                    P(-20 * NM) + (6500.0,)]),
         dict(kind='land', fix=P(-20 * NM), aim=P(0), elev=elev),
         dict(kind='taxi', points=lambda m: [fld.ll(*(np.array(fld.ne(*m.here())) + 400 * u)), fld.ll(*(np.array(fld.ne(*m.here())) + 400 * u + 300 * r))],
@@ -200,13 +260,27 @@ def mission(f):
         tl = log['t'][level]
         held = np.abs(log['alt'][level] - log['altcmd'][level])
         settled = level & np.concatenate([[False], np.diff(log['pm']) == 0]) & (np.abs(log['alt'] - log['altcmd']) < 150)
-        over = float(held.max()) if len(held) else float('nan')
-        late = held[tl > tl[0] + 120] if len(tl) else np.array([0.0])
-        verr = np.abs(log['kcas'][level] - log['target'][level])[tl > tl[0] + 120] if len(tl) else np.array([0.0])
+        over = float(held.max()) if len(held) else float('nan')           # (the largest distance from the height at any time in the altitude mode: with the fixed 150 ft gate that was the capture's start; kept to report)
+        # each level stretch is judged from two minutes after its own start (the route has a level at its cruise and, now that the descent to the fix is one the aircraft
+        # can make, another at the fix's height: judged from the first one's start the second's level-off would count as not settled)
+        idx = np.nonzero(level)[0]
+        runs = np.split(idx, np.nonzero(np.diff(idx) > 1)[0] + 1) if len(idx) else []
+        # the capture's own measure: how far past the commanded height each stretch of the altitude mode went, after first coming within 20 ft of it or past it (the altitude mode takes over
+        # where the capture's profile asks for the climb rate there is, 700 ft out in this mission, so the distance at its start says nothing about how it ends: docs/PLAN.md, "Level-off")
+        past = [0.0]
+        for r in runs:
+            d0 = np.sign(log['altcmd'][r][0] - log['alt'][r][0]) or 1.0
+            e = (log['alt'][r] - log['altcmd'][r]) * d0
+            reached = np.nonzero(e >= -20.0)[0]
+            if len(reached):
+                past.append(float(max(0.0, e[reached[0]:].max())))
+        overshoot = max(past)
+        late = np.concatenate([np.abs(log['alt'][r] - log['altcmd'][r])[log['t'][r] > log['t'][r][0] + 120] for r in runs] + [np.array([0.0])])
+        verr = np.concatenate([np.abs(log['kcas'][r] - log['target'][r])[log['t'][r] > log['t'][r][0] + 120] for r in runs] + [np.array([0.0])])
         xt_nm = np.abs(log['xt'][k]) / NM
         # after each leg change, the time for the cross-track error to come inside 0.25 nmi
-        add('M4', 'enroute: height', over <= 150 and late.max() <= 50 and verr.max() <= 3,
-            'capture within %.0f ft of the commanded height, held within %.1f ft and %.2f kt after two minutes level' % (over, late.max(), verr.max()))
+        add('M4', 'enroute: height', overshoot <= 150 and late.max() <= 50 and verr.max() <= 3,
+            'capture overshoots the commanded height by at most %.0f ft (the altitude mode begins up to %.0f ft out), held within %.1f ft and %.2f kt after two minutes level' % (overshoot, over, late.max(), verr.max()))
         add('M4', 'enroute: track', np.percentile(xt_nm, 80) <= 0.25, 'cross-track error under 0.25 nmi for %.0f %% of the route; largest %.2f nmi (in the turns); bank up to %.1f deg' % (
             100 * np.mean(xt_nm <= 0.25), xt_nm.max(), np.abs(log['phi'][k]).max()))
         add('M4', 'enroute: bank inside the limit', np.abs(log['phi'][k]).max() <= 26.0, 'bank up to %.1f deg (limit 25 below 30,000 ft, 1 deg allowed over)' % np.abs(log['phi'][k]).max())
@@ -223,6 +297,9 @@ def main():
     landing_case(f, '2014', 17100.0, 574.0, dict(app=120, td=122, pitch=2.3, sink=0.75))
     capture_matrix(f)
     log, mgr = mission(f)
+    add('G0', 'no go-around in the flights above (a go-around hides nothing)', MM.Manager.go_arounds == 0, '%d go-arounds' % MM.Manager.go_arounds)
+    started = entry_contract()
+    add('G1', 'the entry contract made its go-arounds, six of nine cases', started == 6, '%d go-arounds' % started)
     for tag, name, ok, detail in rows:
         print('%-3s %-44s %s  %s' % (tag, name, 'pass' if ok else 'MISS', detail))
     miss = sum(1 for r in rows if not r[2])

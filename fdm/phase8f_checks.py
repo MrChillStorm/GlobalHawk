@@ -54,9 +54,9 @@ console.log(JSON.stringify(input.cases.map((c) => {
   const legsFor = (pts) => pc.legs([{ kind: 'route', points: pts }, { kind: 'land', fix: c.fix, aim: c.aim }], c.start, c.elev);
   // the height over the fix the aircraft's capability asks for (the station's own default for a plan that does not give one)
   const fixAlt = Math.round((c.elev + FM.finalFixHeightAgl(geo.course(c.fix, c.aim).ft, c.weight)) / 100) * 100;
-  const r = R.plan({ start: c.start, start_alt_ft: c.elev + 100, goal: c.fix, aim: c.aim, fix_alt_ft: fixAlt, weight_lb: c.weight, fuel_lb: c.fuel, fc, perf, wind: null,
+  const r = R.plan({ start: c.start, start_alt_ft: c.elev + 100, start_hdg_deg: c.rhdg, goal: c.fix, aim: c.aim, fix_alt_ft: fixAlt, weight_lb: c.weight, fuel_lb: c.fuel, fc, perf, wind: null,
     hours: 0, zones: [], hazards: [], now: 0, legsFor, altitudes: [10000, 15000, 20000] });
-  return r.ok ? { points: r.best.points, join: r.best.join || null, time_s: r.best.time_s, fuel_lb: r.best.fuel_lb } : { error: r.error };
+  return r.ok ? { points: r.best.points, join: r.best.join || null, departure: r.best.departure_points || 0, time_s: r.best.time_s, fuel_lb: r.best.fuel_lb } : { error: r.error };
 })));
 """
 
@@ -93,13 +93,15 @@ def cases():
     demo = json.load(open(DEMO))
     fld = MM.Field(demo['field']['lat'], demo['field']['lon'], demo['field']['elev_ft'])
     start = demo['items'][1]['end']
+    n0, e0 = fld.ne(*demo['items'][1]['end'])
+    hdg = math.degrees(math.atan2(e0, n0)) % 360          # the takeoff's heading (the takeoff starts at the field's origin)
     out = []
     for k, (bearing, dist, final) in enumerate([(30, 80, 40), (120, 140, 250), (210, 200, 100), (300, 120, 340), (75, 260, 215), (255, 300, 20)]):
         n, e = np.array([math.cos(math.radians(bearing)), math.sin(math.radians(bearing))]) * dist * NM
         aim = list(fld.ll(n, e))
         fix = [aim[0] - 10 * NM * math.cos(math.radians(final)) / MM.FT_PER_DEG,
                aim[1] - 10 * NM * math.sin(math.radians(final)) / (MM.FT_PER_DEG * math.cos(math.radians(aim[0])))]
-        out.append(dict(start=start, fix=fix, aim=aim, elev=demo['field']['elev_ft'], weight=25600.0, fuel=14150.0, name='%d nmi at %d, final %d' % (dist, bearing, final)))
+        out.append(dict(start=start, hdg=hdg, fix=fix, aim=aim, elev=demo['field']['elev_ft'], weight=25600.0, fuel=14150.0, name='%d nmi at %d, final %d' % (dist, bearing, final)))
     return demo, out
 
 
@@ -113,7 +115,7 @@ def fly(plan, limit=7200.0):
         sim.set('/gcs/up/cmd', json.dumps(dict(seq=n + 1, station='C', name=name, args=args)))
     keys = ['simulation/sim-time-sec', 'position/lat-geod-deg', 'position/long-gc-deg', 'ap/glide-error-ft', 'ap/land-mode', 'ap/leg-togo-ft', 'ap/leg-xt-ft', 'ap/on-mains',
             'velocities/h-dot-fps', 'ap/ground-speed-kt', 'ap/rollout', 'position/h-sl-ft', 'ap/flare', 'ap/turn-phase', 'ap/turn-lead-ft', 'attitude/phi-deg',
-            'ap/turn-bank-deg', 'aero/alpha-deg', 'ap/alpha-limit-deg']
+            'ap/turn-bank-deg', 'aero/alpha-deg', 'ap/alpha-limit-deg', 'attitude/psi-deg']
     rows_, t0 = [], None
     for i in range(int(limit * H.HZ)):
         if i % H.HZ == 0:
@@ -155,8 +157,36 @@ def turns(plan, a, fld):
     return out
 
 
+def turning_after_takeoff(plan, dep, hdg, a, fld, field_elev):
+    """The heading the aircraft turned through from lift-off until it was 2.5 nmi past the first point of the route proper (the plan's points after the
+    departure's), against the corners the plan has up to there (the one at the takeoff's end from the takeoff's heading, those at the departure's points, and that
+    at the first point itself): [extra deg, flown deg, planned deg]. The loop the aircraft flew in FlightGear (205 deg for a corner of 171) is the extra."""
+    route = plan['items'][2]['points']
+    end = plan['items'][1]['end']
+    chain = [end] + [[p[0], p[1]] for p in route] + [plan['items'][3]['aim']]
+    ne = [np.array(fld.ne(*c)) for c in chain]
+    course = lambda u, v: math.degrees(math.atan2(v[1] - u[1], v[0] - u[0])) % 360
+    turn = lambda c0, c1: (c1 - c0 + 180) % 360 - 180
+    planned = abs(turn(hdg, course(ne[0], ne[1])))
+    for i in range(1, dep + 2):
+        if i + 1 < len(chain):
+            planned += abs(turn(course(ne[i - 1], ne[i]), course(ne[i], ne[i + 1])))
+    air = int(np.argmax(a[:, 11] > field_elev + 300.0))
+    pos = np.array([fld.ne(lat, lon) for lat, lon in zip(a[:, 1], a[:, 2])])
+    target = ne[dep + 1]
+    d = np.hypot(pos[:, 0] - target[0], pos[:, 1] - target[1])
+    near = air + int(np.argmin(d[air:air + 1500]))
+    past = np.nonzero(d[near:] > 2.5 * NM)[0]
+    k1 = near + int(past[0]) if len(past) else len(d) - 1
+    psi = np.degrees(np.unwrap(np.radians(a[air:k1 + 1, 19])))
+    flown = float(np.abs(np.diff(psi)).sum())
+    return flown - planned, flown, planned
+
+
 def p5():
     demo, cs = cases()
+    for c in cs:                                          # P5_NO_HDG: the baseline, the router as it was, with no takeoff heading
+        c['rhdg'] = None if os.environ.get('P5_NO_HDG') else c['hdg']
     routed = node(ROUTER, dict(cases=cs))
     worst_turn, lines, fails = 0.0, [], []
     for c, r in zip(cs, routed):
@@ -187,17 +217,19 @@ def p5():
         td = air + int(np.argmax(a[air:, 7] > 0)) if (a[air:, 7] > 0).any() else None
         sink = -a[td - 1, 8] * 0.3048 if td else float('nan')
         roll = float(np.abs(a[td:, 6]).max()) if td else float('nan')
+        extra, flown_turn, planned_turn = turning_after_takeoff(plan, r.get('departure', 0), c['hdg'], a, fld, demo['field']['elev_ft'])
         fc = node(FORECAST, dict(items=plan['items'][1:], from_=None, elev=demo['field']['elev_ft'], state=dict(alt_ft=t0['alt'], weight_lb=t0['weight'], fuel_lb=t0['fuel'])))
         tf, tm = fc['total']['t_s'], (a[td, 0] if td else a[-1, 0]) - t0['t']
-        ok = over <= 150.0 and up <= 8.0 and under >= -12.0 and cross == 0 and 0.2 <= sink <= 1.2 and roll <= 15.0 and abs(tf / tm - 1) <= 0.10
-        lines.append('%s: %d points%s; turns %s; past the line %.0f ft, glide +%.1f/%.1f ft %d crossings, sink %.2f m/s, rollout %.1f ft off, forecast %.1f min flown %.1f%s' % (
-            c['name'], len(r['points']), ' (%s)' % r['join'][:40] if r['join'] else '', ','.join('%.0f deg %.0f ft' % (abs(x[1]), x[2]) for x in tn), over, up, under, cross, sink, roll,
+        ok = over <= 150.0 and up <= 8.0 and under >= -12.0 and cross == 0 and 0.2 <= sink <= 1.2 and roll <= 15.0 and abs(tf / tm - 1) <= 0.10 and extra <= 40.0
+        lines.append('%s: %d points%s; turns %s; past the line %.0f ft, turned %.0f deg to the first point against %.0f planned (%+.0f), glide +%.1f/%.1f ft %d crossings, sink %.2f m/s, rollout %.1f ft off, forecast %.1f min flown %.1f%s' % (
+            c['name'], len(r['points']), ' (%s)' % r['join'][:40] if r['join'] else '', ','.join('%.0f deg %.0f ft' % (abs(x[1]), x[2]) for x in tn), over, flown_turn, planned_turn, extra, up, under, cross, sink, roll,
             tf / 60, tm / 60, '' if ok else '  <-- MISS'))
         if not ok:
             fails.append(c['name'])
     for line in lines:
         print('    ' + line, flush=True)
     add('P5', 'router plans flown by the aircraft', not fails, '%d plans; %s' % (len(cs), 'all within the limits' if not fails else 'misses: ' + '; '.join(fails)))
+    add('G0', 'no go-around in the router plans flown (a go-around hides nothing)', MM.Manager.go_arounds == 0, '%d go-arounds' % MM.Manager.go_arounds)
 
 
 def main():

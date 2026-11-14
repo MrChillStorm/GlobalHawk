@@ -48,6 +48,34 @@
   <property value="0">ap/turn-phase</property>
   <property value="0">ap/turn-done</property>
   <property value="0">ap/turn-ack</property>
+  <property value="0">ap/decrab-w</property>
+  <property value="0">ap/tk-on</property>
+  <property value="0">ap/tk-done</property>
+  <property value="0">ap/tx-on</property>
+  <property value="15">ap/tx-fast</property>
+  <property value="8">ap/tx-slow</property>
+  <property value="0">ap/tx-bend-deg</property>
+  <property value="0">ap/tx-last</property>
+  <property value="1">ap/tx-stop</property>
+  <property value="0">ap/ld-on</property>
+  <property value="0">ap/ld-captured</property>
+  <property value="0">ap/ci-on</property>
+  <property value="0">ap/ci-lat</property>
+  <property value="0">ap/ci-lon</property>
+  <property value="1000">ap/ci-radius-ft</property>
+  <property value="1">ap/ci-side</property>
+  <property value="30">ap/ci-out-max</property>
+  <property value="1">ap/ci-lead</property>
+  <property value="0">ap/vt-on</property>
+  <property value="0">ap/v-sp-i</property>
+  <property value="0">ap/vt-ft</property>
+  <property value="0">ap/vt-path</property>
+  <property value="-1">ap/sp-ext</property>
+  <property value="0">ap/vmode</property>
+  <property value="0">ap/v-level-alt</property>
+  <property value="0">ap/v-level-from</property>
+  <property value="150">ap/v-level-span</property>
+  <property value="0">ap/v-level-sp0</property>
   <property value="0">limits/overstress</property>
   <property value="0">limits/failed</property>
   <property value="0">limits/reset</property>
@@ -582,11 +610,42 @@
       <test value="ctl/manual-yaw-deg">ap/engaged == 0</test>
       <output>ap/bias-yaw-deg</output>
     </switch>
-    <switch name="ap/latch-bias-throttle">
-      <description>throttle at engagement</description>
-      <default value="ap/bias-throttle"/>
-      <test value="fcs/throttle-cmd-norm">ap/engaged == 0</test>
-      <output>ap/bias-throttle</output>
+    <switch name="ap/latch-bias-spoiler">
+      <description>spoiler position at engagement</description>
+      <default value="ap/bias-spoiler"/>
+      <test value="ctl/spoiler-norm">ap/engaged == 0</test>
+      <output>ap/bias-spoiler</output>
+    </switch>
+    <fcs_function name="ap/gamma-deg">
+      <description>the flight path angle, deg (small angles)</description>
+      <function>
+        <product><value>57.2958</value><quotient><property>velocities/h-dot-fps</property><max><value>100</value><property>velocities/vt-fps</property></max></quotient></product>
+      </function>
+    </fcs_function>
+    <switch name="ap/latch-bias-gamma-deg">
+      <description>flight path angle at engagement</description>
+      <default value="ap/bias-gamma-deg"/>
+      <test value="ap/gamma-deg">ap/engaged == 0</test>
+      <output>ap/bias-gamma-deg</output>
+    </switch>
+    <fcs_function name="ap/cl-now">
+      <description>the lift coefficient the aircraft flies at (weight over dynamic pressure and wing area)</description>
+      <function>
+        <quotient><property>inertia/weight-lbs</property><product><max><property>aero/qbar-psf</property><value>1</value></max><property>metrics/Sw-sqft</property></product></quotient>
+      </function>
+      <clipto><min>0.3</min><max>1.5</max></clipto>
+    </fcs_function>
+    <fcs_function name="ap/cfg-drag-deg">
+      <description>the drag of the spoilers and the gear as a flight path angle, deg (drag coefficient over lift coefficient): what the thrust must give up or take on with the configuration</description>
+      <function>
+        <product><value>63.0254</value><quotient><sum><product><value>0.03044</value><property>ctl/spoiler-norm</property></product><product><value>0.0148</value><property>ctl/gear-norm</property></product></sum><property>ap/cl-now</property></quotient></product>
+      </function>
+    </fcs_function>
+    <switch name="ap/latch-bias-cfg-deg">
+      <description>configuration drag at engagement</description>
+      <default value="ap/bias-cfg-deg"/>
+      <test value="ap/cfg-drag-deg">ap/engaged == 0</test>
+      <output>ap/bias-cfg-deg</output>
     </switch>
     <switch name="ap/latch-theta-latched-deg">
       <description>pitch attitude at engagement</description>
@@ -624,44 +683,123 @@
       <trigger>ap/trig-speed</trigger>
       <clipto><min>-20</min><max>20</max></clipto>
     </pid>
+    <fcs_function name="ap/theta-speed-entry-deg">
+      <description>the bias the speed law starts from: the pitch command less what its proportional term will add</description>
+      <function>
+        <difference><property>ap/theta-delta-deg</property><product><value>0.5</value><property>ap/speed-error-kt</property></product></difference>
+      </function>
+    </fcs_function>
     <switch name="ap/latch-theta-speed-bias">
       <description>the pitch command's change from the latched attitude, as it was when the speed mode took over</description>
       <default value="ap/theta-speed-bias-deg"/>
-      <test value="ap/theta-delta-deg">ap/pitch-mode ne 1</test>
-      <test value="ap/theta-delta-deg">ap/engaged == 0</test>
+      <test value="ap/theta-speed-entry-deg">ap/pitch-mode ne 1</test>
+      <test value="ap/theta-speed-entry-deg">ap/pitch-mode-prev ne 1</test>
+      <test value="ap/theta-speed-entry-deg">ap/engaged == 0</test>
       <output>ap/theta-speed-bias-deg</output>
     </switch>
+    <switch name="ap/latch-thrust-entry-lbf">
+      <description>the engine thrust as it was when the speed mode took over</description>
+      <default value="ap/thrust-entry-lbf"/>
+      <test value="engine/thrust-lbf">ap/pitch-mode ne 1</test>
+      <test value="engine/thrust-lbf">ap/engaged == 0</test>
+      <output>ap/thrust-entry-lbf</output>
+    </switch>
+    <fcs_function name="ap/theta-thrust-ff-deg">
+      <description>the flight path angle the thrust gained since the speed mode took over makes, deg</description>
+      <function>
+<product><value>0</value><asin><min><value>0.9</value><max><value>-0.9</value><quotient><difference><property>engine/thrust-lbf</property><property>ap/thrust-entry-lbf</property></difference><max><value>1000</value><property>inertia/weight-lbs</property></max></quotient></max></min></asin></product>
+      </function>
+    </fcs_function>
     <fcs_function name="ap/theta-speed-deg">
       <function>
-        <sum><property>ap/theta-speed-bias-deg</property><product><value>0.5</value><property>ap/speed-error-kt</property></product><property>ap/theta-speed-i-deg</property></sum>
+        <sum><property>ap/theta-speed-bias-deg</property><product><value>0.5</value><property>ap/speed-error-kt</property></product><property>ap/theta-speed-i-deg</property><property>ap/theta-thrust-ff-deg</property></sum>
       </function>
       <clipto><min>-20</min><max>20</max></clipto>
+    </fcs_function>
+    <fcs_function name="ap/pitch-mode-prev-next">
+      <description>the pitch mode of the frame before</description>
+      <function>
+<property>ap/pitch-mode</property>
+      </function>
+      <output>ap/pitch-mode-prev</output>
     </fcs_function>
     <fcs_function name="ap/alt-error-ft">
       <function>
         <difference><property>ap/alt-cmd-ft</property><property>position/h-sl-ft</property></difference>
       </function>
-      <clipto><min>-1500</min><max>1500</max></clipto>
+      <clipto><min>-6000</min><max>6000</max></clipto>
+    </fcs_function>
+    <fcs_function name="ap/alt-i-enable">
+      <description>the altitude mode's integral runs: near the height, or settled within LEVEL_I_FAR_FT of it</description>
+      <function>
+        <ifthen>
+          <or>
+            <lt><abs><property>ap/alt-error-ft</property></abs><value>25</value></lt>
+            <and><lt><abs><property>ap/alt-error-ft</property></abs><value>150</value></lt><lt><abs><property>velocities/h-dot-fps</property></abs><value>3</value></lt></and>
+          </or>
+          <value>1</value>
+          <value>0</value>
+        </ifthen>
+      </function>
     </fcs_function>
     <switch name="ap/trig-alt">
       <default value="-1"/>
       <test logic="AND" value="0">
         ap/engaged == 1
         ap/pitch-mode == 2
+        ap/alt-i-enable == 1
       </test>
     </switch>
-    <pid name="ap/theta-alt-pi-deg">
-      <input>ap/alt-error-ft</input>
-      <kp>0.012</kp>
-      <ki>0.0012</ki>
-      <kd>0</kd>
-      <trigger>ap/trig-alt</trigger>
-      <clipto><min>-12</min><max>12</max></clipto>
-    </pid>
-    <fcs_function name="ap/theta-alt-deg">
+    <fcs_function name="ap/alt-error-lead-ft">
+      <description>the height error the profile is worked out for: where the aircraft will be after the response time (it overshot the height by 10 to 40 ft, still climbing at the rate the command had left behind)</description>
       <function>
-        <difference><property>ap/theta-alt-pi-deg</property><product><value>0.06</value><property>velocities/h-dot-fps</property></product></difference>
+<ifthen><gt><property>ap/alt-error-ft</property><value>0</value></gt><max><value>0</value><difference><property>ap/alt-error-ft</property><product><value>2.5</value><max><value>0</value><property>velocities/h-dot-fps</property></max></product></difference></max><min><value>0</value><sum><property>ap/alt-error-ft</property><product><value>2.5</value><max><value>0</value><product><value>-1</value><property>velocities/h-dot-fps</property></product></max></product></sum></min></ifthen>
       </function>
+    </fcs_function>
+    <fcs_function name="ap/alt-vs-target-fps">
+      <description>the climb rate the altitude capture should have at this height error: the soft minimum of the linear law's and the constant deceleration's (2.6 ft/s^2), no more than the thrust holds</description>
+      <function>
+<quotient><product><product><value>0.2</value><property>ap/alt-error-lead-ft</property></product><abs><product><ifthen><gt><property>ap/alt-error-lead-ft</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><sqrt><product><value>5.2</value><abs><property>ap/alt-error-lead-ft</property></abs></product></sqrt></product></abs></product><sqrt><sum><product><abs><product><value>0.2</value><property>ap/alt-error-lead-ft</property></product></abs><abs><product><value>0.2</value><property>ap/alt-error-lead-ft</property></product></abs></product><product><abs><product><ifthen><gt><property>ap/alt-error-lead-ft</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><sqrt><product><value>5.2</value><abs><property>ap/alt-error-lead-ft</property></abs></product></sqrt></product></abs><abs><product><ifthen><gt><property>ap/alt-error-lead-ft</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><sqrt><product><value>5.2</value><abs><property>ap/alt-error-lead-ft</property></abs></product></sqrt></product></abs></product><value>1e-06</value></sum></sqrt></quotient>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/alt-dir-next">
+      <description>the direction the height is in (+1 above), held within 30 ft of it</description>
+      <function>
+<ifthen><or><nq><property>ap/pitch-mode</property><value>2</value></nq><eq><property>ap/engaged</property><value>0</value></eq><gt><abs><property>ap/alt-error-ft</property></abs><value>30</value></gt></or><ifthen><gt><property>ap/alt-error-ft</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><property>ap/alt-dir</property></ifthen>
+      </function>
+      <output>ap/alt-dir</output>
+    </fcs_function>
+    <fcs_function name="ap/alt-vs-next">
+      <description>the climb rate asked for, signed: the climb rate there is while another mode flies; then the profile lagged by 2 s, its growth towards the height limited to 2.6 ft/s^2</description>
+      <function>
+<ifthen><and><eq><property>ap/pitch-mode</property><value>2</value></eq><eq><property>ap/engaged</property><value>1</value></eq></and><sum><property>ap/alt-vs-cmd-fps</property><ifthen><gt><property>ap/alt-dir</property><value>0</value></gt><min><product><difference><property>ap/alt-vs-target-fps</property><property>ap/alt-vs-cmd-fps</property></difference><property>simulation/dt</property><value>0.5</value></product><product><value>1</value><property>simulation/dt</property></product></min><max><product><difference><property>ap/alt-vs-target-fps</property><property>ap/alt-vs-cmd-fps</property></difference><property>simulation/dt</property><value>0.5</value></product><product><value>-1</value><product><value>1</value><property>simulation/dt</property></product></product></max></ifthen></sum><property>velocities/h-dot-fps</property></ifthen>
+      </function>
+      <output>ap/alt-vs-cmd-fps</output>
+    </fcs_function>
+    <fcs_function name="ap/theta-alt-i-next">
+      <description>the small integral of the height error, deg: runs while the gate is open, held (not reset) while it is shut, zero while the altitude mode is not flying</description>
+      <function>
+<ifthen><and><eq><property>ap/engaged</property><value>1</value></eq><eq><property>ap/pitch-mode</property><value>2</value></eq></and><max><value>-12</value><min><value>12</value><sum><property>ap/theta-alt-i-deg</property><ifthen><eq><property>ap/alt-i-enable</property><value>1</value></eq><product><value>0.0048</value><property>ap/alt-error-ft</property><property>simulation/dt</property></product><value>0</value></ifthen><product><property>ap/theta-alt-offset-deg</property><property>simulation/dt</property><value>0.166667</value></product></sum></min></max><value>0</value></ifthen>
+      </function>
+      <output>ap/theta-alt-i-deg</output>
+    </fcs_function>
+    <fcs_function name="ap/theta-alt-offset-in-deg">
+      <description>the pitch beyond the path angle that another mode is holding; 0 once the altitude mode has the pitch</description>
+      <function>
+<ifthen><eq><property>ap/pitch-mode</property><value>2</value></eq><value>0</value><difference><property>ap/theta-delta-deg</property><product><value>57.2958</value><quotient><property>velocities/h-dot-fps</property><max><value>100</value><property>velocities/vt-fps</property></max></quotient></product><product><value>5</value><difference><property>ctl/spoiler-norm</property><property>ap/bias-spoiler</property></difference></product></difference></ifthen>
+      </function>
+    </fcs_function>
+    <lag_filter name="ap/theta-alt-offset-deg">
+      <description>that pitch, followed while another mode flies and let go over 6 s from the frame the altitude mode takes the pitch</description>
+      <input>ap/theta-alt-offset-in-deg</input>
+      <c1>0.166667</c1>
+    </lag_filter>
+    <fcs_function name="ap/theta-alt-deg">
+      <description>pitch attitude for the climb rate asked for, and the small integral of the height error (the old law's clip of 12 deg held a climb of 17 deg to 12 at the handover: a 0.5 g unload)</description>
+      <function>
+<sum><product><value>57.2958</value><quotient><property>ap/alt-vs-cmd-fps</property><max><value>100</value><property>velocities/vt-fps</property></max></quotient></product><product><value>0.06</value><difference><property>ap/alt-vs-cmd-fps</property><property>velocities/h-dot-fps</property></difference></product><property>ap/theta-alt-i-deg</property><property>ap/theta-alt-offset-deg</property><product><value>1</value><max><value>0</value><difference><quotient><value>1</value><max><value>0.5</value><cos><toradians><property>attitude/phi-deg</property></toradians></cos></max></quotient><value>1</value></difference></max><max><value>0</value><difference><property>aero/alpha-deg</property><value>-3</value></difference></max></product><product><value>5</value><difference><property>ctl/spoiler-norm</property><property>ap/bias-spoiler</property></difference></product></sum>
+      </function>
+      <clipto><min>-30</min><max>30</max></clipto>
     </fcs_function>
     <fcs_function name="ap/theta-manual-deg">
       <description>by hand: the stick asks for a rate, 3 deg/s at full travel or what gives 0.5 g more or less than 1, whichever is less (the governor moves at twice the difference)</description>
@@ -741,6 +879,32 @@
         <sum><product><value>200</value><max><value>0</value><difference><product><property>velocities/mach</property><property>ap/speed-ahead</property></product><value>0.63</value></difference></max></product><product><value>0.3</value><max><value>0</value><difference><product><property>velocities/vc-kts</property><property>ap/speed-ahead</property></product><value>175</value></difference></max></product></sum>
       </function>
     </fcs_function>
+    <fcs_function name="ap/theta-accel-deg_sec2">
+      <description>the pitch acceleration that changes the load factor at 0.04 g per second, deg/s^2</description>
+      <function>
+<product><value>73.7374</value><quotient><value>1</value><max><value>100</value><property>velocities/vt-fps</property></max></quotient></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/theta-err-mode-deg">
+      <description>the attitude error the mode asks to remove: to what it asks within the governor's limits (-16 to +18 deg), so that the profile stops there and not against the limit</description>
+      <function>
+<difference><min><value>18</value><max><value>-16</value><sum><property>ap/theta-mode-deg</property><property>ap/protect-fast-deg</property></sum></max></min><property>ap/theta-delta-deg</property></difference>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/theta-rate-profile-deg_sec">
+      <description>the pitch rate that the constant deceleration can stop at the attitude asked for, the less of it and of the linear law (2 per second)</description>
+      <function>
+<quotient><product><product><value>2</value><property>ap/theta-err-mode-deg</property></product><product><ifthen><gt><property>ap/theta-err-mode-deg</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><sqrt><product><value>2</value><property>ap/theta-accel-deg_sec2</property><abs><property>ap/theta-err-mode-deg</property></abs></product></sqrt></product></product><max><value>1e-06</value><sqrt><sum><pow><product><value>2</value><property>ap/theta-err-mode-deg</property></product><value>2</value></pow><pow><product><ifthen><gt><property>ap/theta-err-mode-deg</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><sqrt><product><value>2</value><property>ap/theta-accel-deg_sec2</property><abs><property>ap/theta-err-mode-deg</property></abs></product></sqrt></product><value>2</value></pow></sum></sqrt></max></quotient>
+      </function>
+      <clipto><min>-3</min><max>3</max></clipto>
+    </fcs_function>
+    <fcs_function name="ap/theta-rate-mode-next">
+      <description>the mode's pitch rate: shaped in pitch mode 1 in the air, as it was elsewhere</description>
+      <function>
+<ifthen><and><eq><property>ap/pitch-mode</property><value>1</value></eq><eq><property>ap/land-mode</property><value>0</value></eq><eq><property>ap/on-mains</property><value>0</value></eq><eq><property>ap/manual</property><value>0</value></eq><eq><value>0</value><value>1</value></eq></and><max><difference><min><property>ap/theta-rate-mode-deg_sec</property><value>0</value></min><product><property>ap/theta-accel-deg_sec2</property><property>simulation/dt</property></product></difference><min><sum><max><property>ap/theta-rate-mode-deg_sec</property><value>0</value></max><product><property>ap/theta-accel-deg_sec2</property><property>simulation/dt</property></product></sum><property>ap/theta-rate-profile-deg_sec</property></min></max><min><value>3</value><max><value>-3</value><product><value>2</value><property>ap/theta-err-mode-deg</property></product></max></min></ifthen>
+      </function>
+      <output>ap/theta-rate-mode-deg_sec</output>
+    </fcs_function>
     <fcs_function name="ap/theta-rate-deg_sec">
       <description>how fast the pitch command moves: towards the mode's, or down for angle of attack or speed, whichever is lowest; and never past -16 or +18 deg (the integrator behind it has no limit of its own)</description>
       <function>
@@ -748,7 +912,7 @@
           <max><value>-6</value><product><value>10</value><difference><value>-16</value><property>ap/theta-delta-deg</property></difference></product></max>
           <min>
             <product><value>10</value><difference><value>18</value><property>ap/theta-delta-deg</property></difference></product>
-            <min><value>3</value><max><value>-3</value><product><value>2</value><difference><sum><property>ap/theta-mode-deg</property><property>ap/protect-fast-deg</property></sum><property>ap/theta-delta-deg</property></difference></product></max></min>
+            <property>ap/theta-rate-mode-deg_sec</property>
             <product><value>3</value><property>ap/alpha-margin-deg</property></product>
             <product><sum><value>3</value><product><value>6</value><property>ap/protected</property></product></sum><property>ap/alpha-margin-deg</property></product>
             <product><value>0.4</value><property>ap/speed-margin-kt</property></product>
@@ -890,28 +1054,271 @@
 <min><property>ap/bank-command-limit-deg</property><property>ap/bank-alpha-cap-deg</property></min>
       </function>
     </fcs_function>
-    <fcs_function name="ap/turn-radius-ft">
-      <description>the radius of a turn at the bank the aircraft can use, in ground speed</description>
+    <fcs_function name="ap/turn-bank-ratio">
+      <description>the bank flown over the bank commanded in a turn at this speed, weight and height (turnperf.py)</description>
       <function>
-<quotient><product><max><property>velocities/vg-fps</property><value>60</value></max><max><property>velocities/vg-fps</property><value>60</value></max></product><product><value>32.174</value><tan><toradians><property>ap/turn-bank-deg</property></toradians></tan></product></quotient>
+          <table>
+            <independentVar lookup="row">inertia/weight-lbs</independentVar>
+            <independentVar lookup="column">engine/pressure-altitude-ft</independentVar>
+            <independentVar lookup="table">velocities/vc-kts</independentVar>
+            <tableData breakPoint="110">
+                 4174 20174 30174 45174
+              12000  1.03180 1.02080 1.01480 1.00740
+              20000  1.10730 1.06400 1.04470 1.02320
+              26000  1.12210 1.06880 1.04690 1.02280
+            </tableData>
+            <tableData breakPoint="130">
+                 4174 20174 30174 45174
+              12000  1.02120 1.01230 1.00810 1.00350
+              20000  1.04550 1.02790 1.01920 1.00960
+              26000  1.08340 1.04950 1.03400 1.01710
+            </tableData>
+            <tableData breakPoint="150">
+                 4174 20174 30174 45174
+              12000  1.01620 1.00870 1.00540 1.00180
+              20000  1.02820 1.01650 1.01110 1.00520
+              26000  1.04340 1.02580 1.01760 1.00850
+            </tableData>
+            <tableData breakPoint="170">
+                 4174 20174 30174 45174
+              12000  1.01310 1.00660 1.00390 1.00180
+              20000  1.02110 1.01180 1.00780 1.00520
+              26000  1.02870 1.01640 1.01100 1.00850
+            </tableData>
+          </table>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-lag-in-s">
+      <description>the bank's effective delay rolling in, s (turnperf.py)</description>
+      <function>
+          <table>
+            <independentVar lookup="row">inertia/weight-lbs</independentVar>
+            <independentVar lookup="column">engine/pressure-altitude-ft</independentVar>
+            <independentVar lookup="table">velocities/vc-kts</independentVar>
+            <tableData breakPoint="110">
+                 4174 20174 30174 45174
+              12000  2.24000 2.23000 2.00000 1.66000
+              20000  2.51000 1.88000 1.50000 0.90000
+              26000  2.38000 1.80000 1.63000 1.51000
+            </tableData>
+            <tableData breakPoint="130">
+                 4174 20174 30174 45174
+              12000  3.01000 2.58000 2.37000 2.10000
+              20000  2.77000 2.22000 1.92000 1.50000
+              26000  2.66000 1.96000 1.58000 1.01000
+            </tableData>
+            <tableData breakPoint="150">
+                 4174 20174 30174 45174
+              12000  3.37000 2.93000 2.72000 2.54000
+              20000  3.06000 2.55000 2.28000 1.95000
+              26000  2.96000 2.34000 2.02000 1.60000
+            </tableData>
+            <tableData breakPoint="170">
+                 4174 20174 30174 45174
+              12000  3.75000 3.28000 3.07000 2.54000
+              20000  3.44000 2.92000 2.66000 1.95000
+              26000  3.27000 2.69000 2.40000 1.60000
+            </tableData>
+          </table>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-lag-out-s">
+      <description>the bank's effective delay rolling out, s (turnperf.py)</description>
+      <function>
+          <table>
+            <independentVar lookup="row">inertia/weight-lbs</independentVar>
+            <independentVar lookup="column">engine/pressure-altitude-ft</independentVar>
+            <independentVar lookup="table">velocities/vc-kts</independentVar>
+            <tableData breakPoint="110">
+                 4174 20174 30174 45174
+              12000  2.66000 2.32000 2.16000 1.98000
+              20000  2.33000 1.88000 1.62000 1.25000
+              26000  2.28000 1.71000 1.42000 1.05000
+            </tableData>
+            <tableData breakPoint="130">
+                 4174 20174 30174 45174
+              12000  3.04000 2.73000 2.59000 2.49000
+              20000  2.74000 2.34000 2.14000 1.91000
+              26000  2.55000 2.06000 1.81000 1.45000
+            </tableData>
+            <tableData breakPoint="150">
+                 4174 20174 30174 45174
+              12000  3.45000 3.13000 3.00000 2.97000
+              20000  3.12000 2.74000 2.56000 2.44000
+              26000  2.97000 2.53000 2.31000 2.10000
+            </tableData>
+            <tableData breakPoint="170">
+                 4174 20174 30174 45174
+              12000  3.87000 3.52000 3.40000 2.97000
+              20000  3.55000 3.16000 3.00000 2.44000
+              26000  3.36000 2.93000 2.74000 2.10000
+            </tableData>
+          </table>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-moment-out-s2">
+      <description>the roll out's sideways drift, s^2: the area between the heading and the instant-roll-out equivalent over the steady turn rate (turnperf.py); times g tan(bank) it is the drift, to the outside, ft</description>
+      <function>
+          <table>
+            <independentVar lookup="row">inertia/weight-lbs</independentVar>
+            <independentVar lookup="column">engine/pressure-altitude-ft</independentVar>
+            <independentVar lookup="table">velocities/vc-kts</independentVar>
+            <tableData breakPoint="110">
+                 4174 20174 30174 45174
+              12000  2.83000 2.82000 2.99000 3.52000
+              20000  1.99000 2.10000 2.31000 2.90000
+              26000  0.58000 0.89000 1.29000 2.23000
+            </tableData>
+            <tableData breakPoint="130">
+                 4174 20174 30174 45174
+              12000  3.24000 3.08000 3.20000 3.63000
+              20000  2.72000 2.63000 2.81000 3.44000
+              26000  1.84000 1.84000 2.10000 2.84000
+            </tableData>
+            <tableData breakPoint="150">
+                 4174 20174 30174 45174
+              12000  3.64000 3.28000 3.30000 3.22000
+              20000  3.54000 3.20000 3.28000 3.34000
+              26000  2.79000 2.54000 2.71000 3.01000
+            </tableData>
+            <tableData breakPoint="170">
+                 4174 20174 30174 45174
+              12000  4.13000 3.49000 3.38000 3.22000
+              20000  4.12000 3.53000 3.48000 3.34000
+              26000  3.85000 3.28000 3.28000 3.01000
+            </tableData>
+          </table>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-bank-flown-deg">
+      <description>the bank a turn is flown at: the bank commanded times what the aircraft flies for it</description>
+      <function>
+<product><property>ap/turn-bank-deg</property><property>ap/turn-bank-ratio</property></product>
+      </function>
+    </fcs_function>
+    <lag_filter name="ap/turn-bank-lead-deg">
+      <description>the bank the turn's lead is worked out for: the bank flown, lagged</description>
+      <input>ap/turn-bank-flown-deg</input>
+      <c1>0.2</c1>
+    </lag_filter>
+    <fcs_function name="ap/turn-radius-ft">
+      <description>the radius of a turn at the bank the aircraft flies, in ground speed</description>
+      <function>
+<quotient><product><max><property>velocities/vg-fps</property><value>60</value></max><max><property>velocities/vg-fps</property><value>60</value></max></product><product><value>32.174</value><tan><toradians><max><value>2</value><property>ap/turn-bank-lead-deg</property></max></toradians></tan></product></quotient>
+      </function>
+    </fcs_function>
+    <lag_filter name="ap/wind-north-filt-fps">
+      <input>atmosphere/total-wind-north-fps</input>
+      <c1>0.1</c1>
+    </lag_filter>
+    <lag_filter name="ap/wind-east-filt-fps">
+      <input>atmosphere/total-wind-east-fps</input>
+      <c1>0.1</c1>
+    </lag_filter>
+    <fcs_function name="ap/turn-wind-cross-fps">
+      <description>the wind across the new leg, towards its right, ft/s</description>
+      <function>
+<sum><product><value>-1</value><property>ap/wind-north-filt-fps</property><sin><toradians><property>ap/next-course-deg</property></toradians></sin></product><product><property>ap/wind-east-filt-fps</property><cos><toradians><property>ap/next-course-deg</property></toradians></cos></product></sum>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-psi1-deg">
+      <description>the heading on the new leg: its course less the crab the wind needs</description>
+      <function>
+<difference><property>ap/next-course-deg</property><todegrees><asin><max><value>-0.5</value><min><value>0.5</value><quotient><property>ap/turn-wind-cross-fps</property><ifthen><value>1</value><product><max><property>velocities/vt-fps</property><value>100</value></max><sum><value>0.5</value><product><value>0.5</value><max><value>0.9</value><min><value>1.1</value><quotient><property>ap/speed-target-kcas</property><max><value>50</value><property>velocities/vc-kts</property></max></quotient></min></max></product></sum></product><max><property>velocities/vt-fps</property><value>100</value></max></ifthen></quotient></min></max></asin></todegrees></difference>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-dpsi-raw-deg">
+      <description>the heading change to the new leg's heading</description>
+      <function>
+        <todegrees><atan2><sin><toradians><difference><property>ap/turn-psi1-deg</property><property>attitude/psi-deg</property></difference></toradians></sin><cos><toradians><difference><property>ap/turn-psi1-deg</property><property>attitude/psi-deg</property></difference></toradians></cos></atan2></todegrees>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-dpsi-rad">
+      <description>the heading change in the turn's direction, rad</description>
+      <function>
+<toradians><max><value>0</value><product><ifthen><gt><property>ap/turn-delta-deg</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><property>ap/turn-dpsi-raw-deg</property></product></max></toradians>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-radius-air-ft">
+      <description>the radius of the turn in the air</description>
+      <function>
+<quotient><product><ifthen><value>1</value><product><max><property>velocities/vt-fps</property><value>100</value></max><sum><value>0.5</value><product><value>0.5</value><max><value>0.9</value><min><value>1.1</value><quotient><property>ap/speed-target-kcas</property><max><value>50</value><property>velocities/vc-kts</property></max></quotient></min></max></product></sum></product><max><property>velocities/vt-fps</property><value>100</value></max></ifthen><ifthen><value>1</value><product><max><property>velocities/vt-fps</property><value>100</value></max><sum><value>0.5</value><product><value>0.5</value><max><value>0.9</value><min><value>1.1</value><quotient><property>ap/speed-target-kcas</property><max><value>50</value><property>velocities/vc-kts</property></max></quotient></min></max></product></sum></product><max><property>velocities/vt-fps</property><value>100</value></max></ifthen></product><product><value>32.174</value><tan><toradians><max><value>2</value><property>ap/turn-bank-lead-deg</property></max></toradians></tan></product></quotient>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-time-s">
+      <description>the time the turn takes</description>
+      <function>
+<product><property>ap/turn-dpsi-rad</property><quotient><property>ap/turn-radius-air-ft</property><ifthen><value>1</value><product><max><property>velocities/vt-fps</property><value>100</value></max><sum><value>0.5</value><product><value>0.5</value><max><value>0.9</value><min><value>1.1</value><quotient><property>ap/speed-target-kcas</property><max><value>50</value><property>velocities/vc-kts</property></max></quotient></min></max></product></sum></product><max><property>velocities/vt-fps</property><value>100</value></max></ifthen></quotient></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-drift-exit-ft">
+      <description>the roll out's drift at the exit across the new line, right of it positive: outward is to the left of the new line for a right turn</description>
+      <function>
+<product><value>-1</value><ifthen><gt><property>ap/turn-delta-deg</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><value>1</value><max><value>0</value><min><value>1</value><quotient><difference><abs><property>ap/turn-delta-deg</property></abs><value>30</value></difference><value>30</value></quotient></min></max><value>32.174</value><tan><toradians><max><value>2</value><property>ap/turn-bank-lead-deg</property></max></toradians></tan><property>ap/turn-moment-out-s2</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-lead-wind-ft">
+      <description>the distance before the corner at which the arc's predicted exit is on the new line, in the wind</description>
+      <function>
+<quotient><sum><sum><product><value>-1</value><sin><toradians><property>ap/next-course-deg</property></toradians></sin><sum><product><ifthen><gt><property>ap/turn-delta-deg</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><property>ap/turn-radius-air-ft</property><difference><sin><toradians><property>ap/turn-psi1-deg</property></toradians></sin><sin><toradians><property>attitude/psi-deg</property></toradians></sin></difference></product><product><property>ap/wind-north-filt-fps</property><property>ap/turn-time-s</property></product></sum></product><product><cos><toradians><property>ap/next-course-deg</property></toradians></cos><sum><product><value>-1</value><ifthen><gt><property>ap/turn-delta-deg</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><property>ap/turn-radius-air-ft</property><difference><cos><toradians><property>ap/turn-psi1-deg</property></toradians></cos><cos><toradians><property>attitude/psi-deg</property></toradians></cos></difference></product><product><property>ap/wind-east-filt-fps</property><property>ap/turn-time-s</property></product></sum></product></sum><property>ap/turn-drift-exit-ft</property></sum><ifthen><and><gt><abs><property>ap/turn-delta-deg</property></abs><value>10</value></gt><lt><abs><property>ap/turn-delta-deg</property></abs><value>150</value></lt></and><product><value>-1</value><sin><toradians><property>ap/turn-delta-deg</property></toradians></sin></product><value>-1</value></ifthen></quotient>
       </function>
     </fcs_function>
     <fcs_function name="ap/turn-lead-ft">
-      <description>the distance before the corner a turn starts at: where an arc joins the two legs, less half the roll in and the bank's delay</description>
+      <description>the distance before the corner a turn starts at: where the arc joins the two legs in the wind (the old R tan(delta / 2) for a turn under 10 deg or a fly-over), less half the roll in and the bank's delay</description>
       <function>
-<sum><product><property>ap/turn-radius-ft</property><tan><toradians><product><value>0.5</value><min><abs><property>ap/turn-delta-deg</property></abs><value>150</value></min></product></toradians></tan></product><product><max><property>velocities/vg-fps</property><value>60</value></max><sum><product><value>0.5</value><quotient><property>ap/turn-bank-deg</property><value>5</value></quotient></product><property>ap/roll-lag-s</property></sum></product></sum>
+<sum><ifthen><and><gt><abs><property>ap/turn-delta-deg</property></abs><value>10</value></gt><lt><abs><property>ap/turn-delta-deg</property></abs><value>150</value></lt></and><max><value>0</value><property>ap/turn-lead-wind-ft</property></max><product><property>ap/turn-radius-ft</property><tan><toradians><product><value>0.5</value><min><abs><property>ap/turn-delta-deg</property></abs><value>150</value></min></product></toradians></tan></product></ifthen><product><max><property>velocities/vg-fps</property><value>60</value></max><sum><product><value>0.5</value><quotient><property>ap/turn-bank-deg</property><value>5</value></quotient></product><property>ap/turn-lag-in-s</property></sum></product></sum>
       </function>
     </fcs_function>
     <fcs_function name="ap/turn-rollout-deg">
       <description>the track still to turn when the roll out starts: the turn rate times half the roll out and the delay</description>
       <function>
-<product><todegrees><quotient><product><value>32.174</value><tan><toradians><abs><property>attitude/phi-deg</property></abs></toradians></tan></product><max><property>velocities/vg-fps</property><value>60</value></max></quotient></todegrees><sum><product><value>0.5</value><quotient><abs><property>attitude/phi-deg</property></abs><value>5</value></quotient></product><property>ap/roll-lag-s</property></sum></product>
+<product><todegrees><quotient><product><value>32.174</value><tan><toradians><abs><property>attitude/phi-deg</property></abs></toradians></tan></product><max><property>velocities/vg-fps</property><value>60</value></max></quotient></todegrees><sum><product><value>0.5</value><quotient><abs><property>attitude/phi-deg</property></abs><value>5</value></quotient></product><property>ap/turn-lag-out-s</property></sum></product>
       </function>
     </fcs_function>
     <fcs_function name="ap/turn-remaining-deg">
       <description>the track still to turn to the next leg's course, in the turn's direction</description>
       <function>
 <product><ifthen><gt><property>ap/turn-delta-deg</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><property>ap/turn-err-deg</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-xt-new-ft">
+      <description>the cross-track on the new leg's line, right of it positive</description>
+      <function>
+<sum><product><property>ap/leg-togo-ft</property><sin><toradians><property>ap/turn-delta-deg</property></toradians></sin></product><product><property>ap/leg-xt-ft</property><cos><toradians><property>ap/turn-delta-deg</property></toradians></cos></product></sum>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-pred-b">
+      <description>the exit's cross-track on the new line per foot of radius: the arc's chord and the wind's push over its time</description>
+      <function>
+<sum><product><value>-1</value><ifthen><gt><property>ap/turn-delta-deg</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><difference><cos><toradians><difference><property>ap/next-course-deg</property><property>ap/turn-psi1-deg</property></difference></toradians></cos><cos><toradians><sum><property>ap/turn-dpsi-raw-deg</property><difference><property>ap/next-course-deg</property><property>ap/turn-psi1-deg</property></difference></sum></toradians></cos></difference></product><product><property>ap/turn-dpsi-rad</property><quotient><property>ap/turn-wind-cross-fps</property><ifthen><value>1</value><product><max><property>velocities/vt-fps</property><value>100</value></max><sum><value>0.5</value><product><value>0.5</value><max><value>0.9</value><min><value>1.1</value><quotient><property>ap/speed-target-kcas</property><max><value>50</value><property>velocities/vc-kts</property></max></quotient></min></max></product></sum></product><max><property>velocities/vt-fps</property><value>100</value></max></ifthen></quotient></product></sum>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-radius-star-ft">
+      <description>the radius of the arc from here that ends on the new line</description>
+      <function>
+<quotient><product><value>-1</value><sum><property>ap/turn-xt-new-ft</property><property>ap/turn-drift-exit-ft</property></sum></product><property>ap/turn-pred-b</property></quotient>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-bank-hi-deg">
+      <description>the most bank commanded in a turn: the sourced bank limit as flown, and the angle-of-attack cap</description>
+      <function>
+<max><property>ap/turn-bank-deg</property><min><quotient><property>ap/bank-limit-deg</property><property>ap/turn-bank-ratio</property></quotient><property>ap/bank-alpha-cap-deg</property></min></max>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/turn-bank-pred-raw-deg">
+      <description>the bank that puts the arc's exit on the new line (the turn's own bank when it does not apply)</description>
+      <function>
+<ifthen><and><value>1</value><eq><property>ap/roll-mode</property><value>2</value></eq><eq><property>ap/turn-phase</property><value>1</value></eq><and><gt><abs><property>ap/turn-delta-deg</property></abs><value>10</value></gt><lt><abs><property>ap/turn-delta-deg</property></abs><value>150</value></lt></and><gt><abs><property>attitude/phi-deg</property></abs><product><value>0.9</value><property>ap/turn-bank-deg</property></product></gt><gt><property>ap/turn-dpsi-rad</property><value>0.436332</value></gt><gt><abs><property>ap/turn-pred-b</property></abs><value>0.08</value></gt></and><max><product><value>0.5</value><property>ap/turn-bank-deg</property></product><min><property>ap/turn-bank-hi-deg</property><ifthen><gt><property>ap/turn-radius-star-ft</property><value>1</value></gt><quotient><todegrees><atan><quotient><product><ifthen><value>1</value><product><max><property>velocities/vt-fps</property><value>100</value></max><sum><value>0.5</value><product><value>0.5</value><max><value>0.9</value><min><value>1.1</value><quotient><property>ap/speed-target-kcas</property><max><value>50</value><property>velocities/vc-kts</property></max></quotient></min></max></product></sum></product><max><property>velocities/vt-fps</property><value>100</value></max></ifthen><ifthen><value>1</value><product><max><property>velocities/vt-fps</property><value>100</value></max><sum><value>0.5</value><product><value>0.5</value><max><value>0.9</value><min><value>1.1</value><quotient><property>ap/speed-target-kcas</property><max><value>50</value><property>velocities/vc-kts</property></max></quotient></min></max></product></sum></product><max><property>velocities/vt-fps</property><value>100</value></max></ifthen></product><product><value>32.174</value><property>ap/turn-radius-star-ft</property></product></quotient></atan></todegrees><property>ap/turn-bank-ratio</property></quotient><property>ap/turn-bank-hi-deg</property></ifthen></min></max><ifthen><and><value>1</value><value>1</value><eq><property>ap/roll-mode</property><value>2</value></eq><eq><property>ap/turn-phase</property><value>1</value></eq><and><gt><abs><property>ap/turn-delta-deg</property></abs><value>10</value></gt><lt><abs><property>ap/turn-delta-deg</property></abs><value>150</value></lt></and></and><property>ap/turn-bank-pred-deg</property><property>ap/turn-bank-deg</property></ifthen></ifthen>
+      </function>
+    </fcs_function>
+    <lag_filter name="ap/turn-bank-pred-deg">
+      <input>ap/turn-bank-pred-raw-deg</input>
+      <c1>0.5</c1>
+    </lag_filter>
+    <fcs_function name="ap/turn-bank-cmd-deg">
+      <description>the bank commanded in the turn: the trimmed bank</description>
+      <function>
+<max><product><value>0.5</value><property>ap/turn-bank-deg</property></product><min><property>ap/turn-bank-hi-deg</property><property>ap/turn-bank-pred-deg</property></min></max>
       </function>
     </fcs_function>
     <fcs_function name="ap/turn-phase-new">
@@ -935,7 +1342,7 @@
     <fcs_function name="ap/bank-leg-deg">
       <description>the bank on a leg: the leg's law; in the turn the bank fed forward; rolling out the heading law onto the next course</description>
       <function>
-<max><product><value>-1</value><property>ap/turn-bank-deg</property></product><min><property>ap/turn-bank-deg</property><ifthen><lt><property>ap/turn-phase</property><value>0.5</value></lt><property>ap/bank-track-deg</property><ifthen><lt><property>ap/turn-phase</property><value>1.5</value></lt><product><ifthen><gt><property>ap/turn-delta-deg</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><property>ap/turn-bank-deg</property></product><product><value>1.2</value><property>ap/turn-err-deg</property><quotient><property>velocities/vt-fps</property><value>600</value></quotient></product></ifthen></ifthen></min></max>
+<ifthen><and><gt><property>ap/turn-phase</property><value>0.5</value></gt><lt><property>ap/turn-phase</property><value>1.5</value></lt></and><product><ifthen><gt><property>ap/turn-delta-deg</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><property>ap/turn-bank-cmd-deg</property></product><max><product><value>-1</value><property>ap/turn-bank-deg</property></product><min><property>ap/turn-bank-deg</property><ifthen><lt><property>ap/turn-phase</property><value>0.5</value></lt><ifthen><value>1</value><property>ap/bank-final-deg</property><property>ap/bank-track-deg</property></ifthen><product><value>1.2</value><property>ap/turn-err-deg</property><quotient><property>velocities/vt-fps</property><value>600</value></quotient></product></ifthen></min></max></ifthen>
       </function>
     </fcs_function>
     <switch name="ap/bank-mode-deg">
@@ -945,11 +1352,18 @@
       <test value="ap/bank-manual-deg">ap/manual == 1</test>
       <test value="ap/bank-heading-deg">ap/roll-mode == 1</test>
       <test value="ap/bank-leg-deg">ap/roll-mode == 2</test>
+      <test value="ap/bank-final-deg">ap/roll-mode == 3</test>
     </switch>
     <fcs_function name="ap/bank-command-limit-deg">
       <description>the bank command stops at 0.86 of the limit: turning, the bank overshoots its command and then settles above it (a proportional law; an integral was tried and overshot)</description>
       <function>
         <product><property>ap/bank-limit-deg</property><value>0.86</value></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/bank-clip-deg">
+      <description>the bank command stops at the bank command limit; the turn on a leg, in its arc, has its own most (ap/turn-bank-hi-deg)</description>
+      <function>
+<ifthen><and><eq><property>ap/roll-mode</property><value>2</value></eq><eq><property>ap/turn-phase</property><value>1</value></eq></and><max><property>ap/bank-command-limit-deg</property><property>ap/turn-bank-hi-deg</property></max><property>ap/bank-command-limit-deg</property></ifthen>
       </function>
     </fcs_function>
     <fcs_function name="ap/bank-manual-deg">
@@ -962,8 +1376,8 @@
       <description>inside the bank limit</description>
       <function>
         <max>
-          <product><value>-1</value><property>ap/bank-command-limit-deg</property></product>
-          <min><property>ap/bank-command-limit-deg</property><property>ap/bank-mode-deg</property></min>
+          <product><value>-1</value><property>ap/bank-clip-deg</property></product>
+          <min><property>ap/bank-clip-deg</property><property>ap/bank-mode-deg</property></min>
         </max>
       </function>
     </fcs_function>
@@ -1007,6 +1421,67 @@
       </function>
       <clipto><min>-20</min><max>20</max></clipto>
     </fcs_function>
+    <fcs_function name="ap/decrab-w-next">
+      <description>the decrab's weight: 0 on the final, from 8 ft of wheel height to 1 at 1 ft, 1 on the runway</description>
+      <function>
+<ifthen><and><eq><property>ap/land-mode</property><value>1</value></eq><eq><property>ap/engaged</property><value>1</value></eq><eq><property>ap/manual</property><value>0</value></eq><value>1</value></and><ifthen><or><gt><property>ap/on-mains</property><value>0</value></gt><eq><property>ap/rollout</property><value>1</value></eq></or><value>1</value><max><property>ap/decrab-w</property><max><value>0</value><min><value>1</value><quotient><difference><value>8</value><property>aero/wheel-height-ft</property></difference><value>7</value></quotient></min></max></max></ifthen><value>0</value></ifthen>
+      </function>
+      <output>ap/decrab-w</output>
+    </fcs_function>
+    <fcs_function name="ap/final-trk-err-deg">
+      <description>the ground track less the leg's course</description>
+      <function>
+        <todegrees><atan2><sin><toradians><difference><property>ap/ground-track-deg</property><property>ap/leg-course-deg</property></difference></toradians></sin><cos><toradians><difference><property>ap/ground-track-deg</property><property>ap/leg-course-deg</property></difference></toradians></cos></atan2></todegrees>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/final-xt-rate-fps">
+      <description>the rate the cross-track grows at, right positive</description>
+      <function>
+<product><max><property>velocities/vg-fps</property><value>60</value></max><sin><toradians><property>ap/final-trk-err-deg</property></toradians></sin></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/final-want-rate-fps">
+      <description>the cross-track rate the line asks for: the cross-track over 25 s, at most vg sin(30 deg), towards the line</description>
+      <function>
+<product><value>-1</value><max><product><value>-1</value><product><max><property>velocities/vg-fps</property><value>60</value></max><value>0.5</value></product></product><min><product><max><property>velocities/vg-fps</property><value>60</value></max><value>0.5</value></product><quotient><property>ap/leg-xt-ft</property><value>25</value></quotient></min></max></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/final-bank-p-deg">
+      <description>the bank the lateral acceleration asked for takes: the rate wanted less the rate there is, over 6 s</description>
+      <function>
+<todegrees><atan><quotient><quotient><difference><property>ap/final-want-rate-fps</property><property>ap/final-xt-rate-fps</property></difference><value>6</value></quotient><value>32.174</value></quotient></atan></todegrees>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/final-xt-neg-ft">
+      <description>the integral's input: towards the line</description>
+      <function>
+<product><value>-1</value><property>ap/leg-xt-ft</property></product>
+      </function>
+    </fcs_function>
+    <switch name="ap/trig-final">
+      <default value="-1"/>
+      <test logic="AND" value="0">
+        ap/engaged == 1
+        ap/roll-mode gt 1
+        ap/leg-xt-ft lt 30
+        ap/leg-xt-ft gt -30
+      </test>
+    </switch>
+    <pid name="ap/final-i-deg">
+      <input>ap/final-xt-neg-ft</input>
+      <kp>0.0</kp>
+      <ki>0.0002</ki>
+      <kd>0</kd>
+      <trigger>ap/trig-final</trigger>
+      <clipto><min>-2</min><max>2</max></clipto>
+    </pid>
+    <fcs_function name="ap/bank-final-deg">
+      <description>the bank on the final: the lateral law of the landing task (roll mode 3)</description>
+      <function>
+<sum><property>ap/final-bank-p-deg</property><property>ap/final-i-deg</property></sum>
+      </function>
+      <clipto><min>-12</min><max>12</max></clipto>
+    </fcs_function>
     <washout_filter name="ap/yaw-rate-washed">
       <input>velocities/r-rad_sec</input>
       <c1>0.3333</c1>
@@ -1022,6 +1497,7 @@
       <test logic="AND" value="0">
         ap/engaged == 1
         ap/takeoff-roll == 0
+        ap/decrab-w lt 0.01
       </test>
     </switch>
     <fcs_function name="ap/beta-error-deg">
@@ -1031,9 +1507,9 @@
       </function>
     </fcs_function>
     <fcs_function name="ap/beta-gated-deg">
-      <description>sideslip, faded out below 60 kt: it means nothing at a walk; off on the takeoff roll</description>
+      <description>sideslip, faded out below 60 kt: it means nothing at a walk; off on the takeoff roll; faded out by the decrab's weight</description>
       <function>
-        <product><property>ap/beta-error-deg</property><max><value>0</value><min><value>1</value><quotient><difference><property>velocities/vc-kts</property><value>40</value></difference><value>20</value></quotient></min></max><difference><value>1</value><property>ap/takeoff-roll</property></difference></product>
+        <product><property>ap/beta-error-deg</property><max><value>0</value><min><value>1</value><quotient><difference><property>velocities/vc-kts</property><value>40</value></difference><value>20</value></quotient></min></max><difference><value>1</value><property>ap/takeoff-roll</property></difference><difference><value>1</value><property>ap/decrab-w</property></difference></product>
       </function>
     </fcs_function>
     <pid name="ap/yaw-beta-deg">
@@ -1045,9 +1521,9 @@
       <clipto><min>-12</min><max>12</max></clipto>
     </pid>
     <fcs_function name="ap/yaw-ground-deg">
-      <description>on the ground the ruddervators help the nose wheel</description>
+      <description>the ruddervators on the heading error to the course the line gives: help the nose wheel on the ground, and take the crab off in the air from the decrab's weight</description>
       <function>
-        <product><property>ap/ground-steer</property><min><value>1</value><property>ap/on-mains</property></min><value>0.5</value><property>ap/ground-error-deg</property></product>
+        <product><property>ap/ground-steer</property><max><min><value>1</value><property>ap/on-mains</property></min><property>ap/decrab-w</property></max><ifthen><gt><property>ap/on-mains</property><value>0</value></gt><value>0.5</value><value>1</value></ifthen><property>ap/ground-error-deg</property></product>
       </function>
       <clipto><min>-10</min><max>10</max></clipto>
     </fcs_function>
@@ -1086,9 +1562,119 @@
       <trigger>ap/trig-thrust</trigger>
       <clipto><min>-1</min><max>1</max></clipto>
     </pid>
-    <fcs_function name="ap/thrust-speed">
+    <fcs_function name="ap/thrust-per-deg">
+      <description>the throttle a degree of flight path angle takes at this speed, weight and height (pathperf.py)</description>
       <function>
-        <sum><property>ap/bias-throttle</property><property>ap/thrust-pi</property></sum>
+          <table>
+            <independentVar lookup="row">inertia/weight-lbs</independentVar>
+            <independentVar lookup="column">engine/pressure-altitude-ft</independentVar>
+            <independentVar lookup="table">velocities/vc-kts</independentVar>
+            <tableData breakPoint="110">
+                 4174 20174 30174 45174
+              12000  0.04258 0.05609 0.07838 0.16371
+              20000  0.06679 0.09368 0.13091 0.16371
+              26000  0.08722 0.12231 0.17088 0.16371
+            </tableData>
+            <tableData breakPoint="130">
+                 4174 20174 30174 45174
+              12000  0.04258 0.05804 0.07939 0.16416
+              20000  0.06887 0.09681 0.13243 0.16416
+              26000  0.08976 0.12609 0.17234 0.16416
+            </tableData>
+            <tableData breakPoint="150">
+                 4174 20174 30174 45174
+              12000  0.04258 0.05979 0.08015 0.16088
+              20000  0.07100 0.09989 0.13393 0.16088
+              26000  0.09234 0.12993 0.17422 0.16088
+            </tableData>
+            <tableData breakPoint="170">
+                 4174 20174 30174 45174
+              12000  0.04387 0.06170 0.08042 0.16088
+              20000  0.07323 0.10298 0.13427 0.16088
+              26000  0.09525 0.13397 0.17422 0.16088
+            </tableData>
+          </table>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/throttle-level">
+      <description>the throttle for level flight at this speed, weight and height (pathperf.py)</description>
+      <function>
+          <table>
+            <independentVar lookup="row">inertia/weight-lbs</independentVar>
+            <independentVar lookup="column">engine/pressure-altitude-ft</independentVar>
+            <independentVar lookup="table">velocities/vc-kts</independentVar>
+            <tableData breakPoint="110">
+                 4174 20174 30174 45174
+              12000  0.05530 0.05050 0.10290 0.28070
+              20000  0.02070 0.09250 0.16340 0.28070
+              26000  0.08260 0.17420 0.27260 0.28070
+            </tableData>
+            <tableData breakPoint="130">
+                 4174 20174 30174 45174
+              12000  0.05530 0.08660 0.15320 0.39560
+              20000  0.03770 0.11470 0.19160 0.39560
+              26000  0.05760 0.14480 0.23230 0.39560
+            </tableData>
+            <tableData breakPoint="150">
+                 4174 20174 30174 45174
+              12000  0.05530 0.14010 0.22500 0.63480
+              20000  0.06490 0.15400 0.24170 0.63480
+              26000  0.08280 0.17950 0.27600 0.63480
+            </tableData>
+            <tableData breakPoint="170">
+                 4174 20174 30174 45174
+              12000  0.10980 0.22180 0.33200 0.63480
+              20000  0.10450 0.21320 0.31590 0.63480
+              26000  0.11500 0.22770 0.27600 0.63480
+            </tableData>
+          </table>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/climb-rate-max-fps">
+      <description>the climb rate the thrust holds at this speed: the path angle the throttle above level flight makes (pathperf.py), at 0.85 of it</description>
+      <function>
+        <product><value>0.85</value><property>velocities/vt-fps</property><quotient><max><value>0</value><difference><value>1</value><property>ap/throttle-level</property></difference></max><property>ap/thrust-per-deg</property></quotient><quotient><value>1</value><value>57.2958</value></quotient></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/descent-rate-idle-fps">
+      <description>the descent rate the speed law can fly without the spoilers: the path angle the level-flight throttle gives up going to idle, at 0.85 of it</description>
+      <function>
+        <product><value>0.85</value><property>velocities/vt-fps</property><quotient><property>ap/throttle-level</property><property>ap/thrust-per-deg</property></quotient><quotient><value>1</value><value>57.2958</value></quotient></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/bias-throttle-next">
+      <description>the throttle baseline of the speed law: the throttle command while the laws are off, the table's at the start of the speed mode in flight, else held</description>
+      <function>
+        <ifthen>
+          <eq><property>ap/engaged</property><value>0</value></eq>
+          <property>fcs/throttle-cmd-norm</property>
+          <ifthen>
+            <and><eq><property>ap/thrust-mode</property><value>3</value></eq><nq><property>ap/thrust-mode-prev</property><value>3</value></nq><eq><property>ap/engaged-prev</property><value>1</value></eq><eq><property>ap/engaged</property><value>1</value></eq></and>
+            <max><value>0</value><min><value>1</value><sum><property>ap/throttle-level</property><product><property>ap/thrust-per-deg</property><sum><property>ap/bias-gamma-deg</property><property>ap/bias-cfg-deg</property></sum></product></sum></min></max>
+            <property>ap/bias-throttle</property>
+          </ifthen>
+        </ifthen>
+      </function>
+      <output>ap/bias-throttle</output>
+    </fcs_function>
+    <fcs_function name="ap/thrust-mode-prev-next">
+      <description>the thrust mode of the frame before</description>
+      <function>
+<property>ap/thrust-mode</property>
+      </function>
+      <output>ap/thrust-mode-prev</output>
+    </fcs_function>
+    <fcs_function name="ap/engaged-prev-next">
+      <description>whether the laws were on in the frame before</description>
+      <function>
+<property>ap/engaged</property>
+      </function>
+      <output>ap/engaged-prev</output>
+    </fcs_function>
+    <fcs_function name="ap/thrust-speed">
+      <description>the thrust that holds the speed: the throttle at engagement, the path angle's feed-forward and the speed error's integral</description>
+      <function>
+        <sum><property>ap/bias-throttle</property><property>ap/thrust-pi</property><product><property>ap/thrust-per-deg</property><sum><difference><property>ap/gamma-deg</property><property>ap/bias-gamma-deg</property></difference><difference><property>ap/cfg-drag-deg</property><property>ap/bias-cfg-deg</property></difference></sum></product></sum>
       </function>
       <clipto><min>0</min><max>1</max></clipto>
     </fcs_function>
@@ -1125,8 +1711,19 @@
     <switch name="ctl/throttle-norm">
       <description>what the engine takes: the laws' throttle when engaged, the throttle command otherwise</description>
       <default value="fcs/throttle-cmd-norm"/>
-      <test value="ap/thrust-law">ap/engaged == 1</test>
+      <test value="ap/throttle-slewed">ap/engaged == 1</test>
     </switch>
+    <fcs_function name="ap/throttle-slewed-next">
+      <description>the laws' throttle with its rate limited in the vertical modes in the air: THROTTLE_SLEW_UP per second going up, THROTTLE_SLEW going down</description>
+      <function>
+        <ifthen>
+          <and><eq><property>ap/engaged</property><value>1</value></eq><ge><property>ap/pitch-mode</property><value>1</value></ge><le><property>ap/pitch-mode</property><value>2</value></le><eq><property>ap/flare</property><value>0</value></eq><eq><property>ap/on-mains</property><value>0</value></eq><eq><property>ap/manual</property><value>0</value></eq></and>
+          <sum><property>ap/throttle-slewed</property><max><product><product><value>-0.9</value><property>ap/thrust-per-deg</property></product><property>simulation/dt</property></product><min><product><product><value>0.9</value><property>ap/thrust-per-deg</property><ifthen><and><eq><property>ap/pitch-mode</property><value>2</value></eq><eq><property>ap/thrust-mode</property><value>3</value></eq></and><value>1</value><value>1</value></ifthen></product><property>simulation/dt</property></product><difference><property>ap/thrust-law</property><property>ap/throttle-slewed</property></difference></min></max></sum>
+          <ifthen><eq><property>ap/engaged</property><value>0</value></eq><property>fcs/throttle-cmd-norm</property><property>ap/thrust-law</property></ifthen>
+        </ifthen>
+      </function>
+      <output>ap/throttle-slewed</output>
+    </fcs_function>
     <fcs_function name="ap/glide-height-ft">
       <description>height of the glide path here: the leg ends at the aiming point</description>
       <function>
@@ -1221,6 +1818,17 @@
       <default value="ctl/manual-spoiler-norm"/>
       <test value="ap/spoiler-law">ap/engaged == 1</test>
     </switch>
+    <fcs_function name="ap/sel-spoiler-slewed-next">
+      <description>the spoiler selection with its rate limited while the glide is being flown (GLIDE_SPOILER_RATE a second), the selection itself otherwise</description>
+      <function>
+        <ifthen>
+          <and><eq><property>ap/engaged</property><value>1</value></eq><eq><property>ap/land-mode</property><value>1</value></eq><eq><property>ap/flare</property><value>0</value></eq><eq><property>ap/rollout</property><value>0</value></eq><eq><property>ap/on-mains</property><value>0</value></eq><eq><property>ap/manual</property><value>0</value></eq></and>
+          <sum><property>ap/sel-spoiler-slewed</property><max><product><value>0</value><property>simulation/dt</property></product><min><product><value>0</value><property>simulation/dt</property></product><difference><property>ap/sel-spoiler</property><property>ap/sel-spoiler-slewed</property></difference></min></max></sum>
+          <property>ap/sel-spoiler</property>
+        </ifthen>
+      </function>
+      <output>ap/sel-spoiler-slewed</output>
+    </fcs_function>
     <actuator name="ap/act-spoiler">
       <input>ap/sel-spoiler</input>
       <lag>10</lag>
@@ -1425,6 +2033,302 @@
       <function>
         <product><value>-1</value><property>ctl/roll-cmd-deg</property></product>
       </function>
+    </fcs_function>
+    <fcs_function name="ap/v-alt-ft">
+      <description>the height the vertical task is asked for</description>
+      <function>
+<min><property>ap/vt-ft</property><value>65000</value></min>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/v-err-ft">
+      <description>the height to go, up positive</description>
+      <function>
+<difference><property>ap/v-alt-ft</property><property>position/h-sl-ft</property></difference>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/v-toward-fps">
+      <description>the climb rate towards the height</description>
+      <function>
+<max><value>0</value><product><ifthen><gt><property>ap/v-err-ft</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><property>velocities/h-dot-fps</property></product></max>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/v-sp-rate">
+      <description>the spoilers' slew rate, per second</description>
+      <function>
+<product><value>0.06</value><min><value>1</value><quotient><property>inertia/weight-lbs</property><value>20800</value></quotient></min></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/v-gate-ft">
+      <description>the height to go at which the altitude mode takes over with no step in what it asks: where the profile asks for the climb rate there is</description>
+      <function>
+<max><value>150</value><sum><quotient><sum><product><property>ap/v-toward-fps</property><property>ap/v-toward-fps</property><value>0.2</value></product><product><property>ap/v-toward-fps</property><sqrt><sum><product><property>ap/v-toward-fps</property><property>ap/v-toward-fps</property><value>0.04</value></product><value>108.16</value></sum></sqrt></product></sum><value>2.08</value></quotient><product><property>ap/v-toward-fps</property><sum><value>4.5</value><ifthen><and><lt><property>ap/v-err-ft</property><value>0</value></lt><value>0</value></and><quotient><max><value>0</value><property>ap/spoiler-cmd</property></max><property>ap/v-sp-rate</property></quotient><value>0</value></ifthen></sum></product></sum></max>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/v-rup-fps">
+      <description>the climb rate the thrust holds going up, the descent rate the speed law holds at idle going down</description>
+      <function>
+<ifthen><gt><property>ap/v-err-ft</property><value>0</value></gt><property>ap/climb-rate-max-fps</property><property>ap/descent-rate-idle-fps</property></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/v-short">
+      <description>a height change shorter than the capture of the rate the aircraft can hold is flown entirely under the profile, from no climb rate</description>
+      <function>
+<ifthen><le><abs><property>ap/v-err-ft</property></abs><product><value>1.6</value><max><value>0</value><sum><quotient><sum><product><property>ap/v-rup-fps</property><property>ap/v-rup-fps</property><value>0.2</value></product><product><property>ap/v-rup-fps</property><sqrt><sum><product><property>ap/v-rup-fps</property><property>ap/v-rup-fps</property><value>0.04</value></product><value>108.16</value></sum></sqrt></product></sum><value>2.08</value></quotient><product><property>ap/v-rup-fps</property><sum><value>4.5</value><value>0</value></sum></product></sum></max></product></le><value>1</value><value>0</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/v-mode-raw">
+      <description>this frame's mode: 3 level (within the gate, or the height held, or a short change), else 1 climb or 2 descent</description>
+      <function>
+<ifthen><or><le><abs><property>ap/v-err-ft</property></abs><property>ap/v-gate-ft</property></le><and><eq><property>ap/vmode</property><value>3</value></eq><eq><property>ap/v-level-alt</property><property>ap/v-alt-ft</property></eq><le><abs><property>ap/v-err-ft</property></abs><value>8000</value></le></and><eq><property>ap/v-short</property><value>1</value></eq></or><value>3</value><ifthen><gt><property>ap/v-err-ft</property><value>0</value></gt><value>1</value><value>2</value></ifthen></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/v-level-new">
+      <description>the frame the level (a new one) begins</description>
+      <function>
+<ifthen><and><eq><property>ap/vt-on</property><value>1</value></eq><eq><property>ap/v-mode-raw</property><value>3</value></eq><or><nq><property>ap/vmode</property><value>3</value></nq><nq><property>ap/v-level-alt</property><property>ap/v-alt-ft</property></nq></or></and><value>1</value><value>0</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/v-from-eff">
+      <description>what the aircraft was doing when the capture began</description>
+      <function>
+<ifthen><eq><property>ap/v-level-new</property><value>1</value></eq><property>ap/vmode</property><property>ap/v-level-from</property></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/v-span-eff">
+      <description>how far out the capture began: the spoilers go in with the height left over all of it</description>
+      <function>
+<ifthen><eq><property>ap/v-level-new</property><value>1</value></eq><max><value>150</value><abs><property>ap/v-err-ft</property></abs></max><property>ap/v-level-span</property></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/v-sp0-eff">
+      <description>the spoilers' command when the capture began: they go in from where they were</description>
+      <function>
+<ifthen><eq><property>ap/v-level-new</property><value>1</value></eq><property>ap/spoiler-cmd</property><property>ap/v-level-sp0</property></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/v-level-from-next">
+      <function>
+<property>ap/v-from-eff</property>
+      </function>
+      <output>ap/v-level-from</output>
+    </fcs_function>
+    <fcs_function name="ap/v-level-span-next">
+      <function>
+<property>ap/v-span-eff</property>
+      </function>
+      <output>ap/v-level-span</output>
+    </fcs_function>
+    <fcs_function name="ap/v-level-sp0-next">
+      <function>
+<property>ap/v-sp0-eff</property>
+      </function>
+      <output>ap/v-level-sp0</output>
+    </fcs_function>
+    <fcs_function name="ap/v-level-alt-next">
+      <function>
+<ifthen><and><eq><property>ap/vt-on</property><value>1</value></eq><eq><property>ap/v-mode-raw</property><value>3</value></eq></and><property>ap/v-alt-ft</property><property>ap/v-level-alt</property></ifthen>
+      </function>
+      <output>ap/v-level-alt</output>
+    </fcs_function>
+    <fcs_function name="ap/vmode-next">
+      <description>the vertical task's mode: 1 climb, 2 descent, 3 level, 0 not on</description>
+      <function>
+<ifthen><eq><property>ap/vt-on</property><value>1</value></eq><property>ap/v-mode-raw</property><value>0</value></ifthen>
+      </function>
+      <output>ap/vmode</output>
+    </fcs_function>
+    <fcs_function name="ap/v-need-fps">
+      <description>the sink the path to the point asks for: the height over the target over the time to go, less the capture's time</description>
+      <function>
+<max><value>0</value><quotient><difference><property>position/h-sl-ft</property><property>ap/v-alt-ft</property></difference><max><value>10</value><difference><quotient><difference><property>ap/leg-togo-ft</property><max><value>0</value><property>ap/turn-lead-ft</property></max></difference><max><value>100</value><property>velocities/vg-fps</property></max></quotient><value>20</value></difference></max></quotient></max>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/v-sp-i-next">
+      <description>the spoilers' integral on the sink the path asks for: held at nothing unless a descent is steering</description>
+      <function>
+<ifthen><and><eq><property>ap/vt-on</property><value>1</value></eq><eq><property>ap/v-mode-raw</property><value>2</value></eq><eq><property>ap/vt-path</property><value>1</value></eq></and><min><value>0.4</value><max><value>-0.4</value><sum><property>ap/v-sp-i</property><product><value>0.003</value><property>simulation/dt</property><difference><property>ap/v-need-fps</property><product><value>-1</value><property>velocities/h-dot-fps</property></product></difference></product></sum></max></min><value>0</value></ifthen>
+      </function>
+      <output>ap/v-sp-i</output>
+    </fcs_function>
+    <fcs_function name="ap/v-sp-descent">
+      <description>the spoilers in a descent: steering the slope onto the point (a path), else the fixed setting</description>
+      <function>
+<ifthen><and><eq><property>ap/vt-path</property><value>1</value></eq><value>1</value></and><min><value>1</value><max><value>0</value><sum><value>0.5</value><product><value>0.04</value><difference><property>ap/v-need-fps</property><product><value>-1</value><property>velocities/h-dot-fps</property></product></difference></product><property>ap/v-sp-i</property></sum></max></min><value>0.5</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/v-sp-want">
+      <description>the spoilers' command the task wants, before the slew</description>
+      <function>
+<ifthen><eq><property>ap/v-mode-raw</property><value>3</value></eq><product><property>ap/v-sp0-eff</property><ifthen><eq><property>ap/v-from-eff</property><value>2</value></eq><min><value>1</value><quotient><max><value>0</value><product><value>-1</value><property>ap/v-err-ft</property></product></max><property>ap/v-span-eff</property></quotient></min><value>0</value></ifthen></product><ifthen><eq><property>ap/v-mode-raw</property><value>1</value></eq><value>0</value><property>ap/v-sp-descent</property></ifthen></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/spoiler-cmd-next">
+      <description>the spoilers' command moved towards what the task (or ap/sp-ext) wants at the slew rate, whichever way; held when neither has it</description>
+      <function>
+<ifthen><or><eq><property>ap/vt-on</property><value>1</value></eq><ge><property>ap/sp-ext</property><value>0</value></ge></or><sum><property>ap/spoiler-cmd</property><max><product><value>-1</value><property>ap/v-sp-rate</property><property>simulation/dt</property></product><min><product><property>ap/v-sp-rate</property><property>simulation/dt</property></product><difference><ifthen><eq><property>ap/vt-on</property><value>1</value></eq><property>ap/v-sp-want</property><property>ap/sp-ext</property></ifthen><property>ap/spoiler-cmd</property></difference></min></max></sum><property>ap/spoiler-cmd</property></ifthen>
+      </function>
+      <output>ap/spoiler-cmd</output>
+    </fcs_function>
+    <fcs_function name="ap/pitch-mode-next">
+      <function>
+<ifthen><eq><property>ap/vt-on</property><value>1</value></eq><ifthen><eq><property>ap/v-mode-raw</property><value>3</value></eq><value>2</value><value>1</value></ifthen><ifthen><or><eq><property>ap/tk-air</property><value>1</value></eq><eq><property>ap/ld-cap-new</property><value>1</value></eq></or><value>1</value><property>ap/pitch-mode</property></ifthen></ifthen>
+      </function>
+      <output>ap/pitch-mode</output>
+    </fcs_function>
+    <fcs_function name="ap/thrust-mode-next">
+      <function>
+<ifthen><eq><property>ap/vt-on</property><value>1</value></eq><ifthen><eq><property>ap/v-mode-raw</property><value>3</value></eq><value>3</value><ifthen><eq><property>ap/v-mode-raw</property><value>1</value></eq><value>1</value><value>2</value></ifthen></ifthen><property>ap/thrust-mode</property></ifthen>
+      </function>
+      <output>ap/thrust-mode</output>
+    </fcs_function>
+    <fcs_function name="ap/alt-cmd-next">
+      <function>
+<ifthen><eq><property>ap/vt-on</property><value>1</value></eq><property>ap/v-alt-ft</property><property>ap/alt-cmd-ft</property></ifthen>
+      </function>
+      <output>ap/alt-cmd-ft</output>
+    </fcs_function>
+    <fcs_function name="ap/speed-schedule-next">
+      <function>
+<ifthen><or><eq><property>ap/vt-on</property><value>1</value></eq><eq><property>ap/tk-air</property><value>1</value></eq></or><value>1</value><property>ap/speed-schedule</property></ifthen>
+      </function>
+      <output>ap/speed-schedule</output>
+    </fcs_function>
+    <fcs_function name="ap/spoiler-mode-next">
+      <function>
+<ifthen><or><eq><property>ap/vt-on</property><value>1</value></eq><ge><property>ap/sp-ext</property><value>0</value></ge></or><value>1</value><property>ap/spoiler-mode</property></ifthen>
+      </function>
+      <output>ap/spoiler-mode</output>
+    </fcs_function>
+    <fcs_function name="ap/tk-air">
+      <description>the takeoff item is on and the aircraft is airborne</description>
+      <function>
+<ifthen><and><eq><property>ap/tk-on</property><value>1</value></eq><gt><property>aero/wheel-height-ft</property><value>100</value></gt></and><value>1</value><value>0</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/tk-done-next">
+      <description>the takeoff has handed over (latched while the item is on)</description>
+      <function>
+<ifthen><eq><property>ap/tk-on</property><value>1</value></eq><ifthen><eq><property>ap/tk-air</property><value>1</value></eq><value>1</value><property>ap/tk-done</property></ifthen><value>0</value></ifthen>
+      </function>
+      <output>ap/tk-done</output>
+    </fcs_function>
+    <fcs_function name="ap/ground-steer-next">
+      <function>
+<ifthen><eq><property>ap/tk-air</property><value>1</value></eq><value>0</value><property>ap/ground-steer</property></ifthen>
+      </function>
+      <output>ap/ground-steer</output>
+    </fcs_function>
+    <fcs_function name="gear/gear-cmd-next">
+      <description>the gear comes up when the takeoff hands over</description>
+      <function>
+<ifthen><eq><property>ap/tk-air</property><value>1</value></eq><value>0</value><property>gear/gear-cmd-norm</property></ifthen>
+      </function>
+      <output>gear/gear-cmd-norm</output>
+    </fcs_function>
+    <fcs_function name="ap/tx-speed-leg">
+      <description>the taxi speed on a leg that ends in a bend: slow for the corner, over the last 350 ft</description>
+      <function>
+<ifthen><gt><property>ap/tx-bend-deg</property><value>20</value></gt><min><property>ap/tx-fast</property><max><property>ap/tx-slow</property><sum><property>ap/tx-slow</property><product><difference><property>ap/tx-fast</property><property>ap/tx-slow</property></difference><quotient><difference><property>ap/leg-togo-ft</property><value>100</value></difference><value>250</value></quotient></product></sum></max></min><property>ap/tx-fast</property></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/tx-speed-last">
+      <description>the taxi speed on the last leg: down to a walk, then stopped on the point (or what it was, if it does not stop)</description>
+      <function>
+<ifthen><eq><property>ap/tx-stop</property><value>1</value></eq><ifthen><lt><property>ap/leg-togo-ft</property><value>12</value></lt><value>0</value><min><property>ap/tx-fast</property><max><value>3</value><product><value>0.12</value><property>ap/leg-togo-ft</property></product></max></min></ifthen><property>ap/taxi-speed-kt</property></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/taxi-speed-next">
+      <function>
+<ifthen><eq><property>ap/tx-on</property><value>1</value></eq><ifthen><eq><property>ap/tx-last</property><value>1</value></eq><property>ap/tx-speed-last</property><property>ap/tx-speed-leg</property></ifthen><property>ap/taxi-speed-kt</property></ifthen>
+      </function>
+      <output>ap/taxi-speed-kt</output>
+    </fcs_function>
+    <fcs_function name="ap/tx-leg">
+      <description>the next taxi leg is to be taken</description>
+      <function>
+<ifthen><and><eq><property>ap/tx-on</property><value>1</value></eq><eq><property>ap/tx-last</property><value>0</value></eq><lt><property>ap/leg-togo-ft</property><value>40</value></lt></and><value>1</value><value>0</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/tx-done">
+      <description>the taxi item is over</description>
+      <function>
+<ifthen><and><eq><property>ap/tx-on</property><value>1</value></eq><eq><property>ap/tx-last</property><value>1</value></eq><ifthen><eq><property>ap/tx-stop</property><value>1</value></eq><and><lt><property>ap/leg-togo-ft</property><value>12</value></lt><lt><property>ap/ground-speed-kt</property><value>0.3</value></lt></and><lt><property>ap/leg-togo-ft</property><value>40</value></lt></ifthen></and><value>1</value><value>0</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/ld-cap-new">
+      <description>the frame the glide is taken over</description>
+      <function>
+<ifthen><and><eq><property>ap/ld-on</property><value>1</value></eq><eq><property>ap/ld-captured</property><value>0</value></eq><gt><property>ap/glide-error-ft</property><product><value>-1</value><property>ap/glide-lead-ft</property></product></gt><lt><difference><property>velocities/vc-kts</property><property>ap/approach-keas</property></difference><value>10</value></lt></and><value>1</value><value>0</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/ld-captured-next">
+      <description>the glide has been taken over (latched while the item is on)</description>
+      <function>
+<ifthen><eq><property>ap/ld-on</property><value>1</value></eq><ifthen><or><eq><property>ap/ld-captured</property><value>1</value></eq><eq><property>ap/ld-cap-new</property><value>1</value></eq></or><value>1</value><value>0</value></ifthen><value>0</value></ifthen>
+      </function>
+      <output>ap/ld-captured</output>
+    </fcs_function>
+    <fcs_function name="ap/speed-cmd-next">
+      <description>the approach speed until the glide is taken</description>
+      <function>
+<ifthen><and><eq><property>ap/ld-on</property><value>1</value></eq><eq><property>ap/ld-captured</property><value>0</value></eq></and><property>ap/approach-keas</property><property>ap/speed-cmd-kcas</property></ifthen>
+      </function>
+      <output>ap/speed-cmd-kcas</output>
+    </fcs_function>
+    <fcs_function name="ap/land-mode-next">
+      <function>
+<ifthen><eq><property>ap/ld-cap-new</property><value>1</value></eq><value>1</value><property>ap/land-mode</property></ifthen>
+      </function>
+      <output>ap/land-mode</output>
+    </fcs_function>
+    <fcs_function name="ap/sp-ext-next">
+      <description>the spoilers are the glide law's from the capture</description>
+      <function>
+<ifthen><and><eq><property>ap/ld-on</property><value>1</value></eq><or><eq><property>ap/ld-captured</property><value>1</value></eq><eq><property>ap/ld-cap-new</property><value>1</value></eq></or></and><value>-1</value><property>ap/sp-ext</property></ifthen>
+      </function>
+      <output>ap/sp-ext</output>
+    </fcs_function>
+    <fcs_function name="ap/ld-done">
+      <description>the rollout is over</description>
+      <function>
+<ifthen><and><eq><property>ap/ld-on</property><value>1</value></eq><eq><property>ap/ld-captured</property><value>1</value></eq><eq><property>ap/rollout</property><value>1</value></eq><lt><property>ap/ground-speed-kt</property><value>15</value></lt></and><value>1</value><value>0</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/ci-dn-ft">
+      <description>feet north of the centre</description>
+      <function>
+<product><difference><property>position/lat-geod-deg</property><property>ap/ci-lat</property></difference><value>364567</value></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/ci-de-ft">
+      <description>feet east of the centre</description>
+      <function>
+<product><difference><property>position/long-gc-deg</property><property>ap/ci-lon</property></difference><value>364567</value><cos><toradians><property>ap/ci-lat</property></toradians></cos></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/ci-out-deg">
+      <description>the bearing from the centre to the aircraft, -180 to 180</description>
+      <function>
+<todegrees><atan2><property>ap/ci-de-ft</property><property>ap/ci-dn-ft</property></atan2></todegrees>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/ci-dist-ft">
+      <description>the distance from the centre</description>
+      <function>
+<sqrt><sum><product><property>ap/ci-dn-ft</property><property>ap/ci-dn-ft</property></product><product><property>ap/ci-de-ft</property><property>ap/ci-de-ft</property></product></sum></sqrt>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/ci-heading-deg">
+      <description>the heading that flies the circle, 0 to 360</description>
+      <function>
+<ifthen><gt><todegrees><atan2><sin><toradians><sum><property>ap/ci-out-deg</property><product><value>90</value><property>ap/ci-side</property></product><product><property>ap/ci-side</property><sum><ifthen><eq><property>ap/ci-lead</property><value>1</value></eq><quotient><todegrees><atan><quotient><product><property>velocities/vg-fps</property><property>velocities/vg-fps</property></product><product><value>32.174</value><property>ap/ci-radius-ft</property></product></quotient></atan></todegrees><quotient><product><value>1.2</value><max><property>velocities/vt-fps</property><value>100</value></max></product><value>600</value></quotient></quotient><value>0</value></ifthen><min><value>80</value><max><product><value>-1</value><property>ap/ci-out-max</property></product><product><value>60</value><quotient><difference><property>ap/ci-dist-ft</property><property>ap/ci-radius-ft</property></difference><property>ap/ci-radius-ft</property></quotient></product></max></min></sum></product></sum></toradians></sin><cos><toradians><sum><property>ap/ci-out-deg</property><product><value>90</value><property>ap/ci-side</property></product><product><property>ap/ci-side</property><sum><ifthen><eq><property>ap/ci-lead</property><value>1</value></eq><quotient><todegrees><atan><quotient><product><property>velocities/vg-fps</property><property>velocities/vg-fps</property></product><product><value>32.174</value><property>ap/ci-radius-ft</property></product></quotient></atan></todegrees><quotient><product><value>1.2</value><max><property>velocities/vt-fps</property><value>100</value></max></product><value>600</value></quotient></quotient><value>0</value></ifthen><min><value>80</value><max><product><value>-1</value><property>ap/ci-out-max</property></product><product><value>60</value><quotient><difference><property>ap/ci-dist-ft</property><property>ap/ci-radius-ft</property></difference><property>ap/ci-radius-ft</property></quotient></product></max></min></sum></product></sum></toradians></cos></atan2></todegrees><value>0</value></gt><todegrees><atan2><sin><toradians><sum><property>ap/ci-out-deg</property><product><value>90</value><property>ap/ci-side</property></product><product><property>ap/ci-side</property><sum><ifthen><eq><property>ap/ci-lead</property><value>1</value></eq><quotient><todegrees><atan><quotient><product><property>velocities/vg-fps</property><property>velocities/vg-fps</property></product><product><value>32.174</value><property>ap/ci-radius-ft</property></product></quotient></atan></todegrees><quotient><product><value>1.2</value><max><property>velocities/vt-fps</property><value>100</value></max></product><value>600</value></quotient></quotient><value>0</value></ifthen><min><value>80</value><max><product><value>-1</value><property>ap/ci-out-max</property></product><product><value>60</value><quotient><difference><property>ap/ci-dist-ft</property><property>ap/ci-radius-ft</property></difference><property>ap/ci-radius-ft</property></quotient></product></max></min></sum></product></sum></toradians></sin><cos><toradians><sum><property>ap/ci-out-deg</property><product><value>90</value><property>ap/ci-side</property></product><product><property>ap/ci-side</property><sum><ifthen><eq><property>ap/ci-lead</property><value>1</value></eq><quotient><todegrees><atan><quotient><product><property>velocities/vg-fps</property><property>velocities/vg-fps</property></product><product><value>32.174</value><property>ap/ci-radius-ft</property></product></quotient></atan></todegrees><quotient><product><value>1.2</value><max><property>velocities/vt-fps</property><value>100</value></max></product><value>600</value></quotient></quotient><value>0</value></ifthen><min><value>80</value><max><product><value>-1</value><property>ap/ci-out-max</property></product><product><value>60</value><quotient><difference><property>ap/ci-dist-ft</property><property>ap/ci-radius-ft</property></difference><property>ap/ci-radius-ft</property></quotient></product></max></min></sum></product></sum></toradians></cos></atan2></todegrees><sum><todegrees><atan2><sin><toradians><sum><property>ap/ci-out-deg</property><product><value>90</value><property>ap/ci-side</property></product><product><property>ap/ci-side</property><sum><ifthen><eq><property>ap/ci-lead</property><value>1</value></eq><quotient><todegrees><atan><quotient><product><property>velocities/vg-fps</property><property>velocities/vg-fps</property></product><product><value>32.174</value><property>ap/ci-radius-ft</property></product></quotient></atan></todegrees><quotient><product><value>1.2</value><max><property>velocities/vt-fps</property><value>100</value></max></product><value>600</value></quotient></quotient><value>0</value></ifthen><min><value>80</value><max><product><value>-1</value><property>ap/ci-out-max</property></product><product><value>60</value><quotient><difference><property>ap/ci-dist-ft</property><property>ap/ci-radius-ft</property></difference><property>ap/ci-radius-ft</property></quotient></product></max></min></sum></product></sum></toradians></sin><cos><toradians><sum><property>ap/ci-out-deg</property><product><value>90</value><property>ap/ci-side</property></product><product><property>ap/ci-side</property><sum><ifthen><eq><property>ap/ci-lead</property><value>1</value></eq><quotient><todegrees><atan><quotient><product><property>velocities/vg-fps</property><property>velocities/vg-fps</property></product><product><value>32.174</value><property>ap/ci-radius-ft</property></product></quotient></atan></todegrees><quotient><product><value>1.2</value><max><property>velocities/vt-fps</property><value>100</value></max></product><value>600</value></quotient></quotient><value>0</value></ifthen><min><value>80</value><max><product><value>-1</value><property>ap/ci-out-max</property></product><product><value>60</value><quotient><difference><property>ap/ci-dist-ft</property><property>ap/ci-radius-ft</property></difference><property>ap/ci-radius-ft</property></quotient></product></max></min></sum></product></sum></toradians></cos></atan2></todegrees><value>360</value></sum></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/heading-cmd-next">
+      <function>
+<ifthen><eq><property>ap/ci-on</property><value>1</value></eq><property>ap/ci-heading-deg</property><property>ap/heading-cmd-deg</property></ifthen>
+      </function>
+      <output>ap/heading-cmd-deg</output>
     </fcs_function>
   </channel>
 </system>

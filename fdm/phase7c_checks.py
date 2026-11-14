@@ -223,6 +223,7 @@ def main():
         f.run()
     f['engine/failed'] = 0
     add('E4', 'no runway in reach (96 nmi from 20,000 ft)', m4.alert == 'no runway in reach', 'alert: %s; glides towards the nearest' % m4.alert)
+    add('G0', 'no go-around in the flights above (a go-around hides nothing)', MM.Manager.go_arounds == 0, '%d go-arounds' % MM.Manager.go_arounds)
     for tag, name, ok, detail in rows:
         print('%-3s %-52s %-8s %s' % (tag, name, ok, detail))
     miss = sum(1 for r in rows if r[2] == 'MISS')

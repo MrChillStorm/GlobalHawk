@@ -6,6 +6,8 @@
 C1 the forecast (GlobalHawk/gcs/js/predict.js, run by node) against a flight of the model.
 C2 the ported plan check (js/plancheck.js) against the aircraft's (fdm/onboard.py) on damaged plans.
 C3 the ported glide reach (js/reach.js) against the aircraft's planner (fdm/missionmgr.py).
+C4 the planner's turn (js/flightmath.js: the turn performance table's flown bank, the radius, the lead) against the aircraft's lead (ap/turn-lead-ft) in calm air,
+   a 90 deg corner, cruise speeds over weights and heights on the table's grid and between its points (docs/PLAN.md TT3: within 50 ft).
 Limits: docs/GCS.md, written first.
 """
 import copy
@@ -136,17 +138,43 @@ def damage(plan, rng):
     return p
 
 
+def descent_cases(plan):
+    """Plans whose route has a leg that goes down at a set slope (docs/PLAN.md, "The aircraft refuses what it cannot fly"): the verdict each should have, and the plan."""
+    out = []
+    for name, deg, refused, short in (('5.9 deg', 5.9, False, False), ('6.1 deg', 6.1, True, False), ('7 deg', 7.0, True, False), ('8.3 deg', 8.3, True, False),
+                                      ('a climb', None, False, False), ('7 deg in 1.5 nmi: too short to judge', 7.0, False, True)):
+        p = copy.deepcopy(plan)
+        pts = p['items'][2]['points']
+        a, b = pts[-2], pts[-1]
+        if short:                                           # the last leg cut to 1.5 nmi
+            ft = MM.course(a, b)[1]
+            pts[-2] = [a[0] + (b[0] - a[0]) * (1 - 1.5 * NM / ft), a[1] + (b[1] - a[1]) * (1 - 1.5 * NM / ft), a[2]]
+            a = pts[-2]
+        a[2] = b[2] - 3000.0 if deg is None else b[2] + math.tan(math.radians(deg)) * MM.course(a, b)[1]      # None: a climb of 3,000 ft
+        out.append((name, refused, p))
+    p = copy.deepcopy(plan)                                 # the lost-link route is checked too
+    lp = p['lost_link'][0]['points']
+    lp.insert(0, [lp[0][0] + 0.3, lp[0][1] + 0.3, lp[0][2] + 26000.0])
+    out.append(('a steep leg in the lost-link route', True, p))
+    return out
+
+
 def ports():
     plan = json.load(open(PLAN))
     rng = random.Random(8)
     plans = [damage(plan, rng) for _ in range(200)]
+    extra = descent_cases(plan)
+    plans += [p for _, _, p in extra]
     ours = [OB.check_plan(p) for p in plans]
     theirs = node("const pc = require('./js/plancheck.js'); console.log(JSON.stringify(input.map((p) => pc.checkPlan(p))));", plans)
     verdict = sum((a is None) == (b is None) for a, b in zip(ours, theirs))
     same = sum(a == b for a, b in zip(ours, theirs))
     diff = [(a, b) for a, b in zip(ours, theirs) if a != b]
-    add('C2', 'the plan check, ported: 200 damaged plans', verdict == 200, 'the same verdict on %d of 200 (%d refused); the same words on %d%s' % (
-        verdict, sum(a is not None for a in ours), same, '' if not diff else '; e.g. aircraft "%s", station "%s"' % diff[0]))
+    add('C2', 'the plan check, ported: 200 damaged plans and the descent slopes', verdict == len(plans) and same == len(plans), 'the same verdict on %d of %d (%d refused); the same words on %d%s' % (
+        verdict, len(plans), sum(a is not None for a in ours), same, '' if not diff else '; e.g. aircraft "%s", station "%s"' % diff[0]))
+    got = [OB.check_plan(p) for _, _, p in extra]
+    wrong = ['%s: %s' % (name, g) for (name, refused, _), g in zip(extra, got) if (g is not None) != refused or (refused and 'does not come down more steeply than 6 deg' not in (g or ''))]
+    add('C2b', 'the plan check refuses a leg that goes down over 6 deg and nothing else', not wrong, '5.9 deg, a climb and a leg under 2 nmi accepted; 6.1, 7 and 8.3 deg and the lost-link route\'s steep leg refused with the leg named%s' % ('' if not wrong else '; WRONG: ' + ' | '.join(wrong)))
     # reach: the aircraft's planner with a stand-in for the flight model
     cases = []
     m = MM.Manager.__new__(MM.Manager)
@@ -163,9 +191,46 @@ def ports():
     add('C3', 'glide reach, ported: 50 cases', worst <= 1.0, 'the largest difference %.3f ft' % worst)
 
 
+TURN_LEAD_CELLS = ((12000.0, 4000.0), (20000.0, 4000.0), (26000.0, 4000.0), (20000.0, 20000.0), (26000.0, 30000.0), (20000.0, 45000.0), (15000.0, 12000.0), (23000.0, 38000.0))
+TURN_LEAD_LIMIT_FT = 50.0
+
+
+def turn_lead():
+    """C4: for each cell (weight, height over the ground) the aircraft is trimmed at the speed the laws hold there, level, a 90 deg corner 12 nmi ahead, calm; its lead
+    (ap/turn-lead-ft, the distance before the corner the turn starts at) against the planner's for the same weight, pressure altitude, speed and ground speed."""
+    import numpy as np
+    kc = node("const FM = require('./js/flightmath.js'); console.log(JSON.stringify(input.map((c) => FM.scheduleKcas(c[1] + 174))));", [list(c) for c in TURN_LEAD_CELLS])
+    got = []
+    for (w, h), k in zip(TURN_LEAD_CELLS, kc):
+        f = H.load(rebuild=not got)          # the first load builds the laws as they are today, the rest use that build
+        fld = MM.Field(60.3, 24.96, 174.0)
+        u = lambda deg: np.array([math.cos(math.radians(deg)), math.sin(math.radians(deg))])        # (north, east)
+        start = fld.ll(*(-12 * NM * u(90.0)))
+        B, C = fld.ll(0.0, 0.0), fld.ll(*(40000.0 * u(180.0)))
+        t = H.trim(f, alt=174.0 + h, kcas=k, weight=w, lat=start[0], lon=start[1], psi=90.0, terrain=174.0)
+        H.engage(f, t, pitch_mode=2, thrust_mode=3, speed_schedule=0)
+        mgr = MM.Manager(f, [dict(kind='route', points=[B + (174.0 + h,), C + (174.0 + h,)])])
+        f['ap/engaged'] = 1
+        f['ap/speed-cmd-kcas'] = f['velocities/vc-kts']
+        for _ in range(int(40 * H.HZ)):          # long enough for the leg law's start to settle: the lead is worked from the heading now, and a degree off the leg's course moves it 1 %
+            mgr.step()
+            f.run()
+        got.append(dict(weight=f['inertia/weight-lbs'], alt=f['engine/pressure-altitude-ft'], kcas=f['velocities/vc-kts'], vg=f['velocities/vg-fps'], delta=f['ap/turn-delta-deg'],
+                        lead=f['ap/turn-lead-ft'], bank=f['ap/turn-bank-deg'], flown=f['ap/turn-bank-flown-deg']))
+    theirs = node("const FM = require('./js/flightmath.js'); console.log(JSON.stringify(input.map((g) => FM.turn({ delta_deg: g.delta, alt_ft: g.alt, vg_fps: g.vg, kcas: g.kcas, weight_lb: g.weight, bank_deg: g.bank }).lead_ft)));", got)
+    worst = 0.0
+    for (w, h), g, lead in zip(TURN_LEAD_CELLS, got, theirs):
+        d = lead - g['lead']
+        worst = max(worst, abs(d))
+        add('C4', 'turn lead %5.0f lb %5.0f ft' % (w, h), abs(d) <= TURN_LEAD_LIMIT_FT,
+            'aircraft %6.0f ft, planner %6.0f ft (%+.0f); bank commanded %.1f, flown %.1f deg, %.0f KCAS, vg %.0f ft/s' % (g['lead'], lead, d, g['bank'], g['flown'], g['kcas'], g['vg']))
+    add('C4', 'turn lead, worst of %d cells' % len(got), worst <= TURN_LEAD_LIMIT_FT, '%.0f ft (limit %.0f)' % (worst, TURN_LEAD_LIMIT_FT))
+
+
 def main():
     forecast()
     ports()
+    turn_lead()
     for tag, name, ok, detail in rows:
         print('%-3s %-44s %-5s %s' % (tag, name, ok, detail))
     miss = sum(1 for r in rows if r[2] == 'MISS')

@@ -208,7 +208,7 @@ def crosswind_landing(f, kt, name, weight=20800.0, elev=2357.0, turb=True, sever
     start = fld.ll(*(-d0 * u))
     keas = math.sqrt(weight / (0.645 * 540 * 0.5 * 0.0023769)) / H.KT
     t = H.trim(f, alt=elev + 5.3 + d0 * 0.07782, kcas=keas, weight=weight, gamma=-4.45, gear=1.0, spoiler=2 / 3, lat=start[0], lon=start[1], psi=B.COURSE, terrain=elev)
-    H.engage(f, t, pitch_mode=1, roll_mode=2, ground_steer=1, land_mode=1, rwy_elev_ft=elev, leg_lat0_deg=far[0], leg_lon0_deg=far[1],
+    H.engage(f, t, pitch_mode=1, roll_mode=3, ground_steer=1, land_mode=1, rwy_elev_ft=elev, leg_lat0_deg=far[0], leg_lon0_deg=far[1],
              leg_lat1_deg=aim[0], leg_lon1_deg=aim[1])
     turbulence(f, turb, 15.0, severity)
     log = H.run(f, 260, every=6, hook=gale.hook)
@@ -271,6 +271,8 @@ def main():
         days(f)
     if which in ('all', 'wind'):
         wind_checks(f)
+    if which in ('all', 'wind'):
+        add('G0', 'no go-around in the wind flights (a go-around hides nothing)', B.MM.Manager.go_arounds == 0, '%d go-arounds' % B.MM.Manager.go_arounds)
     for tag, name, status, detail in rows:
         print('%-3s %-62s %s  %s' % (tag, name, status, detail))
     miss = sum(1 for r in rows if r[2] == 'MISS')

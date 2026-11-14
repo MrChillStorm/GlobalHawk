@@ -8,6 +8,7 @@ A plan is a list of items:
     dict(kind='route', points=[(lat, lon, alt_ft), ...])
     dict(kind='land', fix=(lat, lon), aim=(lat, lon), elev=2300)
     dict(kind='hold', centre=(lat, lon), alt=20000)                           a circle; never ends by itself
+    (made by the manager, not given:) dict(kind='go_around', ...)            the landing's entry contract broken: a circle over the fix down to the final's height, then the landing
 A route may carry start=(lat, lon): its first leg then begins there, not where the aircraft is (resuming a plan).
 
 Contingencies (docs/FLIGHT-LAWS.md, section 6):
@@ -33,8 +34,22 @@ CIRCLE_BANK = 15.0             # deg
 FINAL_SURPLUS = 300.0          # ft above the glide path the circle aims to leave for the final
 WING_AREA = 540.0
 K_PSI = 1.2                    # the heading law's gain (fdm/laws.py), deg of bank per deg at 600 ft/s
+LANDING_SPOILER = 0.667        # the spoilers' command in the landing configuration, before the glide path is taken (the laws' spoiler base)
+LEVEL_BEGIN_FT = 400.0         # the landing keeps the level's height command while the aircraft is within this of it
 MAX_ALT = 65000.0              # ft: the aircraft's maximum (NASA 2008)
 HOLD_BANK = 11.5               # deg: a hold's circle is flown well inside the bank limit, so it can be caught without overshoot
+# the landing task's entry contract and the go-around task it hands over to when the contract is broken (docs/PLAN.md, "The aircraft refuses what it cannot fly")
+ENTRY_CAPTURE_FT = ((12000.0, 500.0), (20000.0, 1500.0), (26000.0, 2000.0))   # (weight lb, ft above the path at 10 nmi the capture still takes over by 1.5 nmi out): flown, above.py
+ENTRY_MARGIN = 0.8             # of that
+ENTRY_TOGO_MIN_NM = 1.5        # to go at which no height above the path is taken; the limit grows from there with the way to go ...
+ENTRY_SPAN_NM = 8.5            # ... as the 10 nmi it was measured at (1.5 to 10 nmi) ...
+ENTRY_TOGO_MAX_NM = 12.0       # ... and no further (not measured beyond)
+LAND_FIX_GAP_FT = 2634.0       # the height under the glide path the final is begun from: the capture gap flown (2,484 ft, fdm/capability.py) and the planner's 150 ft
+GO_AROUND_MIN_AGL = 1000.0     # ft over the ground: the go-around's circle comes down to this at the least
+GO_AROUND_ALT_ABOVE = 100.0    # ft: the go-around hands back to the landing no higher than this over the height it came down to (the capture gap has 150 ft of margin) ...
+GO_AROUND_ALT_BELOW = 300.0    # ... and no lower than this under it ...
+GO_AROUND_FIX_FT = 2500.0      # ... within this of the fix ...
+GO_AROUND_TRACK_DEG = 20.0     # ... on a track within this of the final's course
 
 
 class Field:
@@ -61,6 +76,8 @@ def turn(c0, c1):
 
 
 class Manager:
+    go_arounds = 0                  # how many go-arounds any manager has begun: the checks that should land at once count on it being 0 (a go-around hides nothing)
+
     def __init__(self, f, plan, lost_link=None, sites=()):
         self.f, self.plan = f, list(plan)
         self.lost_link, self.sites = lost_link, list(sites)
@@ -101,6 +118,10 @@ class Manager:
         self.k = 0
         kind = it['kind']
         self.note('begin ' + kind)
+        vm, lv = int(round(f['ap/vmode'])), f['ap/v-level-alt']          # what the vertical task was doing, before this item takes it over
+        f['ap/vt-on'], f['ap/sp-ext'] = 0, -1
+        f['ap/tk-done'], f['ap/ld-captured'] = 0, 0                 # the laws' latches start clear: the item may follow one of its own kind in the same call, and they would never see the task off
+        f['ap/tk-on'], f['ap/tx-on'], f['ap/ld-on'], f['ap/ci-on'] = 0, 0, 0, 0          # the laws' takeoff, taxi, landing and circle tasks: each item turns on its own
         f['ap/next-valid'] = 0
         f['ap/turn-ack'] = f['ap/turn-done']
         if kind == 'taxi':
@@ -112,12 +133,16 @@ class Manager:
             f['ap/thrust-mode'], f['ap/ground-steer'], f['ap/pitch-mode'], f['ap/roll-mode'] = 4, 1, 0, 0
             f['ap/spoiler-mode'], f['ap/spoiler-cmd'] = 1, 0.0
             f['ap/taxi-speed-kt'] = it.get('speed', 15.0)
+            f['ap/tx-fast'], f['ap/tx-slow'], f['ap/tx-stop'] = it.get('speed', 15.0), it.get('turn_speed', 8.0), 1 if it.get('stop', True) else 0
+            self.taxi_leg(it)
+            f['ap/tx-on'] = 1
             f['gear/gear-cmd-norm'] = 1
         elif kind == 'takeoff':
             self.leg(it['start'], it['end'])
             f['ap/taxi-speed-kt'] = 0.0
             f['ap/thrust-mode'], f['ap/ground-steer'], f['ap/pitch-mode'], f['ap/roll-mode'] = 1, 1, 3, 2
             f['ap/spoiler-mode'], f['ap/spoiler-cmd'] = 1, 0.0
+            f['ap/tk-on'] = 1
         elif kind == 'route':
             first = tuple(it['start']) if it.get('start') else self.here()
             pts = [first + (f['position/h-sl-ft'],)] + list(it['points'])
@@ -126,21 +151,32 @@ class Manager:
             f['ap/roll-mode'], f['ap/ground-steer'] = 2, 0
             self.vertical(pts[1][2])
         elif kind == 'land':
+            above = self.above_path(it)
+            if above > self.entry_limit(course(self.here(), it['aim'])[1]):
+                self.go_around(it, above)               # the entry contract is broken: nothing of the landing is set up
+                return
             # level towards the runway in the landing configuration until the glide path comes down to the aircraft
             self.leg(it['fix'], it['aim'])
             f['ap/rwy-elev-ft'] = it['elev']
-            f['ap/roll-mode'], f['ap/ground-steer'] = 2, 1
-            f['ap/alt-cmd-ft'] = f['position/h-sl-ft']
+            f['ap/roll-mode'], f['ap/ground-steer'] = 3, 1           # the landing task's own lateral law
+            # the height asked for stays the level's if its capture is going on (the aircraft was still coming down to it: a command of the height it has this moment is a step in
+            # what the altitude mode asks), else it is the height it has; the spoilers go out as a ramp (it was a step of 0.12 to 0.67: a load factor of 1.31 and the speed 11 kt down)
+            h = f['position/h-sl-ft']
+            f['ap/alt-cmd-ft'] = lv if (vm == 3 and abs(lv - h) <= LEVEL_BEGIN_FT) else h
             f['ap/pitch-mode'], f['ap/thrust-mode'] = 2, 3
             f['ap/speed-schedule'] = 0
             f['ap/speed-cmd-kcas'] = f['ap/approach-keas']
-            f['ap/spoiler-mode'], f['ap/spoiler-cmd'] = 1, 0.667
+            f['ap/sp-ext'] = LANDING_SPOILER          # the laws move the spoilers there at their slew rate, from where they are
             f['gear/gear-cmd-norm'] = 1
             it['_on_path'] = False
-        elif kind == 'hold':
+            f['ap/ld-on'] = 1
+        elif kind in ('hold', 'go_around'):
             f['ap/land-mode'] = 0
             f['ap/roll-mode'], f['ap/ground-steer'] = 1, 0
             it['side'] = 1.0
+            it['radius'] = it.get('radius') or self.hold_radius()      # fixed once the hold begins: the station draws it
+            f['ap/ci-lat'], f['ap/ci-lon'], f['ap/ci-radius-ft'], f['ap/ci-side'] = it['centre'][0], it['centre'][1], it['radius'], it['side']
+            f['ap/ci-out-max'], f['ap/ci-lead'], f['ap/ci-on'] = 30.0, 1, 1          # the laws fly the circle: the heading command about the centre
             self.vertical(it['alt'])
         elif kind == 'engine_out':
             self.choose_site(it)
@@ -244,57 +280,73 @@ class Manager:
                 f['ap/thrust-mode'] = 4
                 self.next()
 
-    def circle(self, centre, radius, side, out_max=45.0, lead=False):
-        """The heading that flies a circle about a centre: the tangent, turned in or out for the distance off it.
-        Returns the bearing from the centre and the distance from it."""
-        f = self.f
-        out, d = course(centre, self.here())
-        ahead = 0.0
-        if lead:
-            # the heading law banks in proportion to the heading error, so a steady turn needs the command ahead
-            # of the nose by the error that gives the circle's bank (without it the hold sat 0.7 nmi outside)
-            bank = math.degrees(math.atan(f['velocities/vg-fps'] ** 2 / (32.174 * radius)))
-            ahead = bank / (K_PSI * max(f['velocities/vt-fps'], 100.0) / 600.0)
-        f['ap/heading-cmd-deg'] = (out + 90.0 * side + side * (ahead + float(np.clip(60.0 * (d - radius) / radius, -out_max, 80.0)))) % 360.0
-        return out, d
+    def taxi_leg(self, it):
+        """Tell the laws what the taxi leg is: the last one, or ends in a bend of so many degrees (they work out the speed from the way to go)."""
+        f, pts = self.f, it['_pts']
+        last = self.k == len(pts) - 2
+        f['ap/tx-last'] = 1 if last else 0
+        if not last:
+            f['ap/tx-bend-deg'] = abs(turn(course(pts[self.k], pts[self.k + 1])[0], course(pts[self.k + 1], pts[self.k + 2])[0]))
 
     def hold_radius(self):
         vg = max(self.f['velocities/vg-fps'], 100.0)
         return vg * vg / (32.174 * math.tan(math.radians(HOLD_BANK)))
 
+    def above_path(self, land):
+        """Feet above the glide path to the aiming point (negative under it): the landing task's entry contract is judged on this."""
+        h = self.f['position/h-sl-ft'] - land['elev']
+        return h - (5.3 + GLIDE_TAN * course(self.here(), land['aim'])[1])
+
+    def entry_limit(self, togo_ft):
+        """How far above the path the landing may be begun, ft: what the capture was flown to take over at 10 nmi at this weight, with the margin, by the way to go."""
+        w = self.f['inertia/weight-lbs']
+        cap10 = float(np.interp(w, [x[0] for x in ENTRY_CAPTURE_FT], [x[1] for x in ENTRY_CAPTURE_FT]))
+        return ENTRY_MARGIN * cap10 * max(0.0, min(togo_ft / NM, ENTRY_TOGO_MAX_NM) - ENTRY_TOGO_MIN_NM) / ENTRY_SPAN_NM
+
+    def go_around(self, land, above):
+        """The landing task's entry contract is broken (too high to take the path over): the go-around task takes the aircraft: a right-hand
+        circle tangent to the final's line at the fix, down to the height the final is begun from, then back to the landing."""
+        fix, aim = land['fix'], land['aim']
+        fc, d = course(fix, aim)
+        r = self.hold_radius()
+        centre = (fix[0] + r * math.cos(math.radians(fc + 90.0)) / FT_PER_DEG,
+                  fix[1] + r * math.sin(math.radians(fc + 90.0)) / (FT_PER_DEG * math.cos(math.radians(fix[0]))))
+        alt = land['elev'] + max(GO_AROUND_MIN_AGL, math.floor((5.3 + GLIDE_TAN * d - LAND_FIX_GAP_FT) / 100.0) * 100.0)
+        Manager.go_arounds += 1
+        self.note('LANDING NOT COMMITTED: %.0f ft above the glide path; go-around, circling over the fix to %.0f ft' % (above, alt))
+        self.plan.insert(self.i, dict(kind='go_around', reason='above the glide path', above=above, centre=centre, radius=r, alt=alt, final=fc,
+                                      fix=tuple(fix), side=1.0))
+        self.begin()
+
+    def go_around_over(self, it):
+        """The go-around's contract with the landing: at the height it came down to, at the fix, on the final's course."""
+        f = self.f
+        _, d = course(it['fix'], self.here())
+        return (-GO_AROUND_ALT_BELOW <= f['position/h-sl-ft'] - it['alt'] <= GO_AROUND_ALT_ABOVE and d <= GO_AROUND_FIX_FT
+                and abs(turn(f['ap/ground-track-deg'], it['final'])) <= GO_AROUND_TRACK_DEG)
+
     def contingencies(self):
         """Leave the plan when the link is lost or the engine stops. Only in the air, and only once each."""
         f = self.f
         kind = self.plan[self.i]['kind']
-        if f['engine/failed'] == 1 and self.contingency != 'engine' and kind in ('route', 'land', 'hold') and self.sites and f['ap/rollout'] == 0:
+        if f['engine/failed'] == 1 and self.contingency != 'engine' and kind in ('route', 'land', 'hold', 'go_around') and self.sites and f['ap/rollout'] == 0:
             self.contingency = 'engine'
             self.note('ENGINE FAILED')
             self.plan = self.plan[:self.i + 1] + [dict(kind='engine_out')]
             self.next()
-        elif f['ap/link-lost'] == 1 and self.contingency is None and kind in ('route', 'hold') and self.lost_link:
+        elif f['ap/link-lost'] == 1 and self.contingency is None and kind in ('route', 'hold', 'go_around') and self.lost_link:
             self.contingency = 'link'
             self.note('LINK LOST: the contingency route')
             self.plan = self.plan[:self.i + 1] + [dict(d) for d in self.lost_link]
             self.next()
 
-    def vertical(self, alt):
-        """Climb, descend or hold towards a height."""
+    def vertical(self, alt, path=False):
+        """Ask the laws for a climb, a descent or a hold towards a height (fdm/laws.py, _mission_vertical: the gate, the mode, the spoilers are theirs); path: the height is the one
+        at the end of the leg, and a descent steers its slope with the spoilers to get there. What is read back is the mode, for the status and the notes."""
         f = self.f
-        h = f['position/h-sl-ft']
-        alt = min(alt, MAX_ALT)
-        f['ap/alt-cmd-ft'] = alt
-        f['ap/speed-schedule'] = 1
-        if abs(alt - h) <= 150.0:
-            mode = 'level'
-            f['ap/pitch-mode'], f['ap/thrust-mode'], f['ap/spoiler-cmd'] = 2, 3, 0.0
-        elif alt > h:
-            mode = 'climb'
-            f['ap/pitch-mode'], f['ap/thrust-mode'], f['ap/spoiler-cmd'] = 1, 1, 0.0
-        else:
-            mode = 'descent'
-            f['ap/pitch-mode'], f['ap/thrust-mode'], f['ap/spoiler-cmd'] = 1, 2, 0.5
-        f['ap/spoiler-mode'] = 1
-        if getattr(self, 'vmode', None) != mode:
+        f['ap/vt-on'], f['ap/vt-ft'], f['ap/vt-path'] = 1, alt, 1 if path else 0
+        mode = {1: 'climb', 2: 'descent', 3: 'level'}.get(int(round(f['ap/vmode'])))
+        if mode and getattr(self, 'vmode', None) != mode:
             self.vmode = mode
             self.note(mode + ' to %.0f ft' % alt)
 
@@ -313,44 +365,33 @@ class Manager:
         if kind == 'engine_out':
             self.engine_out(it)
             return
+        if kind == 'go_around':
+            self.vertical(it['alt'])
+            if self.go_around_over(it):
+                self.note('go-around over: back on the final')
+                self.next()                                     # the landing's contract is judged again as it begins
+            return
         if kind == 'hold':
-            it['radius'] = it.get('radius') or self.hold_radius()      # fixed once the hold begins: the station draws it
-            self.circle(it['centre'], it['radius'], it['side'], out_max=30.0, lead=True)
             self.vertical(it['alt'])
             return
         if kind == 'taxi':
             pts = it['_pts']
-            last = self.k == len(pts) - 2
-            if not last:
-                c0, _ = course(pts[self.k], pts[self.k + 1])
-                c1, _ = course(pts[self.k + 1], pts[self.k + 2])
-                bend = abs(turn(c0, c1))
-                # slow for the corner, then take the next leg a little before it
-                fast, slow = it.get('speed', 15.0), it.get('turn_speed', 8.0)
-                f['ap/taxi-speed-kt'] = fast if bend <= 20.0 else float(np.clip(slow + (fast - slow) * (togo - 100.0) / 250.0, slow, fast))
-                if togo < 40.0:
-                    self.k += 1
-                    self.leg(pts[self.k], pts[self.k + 1])
-            else:
-                stop = it.get('stop', True)
-                if stop:
-                    # come down to a walk, then stop on the point
-                    f['ap/taxi-speed-kt'] = 0.0 if togo < 12.0 else min(it.get('speed', 15.0), max(3.0, 0.12 * togo))
-                    if togo < 12.0 and f['ap/ground-speed-kt'] < 0.3:
-                        self.next()
-                elif togo < 40.0:
-                    self.next()
+            if f['ap/tx-leg'] == 1:                         # the laws: the next leg is to be taken
+                self.k += 1
+                self.leg(pts[self.k], pts[self.k + 1])
+                self.taxi_leg(it)
+            elif f['ap/tx-done'] == 1:                      # the laws: the item is over
+                self.next()
         elif kind == 'takeoff':
-            if f['aero/wheel-height-ft'] > 100.0:
+            if f['ap/tk-done'] == 1:                            # the laws took it up: schedule, pitch mode, nose wheel (and the gear in the model: in FlightGear its command is the lever's, which is the supervisor's to move)
                 f['gear/gear-cmd-norm'] = 0
-                f['ap/speed-schedule'], f['ap/pitch-mode'], f['ap/ground-steer'] = 1, 1, 0
                 self.note('airborne, climb')
                 self.next()
         elif kind == 'route':
             # the turn onto the next leg is the aircraft's (fdm/laws.py, ap/turn-*): the manager gives it the next waypoint and moves on when
             # the laws say the turn is done. Past the last waypoint of a route that a landing follows the next point is the aiming point
             pts = it['_pts']
-            self.vertical(it.get('alt_override', pts[self.k + 1][2]))
+            self.vertical(it.get('alt_override', pts[self.k + 1][2]), path=True)
             last = self.k == len(pts) - 2
             nxt = pts[self.k + 2] if not last else self.after(self.i)
             self.set_next(nxt)
@@ -367,13 +408,10 @@ class Manager:
                 self.next()
         elif kind == 'land':
             if not it['_on_path']:
-                f['ap/speed-cmd-kcas'] = f['ap/approach-keas']
-                if f['ap/glide-error-ft'] > -f['ap/glide-lead-ft'] and f['velocities/vc-kts'] - f['ap/approach-keas'] < CAPTURE_SPEED_KT:
+                if f['ap/ld-captured'] == 1:                    # the laws took the glide over: the pitch mode, the land mode, the spoilers
                     it['_on_path'] = True
-                    f['ap/pitch-mode'] = 1
-                    f['ap/land-mode'] = 1
                     self.note('glide path')
-            elif f['ap/rollout'] == 1 and f['ap/ground-speed-kt'] < 15.0:
+            elif f['ap/ld-done'] == 1:
                 self.note('rollout over')
                 self.next()
 

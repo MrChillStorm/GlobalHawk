@@ -195,6 +195,8 @@ def slowing_part(out):
         print('%6.0f lb: approach %.1f KCAS, within %d kt of it after %s s and %s ft, lowest speed %.1f, level again after %.0f s, angle of attack %.2f deg' % (
             w, s['approach_kcas'], MM.CAPTURE_SPEED_KT, s['slow_s'], s['slow_ft'], s['vmin_kcas'], s['settle_s'], s['alpha_level'] or float('nan')), flush=True)
     out['note'] = 'fdm/capability.py measure: the descent as the mission manager flies it (idle thrust, half spoilers, the speed schedule; where it does not settle, filled_from_trim: the old idle trim times the ratio flown / trim at the highest height of that weight that did settle), and the slowing down in the landing configuration from 150 KCAS'
+    if 'departure' not in out and os.path.exists(DATA):     # fdm/departure.py's table is not made here: keep it
+        out['departure'] = json.load(open(DATA)).get('departure')
     json.dump(out, open(DATA, 'w'), indent=1)
     print('wrote', os.path.relpath(DATA))
 
@@ -202,14 +204,21 @@ def slowing_part(out):
 def build():
     flown = json.load(open(DATA))
     kcas, delay = laws.roll_delay()
+    perf = laws.turn_performance()
+    land_path = os.path.join(HERE, 'data', 'landing_limits.json')
+    land = json.load(open(land_path)) if os.path.exists(land_path) else None      # landlimit.py's: the crosswind the landing holds its contracts in, by weight
     cap = dict(
         turn=dict(bank_limit=[list(p) for p in laws.BANK_LIMIT], bank_command=laws.BANK_COMMAND, bank_rate_dps=laws.BANK_RATE,
                   roll_delay=dict(kcas=kcas, delay_s=delay), alpha_limit=[list(p) for p in laws.ALPHA_LIMIT], alpha_zero_lift_deg=laws.ALPHA_ZERO_LIFT,
-                  alpha_margin_deg=laws.TURN_ALPHA_MARGIN, min_bank_deg=laws.TURN_MIN_BANK, fly_by_max_deg=laws.TURN_FLY_BY_MAX, max_join_deg=MAX_JOIN_DEG, g_fps2=32.174),
+                  alpha_margin_deg=laws.TURN_ALPHA_MARGIN, min_bank_deg=laws.TURN_MIN_BANK, fly_by_max_deg=laws.TURN_FLY_BY_MAX, max_join_deg=MAX_JOIN_DEG, g_fps2=32.174, wind_min_deg=laws.TURN_WIND_MIN_DEG, drift_fade_deg=list(laws.TURN_DRIFT_FADE_DEG),
+                  performance=None if perf is None else dict(axes=perf['axes'], flown_per_cmd=perf['grid_flown_per_cmd'], cap_deg=perf['grid_cap_deg'],
+                                                              lag_in_s=perf.get('grid_lag_in_s'), lag_out_s=perf.get('grid_lag_out_s'),
+                                                              moment_out_s2=perf.get('grid_moment_out_s2') if laws.TURN_DRIFT else None)),
         approach=dict(cl=laws.APPROACH_CL, wing_area_ft2=laws.WING_AREA, glide_tan=laws.GLIDE_TAN, capture_speed_kt=MM.CAPTURE_SPEED_KT,
-                      schedule_kcas=laws.SCHEDULE_KCAS, aim_height_ft=5.3, min_final_nm=8.0),
+                      schedule_kcas=laws.SCHEDULE_KCAS, schedule_mach=[list(p) for p in laws.SCHEDULE], aim_height_ft=5.3, min_final_nm=8.0),
+        landing=None if land is None else dict(crosswind=dict(weight_lb=land['weight_lb'], limit_kt=land['crosswind_kt'])),
         flown=dict(alt_ft=flown['alt_ft'], weight_lb=flown['weight_lb'], descent_fpm=flown['descent_fpm'], descent_pph=flown['descent_pph'],
-                   slowing=flown['slowing']),
+                   slowing=flown['slowing'], departure=flown.get('departure')),
     )
     return cap
 

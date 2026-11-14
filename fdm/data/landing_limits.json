@@ -1,0 +1,370 @@
+{
+ "note": "landlimit.py: the highest steady crosswind (kt, from the right, calm air otherwise, 5 kt steps) at which every contract of the landing held, by weight, flown from 5 nmi out in the landing configuration; contracts and their limits in the file's source (final.gate, flare.touchdown, rollout.line, control.margin)",
+ "weight_lb": [
+  12000.0,
+  16000.0,
+  20800.0,
+  24000.0,
+  26000.0
+ ],
+ "crosswind_kt": [
+  15.0,
+  20.0,
+  25.0,
+  25.0,
+  30.0
+ ],
+ "rows": [
+  {
+   "weight_lb": 12000.0,
+   "limit_kt": 15.0,
+   "first_break": {
+    "kt": 20.0,
+    "contract": "flare.touchdown",
+    "detail": "sink 0.72 m/s, pitch 2.2, bank 0.7, off the line 1 ft, nose 6.2 deg off the runway"
+   },
+   "runs": [
+    {
+     "broke": [],
+     "first": null,
+     "detail": {},
+     "heading_deg": 3.1,
+     "rollout_ft": 5.1,
+     "touchdown_ft": 1.5,
+     "aileron": 0.04,
+     "rudder": 0.13,
+     "sink": 0.72,
+     "kt": 10.0
+    },
+    {
+     "broke": [],
+     "first": null,
+     "detail": {},
+     "heading_deg": 4.7,
+     "rollout_ft": 7.3,
+     "touchdown_ft": 1.4,
+     "aileron": 0.05,
+     "rudder": 0.19,
+     "sink": 0.72,
+     "kt": 15.0
+    },
+    {
+     "broke": [
+      "flare.touchdown"
+     ],
+     "first": "flare.touchdown",
+     "detail": {
+      "flare.touchdown": "sink 0.72 m/s, pitch 2.2, bank 0.7, off the line 1 ft, nose 6.2 deg off the runway"
+     },
+     "heading_deg": 6.2,
+     "rollout_ft": 9.5,
+     "touchdown_ft": 1.3,
+     "aileron": 0.06,
+     "rudder": 0.25,
+     "sink": 0.72,
+     "kt": 20.0
+    }
+   ]
+  },
+  {
+   "weight_lb": 16000.0,
+   "limit_kt": 20.0,
+   "first_break": {
+    "kt": 25.0,
+    "contract": "flare.touchdown",
+    "detail": "sink 0.68 m/s, pitch 2.2, bank 1.0, off the line 0 ft, nose 6.0 deg off the runway"
+   },
+   "runs": [
+    {
+     "broke": [],
+     "first": null,
+     "detail": {},
+     "heading_deg": 2.3,
+     "rollout_ft": 4.2,
+     "touchdown_ft": 1.7,
+     "aileron": 0.04,
+     "rudder": 0.11,
+     "sink": 0.69,
+     "kt": 10.0
+    },
+    {
+     "broke": [],
+     "first": null,
+     "detail": {},
+     "heading_deg": 3.6,
+     "rollout_ft": 5.9,
+     "touchdown_ft": 1.3,
+     "aileron": 0.04,
+     "rudder": 0.16,
+     "sink": 0.69,
+     "kt": 15.0
+    },
+    {
+     "broke": [],
+     "first": null,
+     "detail": {},
+     "heading_deg": 4.8,
+     "rollout_ft": 7.7,
+     "touchdown_ft": 0.8,
+     "aileron": 0.04,
+     "rudder": 0.22,
+     "sink": 0.69,
+     "kt": 20.0
+    },
+    {
+     "broke": [
+      "flare.touchdown"
+     ],
+     "first": "flare.touchdown",
+     "detail": {
+      "flare.touchdown": "sink 0.68 m/s, pitch 2.2, bank 1.0, off the line 0 ft, nose 6.0 deg off the runway"
+     },
+     "heading_deg": 6.0,
+     "rollout_ft": 9.3,
+     "touchdown_ft": 0.2,
+     "aileron": 0.05,
+     "rudder": 0.27,
+     "sink": 0.68,
+     "kt": 25.0
+    }
+   ]
+  },
+  {
+   "weight_lb": 20800.0,
+   "limit_kt": 25.0,
+   "first_break": {
+    "kt": 30.0,
+    "contract": "flare.touchdown",
+    "detail": "sink 0.64 m/s, pitch 2.2, bank 1.7, off the line 1 ft, nose 5.6 deg off the runway"
+   },
+   "runs": [
+    {
+     "broke": [],
+     "first": null,
+     "detail": {},
+     "heading_deg": 1.8,
+     "rollout_ft": 3.6,
+     "touchdown_ft": 1.9,
+     "aileron": 0.03,
+     "rudder": 0.09,
+     "sink": 0.66,
+     "kt": 10.0
+    },
+    {
+     "broke": [],
+     "first": null,
+     "detail": {},
+     "heading_deg": 2.7,
+     "rollout_ft": 5.3,
+     "touchdown_ft": 1.3,
+     "aileron": 0.04,
+     "rudder": 0.14,
+     "sink": 0.66,
+     "kt": 15.0
+    },
+    {
+     "broke": [],
+     "first": null,
+     "detail": {},
+     "heading_deg": 3.8,
+     "rollout_ft": 7.2,
+     "touchdown_ft": 0.7,
+     "aileron": 0.05,
+     "rudder": 0.18,
+     "sink": 0.65,
+     "kt": 20.0
+    },
+    {
+     "broke": [],
+     "first": null,
+     "detail": {},
+     "heading_deg": 4.7,
+     "rollout_ft": 9.1,
+     "touchdown_ft": 0.1,
+     "aileron": 0.06,
+     "rudder": 0.23,
+     "sink": 0.65,
+     "kt": 25.0
+    },
+    {
+     "broke": [
+      "flare.touchdown"
+     ],
+     "first": "flare.touchdown",
+     "detail": {
+      "flare.touchdown": "sink 0.64 m/s, pitch 2.2, bank 1.7, off the line 1 ft, nose 5.6 deg off the runway"
+     },
+     "heading_deg": 5.6,
+     "rollout_ft": 10.9,
+     "touchdown_ft": 0.5,
+     "aileron": 0.07,
+     "rudder": 0.27,
+     "sink": 0.64,
+     "kt": 30.0
+    }
+   ]
+  },
+  {
+   "weight_lb": 24000.0,
+   "limit_kt": 25.0,
+   "first_break": {
+    "kt": 30.0,
+    "contract": "flare.touchdown",
+    "detail": "sink 0.63 m/s, pitch 2.2, bank 2.0, off the line 1 ft, nose 5.0 deg off the runway"
+   },
+   "runs": [
+    {
+     "broke": [],
+     "first": null,
+     "detail": {},
+     "heading_deg": 1.6,
+     "rollout_ft": 3.4,
+     "touchdown_ft": 1.8,
+     "aileron": 0.03,
+     "rudder": 0.08,
+     "sink": 0.65,
+     "kt": 10.0
+    },
+    {
+     "broke": [],
+     "first": null,
+     "detail": {},
+     "heading_deg": 2.4,
+     "rollout_ft": 5.3,
+     "touchdown_ft": 1.2,
+     "aileron": 0.04,
+     "rudder": 0.12,
+     "sink": 0.64,
+     "kt": 15.0
+    },
+    {
+     "broke": [],
+     "first": null,
+     "detail": {},
+     "heading_deg": 3.3,
+     "rollout_ft": 7.4,
+     "touchdown_ft": 0.6,
+     "aileron": 0.05,
+     "rudder": 0.16,
+     "sink": 0.64,
+     "kt": 20.0
+    },
+    {
+     "broke": [],
+     "first": null,
+     "detail": {},
+     "heading_deg": 4.1,
+     "rollout_ft": 9.4,
+     "touchdown_ft": 0.0,
+     "aileron": 0.06,
+     "rudder": 0.2,
+     "sink": 0.63,
+     "kt": 25.0
+    },
+    {
+     "broke": [
+      "flare.touchdown"
+     ],
+     "first": "flare.touchdown",
+     "detail": {
+      "flare.touchdown": "sink 0.63 m/s, pitch 2.2, bank 2.0, off the line 1 ft, nose 5.0 deg off the runway"
+     },
+     "heading_deg": 5.0,
+     "rollout_ft": 11.5,
+     "touchdown_ft": 0.5,
+     "aileron": 0.07,
+     "rudder": 0.25,
+     "sink": 0.63,
+     "kt": 30.0
+    }
+   ]
+  },
+  {
+   "weight_lb": 26000.0,
+   "limit_kt": 30.0,
+   "first_break": {
+    "kt": 35.0,
+    "contract": "flare.touchdown",
+    "detail": "sink 0.61 m/s, pitch 2.2, bank 2.7, off the line 1 ft, nose 5.4 deg off the runway"
+   },
+   "runs": [
+    {
+     "broke": [],
+     "first": null,
+     "detail": {},
+     "heading_deg": 1.5,
+     "rollout_ft": 3.3,
+     "touchdown_ft": 1.6,
+     "aileron": 0.03,
+     "rudder": 0.08,
+     "sink": 0.64,
+     "kt": 10.0
+    },
+    {
+     "broke": [],
+     "first": null,
+     "detail": {},
+     "heading_deg": 2.3,
+     "rollout_ft": 5.4,
+     "touchdown_ft": 1.0,
+     "aileron": 0.04,
+     "rudder": 0.12,
+     "sink": 0.63,
+     "kt": 15.0
+    },
+    {
+     "broke": [],
+     "first": null,
+     "detail": {},
+     "heading_deg": 3.1,
+     "rollout_ft": 7.6,
+     "touchdown_ft": 0.5,
+     "aileron": 0.05,
+     "rudder": 0.16,
+     "sink": 0.63,
+     "kt": 20.0
+    },
+    {
+     "broke": [],
+     "first": null,
+     "detail": {},
+     "heading_deg": 3.8,
+     "rollout_ft": 9.7,
+     "touchdown_ft": 0.1,
+     "aileron": 0.06,
+     "rudder": 0.19,
+     "sink": 0.62,
+     "kt": 25.0
+    },
+    {
+     "broke": [],
+     "first": null,
+     "detail": {},
+     "heading_deg": 4.7,
+     "rollout_ft": 11.9,
+     "touchdown_ft": 0.7,
+     "aileron": 0.08,
+     "rudder": 0.23,
+     "sink": 0.62,
+     "kt": 30.0
+    },
+    {
+     "broke": [
+      "flare.touchdown"
+     ],
+     "first": "flare.touchdown",
+     "detail": {
+      "flare.touchdown": "sink 0.61 m/s, pitch 2.2, bank 2.7, off the line 1 ft, nose 5.4 deg off the runway"
+     },
+     "heading_deg": 5.4,
+     "rollout_ft": 14.0,
+     "touchdown_ft": 1.3,
+     "aileron": 0.09,
+     "rudder": 0.27,
+     "sink": 0.61,
+     "kt": 35.0
+    }
+   ]
+  }
+ ]
+}

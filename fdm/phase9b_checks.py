@@ -115,6 +115,8 @@ def cases(plan):
         ('CHECK', 'plan', changed(items=[plan['items'][0]])),
         ('CHECK', 'plan', changed(items=[route, dict(kind='land', fix=[60.0, 25.0], aim=[60.05, 25.0])])),
         ('CHECK', 'plan', changed(items=[dict(kind='hold', centre=[60.0, 25.0])])),
+        ('CHECK', 'plan', changed(items=[dict(kind='route', points=[[60.0, 25.0, 40000.0], [60.0, 26.0, 5000.0]])])),         # 11 deg down: refused, the leg named
+        ('CHECK', 'plan', changed(items=[dict(kind='route', points=[[60.0, 25.0, 12000.0], [60.0, 26.0, 5000.0]])])),         # 2.2 deg: accepted
         ('CHECK', 'plan', changed(lost_link=[route])),
         ('CHECK', 'plan', changed(sites=[dict(name='x', aim=[60.0, 25.0])])),
         ('CHECK', 'plan', changed(field=dict(lat=60.0))),

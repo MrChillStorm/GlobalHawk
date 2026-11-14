@@ -10,6 +10,18 @@ var NAVS = ["kna", "knb", "lna", "lnb"];
 var KINDS = ["taxi", "takeoff", "route", "land", "hold"];
 var MAX_LEG_NM = 3000.0;
 var MIN_FINAL_NM = 8.0;
+var MAX_DESCENT_DEG = 6.0;
+var MIN_GRADIENT_LEG_NM = 2.0;
+var FPS_PER_KT = 1.6878099;
+# the steady crosswind the landing holds its contracts in, by weight (fdm/landlimit.py, data/landing_limits.json; js/flightmath.js crosswindLimitKt reads the same table)
+var XW_WEIGHT = [12000, 16000, 20800, 24000, 26000];
+var XW_LIMIT = [15, 20, 25, 25, 30];
+var crosswind_limit_kt = func(w) {
+    if (w <= XW_WEIGHT[0]) return XW_LIMIT[0];
+    for (var i = 1; i < size(XW_WEIGHT); i += 1)
+        if (w <= XW_WEIGHT[i]) return XW_LIMIT[i - 1] + (XW_LIMIT[i] - XW_LIMIT[i - 1]) * (w - XW_WEIGHT[i - 1]) / (XW_WEIGHT[i] - XW_WEIGHT[i - 1]);
+    return XW_LIMIT[size(XW_LIMIT) - 1];
+};
 var FUEL_LOW_LB = 1500.0;              # assumed: about an hour and a half at cruise
 var AOA_NEAR_DEG = 0.3;
 var AOA_SEC = 3.0;
@@ -58,6 +70,16 @@ var check_items = func(items, what) {
             }
             for (var m = 0; m + 1 < size(pts); m += 1)
                 if (course(pts[m], pts[m + 1])[1] / NM > MAX_LEG_NM) return sprintf("%s (%s): a leg longer than %.0f nmi", w, kind, MAX_LEG_NM);
+            if (kind == "route")
+                for (var m = 0; m + 1 < size(pts); m += 1) {
+                    var ft = course(pts[m], pts[m + 1])[1];
+                    var drop = pts[m][2] - pts[m + 1][2];
+                    if (drop > 0 and ft / NM >= MIN_GRADIENT_LEG_NM) {
+                        var deg = math.atan2(drop, ft) * 180.0 / math.pi;
+                        if (deg > MAX_DESCENT_DEG)
+                            return sprintf("%s (route): point %d to point %d goes down %.0f ft in %.1f nmi, %.1f deg: the aircraft does not come down more steeply than %g deg", w, m + 1, m + 2, drop, ft / NM, deg, MAX_DESCENT_DEG);
+                    }
+                }
         } elsif (kind == "takeoff") {
             var bad = point_fault(opt(it, "start", nil), 2, w ~ " (takeoff) start");
             if (bad == nil) bad = point_fault(opt(it, "end", nil), 2, w ~ " (takeoff) end");
@@ -441,11 +463,11 @@ var Onboard = {
             s["item"] = m.i; s["kind"] = kind; s["contingency"] = m.contingency;
             var d = me.describe(m, it, kind);
             s["doing"] = d[0]; s["next"] = d[1];
-            if (kind == "hold") {
+            if (kind == "hold" or kind == "go_around") {
                 var r = opt(it, "radius", nil);
                 s["hold"] = { lat: it.centre[0], lon: it.centre[1], radius_ft: math.floor((r != nil ? r : m.hold_radius()) + 0.5), alt_ft: it.alt };
             }
-            if (kind != "done" and kind != "hold")
+            if (kind != "done" and kind != "hold" and kind != "go_around")
                 s["leg"] = [[fget("ap/leg-lat0-deg"), fget("ap/leg-lon0-deg")], [fget("ap/leg-lat1-deg"), fget("ap/leg-lon1-deg")]];
             if (kind == "engine_out") {
                 s["site"] = opt(opt(it, "site", {}), "name", nil);
@@ -479,6 +501,20 @@ var Onboard = {
             add("engine", "warning", "ENGINE FAILED", (site != nil ? "Gliding to " ~ site ~ " by itself. Clear the runway. " : "") ~ "No restart is modelled");
         }
         if (m != nil and m.alert != nil) add("no-site", "warning", "NO RUNWAY IN REACH", "Gliding towards the nearest");
+        if (m != nil and !m.done and m.plan[minv(m.i, size(m.plan) - 1)].kind == "go_around") {
+            var ga = m.plan[minv(m.i, size(m.plan) - 1)];
+            add("go-around", "warning", "LANDING NOT COMMITTED", sprintf("The aircraft was %.0f ft %s at the landing fix. It is circling over the fix to lose height and will land when it can. Check the plan", ga.above, ga.reason));
+        }
+        if (m != nil and !m.done and fget("ap/engaged") == 1 and fget("ap/land-mode") == 1 and fget("ap/on-mains") == 0) {
+            var li = m.plan[minv(m.i, size(m.plan) - 1)];
+            if (li.kind == "land") {
+                var lim = crosswind_limit_kt(fget("inertia/weight-lbs"));
+                var cc = course(li.fix, li.aim)[0] * D2R;
+                var xw = absv(-fget("ap/wind-north-filt-fps") * math.sin(cc) + fget("ap/wind-east-filt-fps") * math.cos(cc)) / FPS_PER_KT;
+                if (xw > lim)
+                    add("crosswind", "caution", "CROSSWIND OVER LIMIT", sprintf("The wind across the final is %.0f kt; the landing holds its limits to %.0f kt at %.0f lb. Go around or divert if it is not to be accepted", xw, lim, fget("inertia/weight-lbs")));
+            }
+        }
         if (fget("limits/overstress")) add("structure", "warning", "STRUCTURAL LIMIT PASSED", "Land");
         if (fget("ap/link-lost")) add("link", "caution", "LINK WAS LOST", "The aircraft left its plan when the link was lost. Resume when ready");
         if (fget("nav/miscompare")) add("nav-disagree", "caution", "NAVIGATORS DISAGREE", "The aircraft is using the one that matches its turn rate. Land");
@@ -494,7 +530,7 @@ var Onboard = {
     },
 
     describe: func(m, it, kind) {
-        var after = { taxi: "taxi", takeoff: "takeoff", route: "route", land: "landing", hold: "hold", engine_out: "" };
+        var after = { taxi: "taxi", takeoff: "takeoff", route: "route", land: "landing", hold: "hold", go_around: "go-around", engine_out: "" };
         var rest = m.rest();
         var nxt = size(rest) ? "then " ~ after[rest[0].kind] : "end of plan";
         if (kind == "done") return ["plan complete", ""];
@@ -511,6 +547,7 @@ var Onboard = {
                     m.k + 1 < n ? sprintf("then leg %d", m.k + 2) : nxt];
         }
         if (kind == "hold") return [sprintf("hold at %.0f ft", it.alt), "until commanded"];
+        if (kind == "go_around") return [sprintf("GO-AROUND: circling over the fix to %.0f ft, %.0f ft above the glide path when it began", it.alt, it.above), "then landing"];
         if (kind == "land") {
             if (fget("ap/rollout")) return ["rollout", nxt];
             return [opt(it, "_on_path", 0) ? "approach, glide path" : sprintf("level to the glide path, %.0f nmi out", fget("ap/leg-togo-ft") / NM), "then landing"];

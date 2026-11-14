@@ -1,0 +1,922 @@
+{
+ "note": "pathperf.py: the throttle (norm) for level flight and its slope per degree of flight path angle, trimmed at -4 to +4 deg, clean, by weight, pressure altitude and calibrated airspeed",
+ "axes": {
+  "speed_kcas": [
+   110.0,
+   130.0,
+   150.0,
+   170.0
+  ],
+  "weight_lb": [
+   12000.0,
+   20000.0,
+   26000.0
+  ],
+  "pressure_alt_ft": [
+   4174.0,
+   20174.0,
+   30174.0,
+   45174.0
+  ]
+ },
+ "grid_throttle_level": [
+  [
+   [
+    0.0553,
+    0.0505,
+    0.1029,
+    0.2807
+   ],
+   [
+    0.0207,
+    0.0925,
+    0.1634,
+    0.2807
+   ],
+   [
+    0.0826,
+    0.1742,
+    0.2726,
+    0.2807
+   ]
+  ],
+  [
+   [
+    0.0553,
+    0.0866,
+    0.1532,
+    0.3956
+   ],
+   [
+    0.0377,
+    0.1147,
+    0.1916,
+    0.3956
+   ],
+   [
+    0.0576,
+    0.1448,
+    0.2323,
+    0.3956
+   ]
+  ],
+  [
+   [
+    0.0553,
+    0.1401,
+    0.225,
+    0.6348
+   ],
+   [
+    0.0649,
+    0.154,
+    0.2417,
+    0.6348
+   ],
+   [
+    0.0828,
+    0.1795,
+    0.276,
+    0.6348
+   ]
+  ],
+  [
+   [
+    0.1098,
+    0.2218,
+    0.332,
+    0.6348
+   ],
+   [
+    0.1045,
+    0.2132,
+    0.3159,
+    0.6348
+   ],
+   [
+    0.115,
+    0.2277,
+    0.276,
+    0.6348
+   ]
+  ]
+ ],
+ "grid_throttle_per_deg": [
+  [
+   [
+    0.04258,
+    0.05609,
+    0.07838,
+    0.16371
+   ],
+   [
+    0.06679,
+    0.09368,
+    0.13091,
+    0.16371
+   ],
+   [
+    0.08722,
+    0.12231,
+    0.17088,
+    0.16371
+   ]
+  ],
+  [
+   [
+    0.04258,
+    0.05804,
+    0.07939,
+    0.16416
+   ],
+   [
+    0.06887,
+    0.09681,
+    0.13243,
+    0.16416
+   ],
+   [
+    0.08976,
+    0.12609,
+    0.17234,
+    0.16416
+   ]
+  ],
+  [
+   [
+    0.04258,
+    0.05979,
+    0.08015,
+    0.16088
+   ],
+   [
+    0.071,
+    0.09989,
+    0.13393,
+    0.16088
+   ],
+   [
+    0.09234,
+    0.12993,
+    0.17422,
+    0.16088
+   ]
+  ],
+  [
+   [
+    0.04387,
+    0.0617,
+    0.08042,
+    0.16088
+   ],
+   [
+    0.07323,
+    0.10298,
+    0.13427,
+    0.16088
+   ],
+   [
+    0.09525,
+    0.13397,
+    0.17422,
+    0.16088
+   ]
+  ]
+ ],
+ "holes": [
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 4000.0,
+   "kcas": 110.0,
+   "why": "no trim within the throttle range"
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 4000.0,
+   "kcas": 130.0,
+   "why": "no trim within the throttle range"
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 45000.0,
+   "kcas": 170.0,
+   "why": "Mach 0.65 over 0.62"
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 45000.0,
+   "kcas": 110.0,
+   "why": "no trim within the throttle range"
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 45000.0,
+   "kcas": 130.0,
+   "why": "no trim within the throttle range"
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 45000.0,
+   "kcas": 150.0,
+   "why": "no trim within the throttle range"
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 45000.0,
+   "kcas": 170.0,
+   "why": "Mach 0.65 over 0.62"
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 30000.0,
+   "kcas": 170.0,
+   "why": "no trim within the throttle range"
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 45000.0,
+   "kcas": 110.0,
+   "why": "no trim within the throttle range"
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 45000.0,
+   "kcas": 130.0,
+   "why": "no trim within the throttle range"
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 45000.0,
+   "kcas": 150.0,
+   "why": "no trim within the throttle range"
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 45000.0,
+   "kcas": 170.0,
+   "why": "Mach 0.65 over 0.62"
+  }
+ ],
+ "cells": [
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 4000.0,
+   "kcas": 150.0,
+   "throttle_level": 0.0553,
+   "throttle_per_deg": 0.04258,
+   "fit_residual": 0.0,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.0553,
+    0.1405,
+    0.2256
+   ]
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 4000.0,
+   "kcas": 170.0,
+   "throttle_level": 0.1098,
+   "throttle_per_deg": 0.04387,
+   "fit_residual": 0.0,
+   "angles": [
+    -2.0,
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.0221,
+    0.1098,
+    0.1976,
+    0.2853
+   ]
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 20000.0,
+   "kcas": 110.0,
+   "throttle_level": 0.0505,
+   "throttle_per_deg": 0.05609,
+   "fit_residual": 0.0001,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.0505,
+    0.1628,
+    0.2749
+   ]
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 20000.0,
+   "kcas": 130.0,
+   "throttle_level": 0.0866,
+   "throttle_per_deg": 0.05804,
+   "fit_residual": 0.0,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.0866,
+    0.2027,
+    0.3187
+   ]
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 20000.0,
+   "kcas": 150.0,
+   "throttle_level": 0.1401,
+   "throttle_per_deg": 0.05979,
+   "fit_residual": 0.0,
+   "angles": [
+    -2.0,
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.0206,
+    0.1401,
+    0.2598,
+    0.3793
+   ]
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 20000.0,
+   "kcas": 170.0,
+   "throttle_level": 0.2218,
+   "throttle_per_deg": 0.0617,
+   "fit_residual": 0.0,
+   "angles": [
+    -2.0,
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.0984,
+    0.2218,
+    0.3452,
+    0.4685
+   ]
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 30000.0,
+   "kcas": 110.0,
+   "throttle_level": 0.1029,
+   "throttle_per_deg": 0.07838,
+   "fit_residual": 0.0001,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.1029,
+    0.2598,
+    0.4165
+   ]
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 30000.0,
+   "kcas": 130.0,
+   "throttle_level": 0.1532,
+   "throttle_per_deg": 0.07939,
+   "fit_residual": 0.0001,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.1532,
+    0.312,
+    0.4707
+   ]
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 30000.0,
+   "kcas": 150.0,
+   "throttle_level": 0.225,
+   "throttle_per_deg": 0.08015,
+   "fit_residual": 0.0,
+   "angles": [
+    -2.0,
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.0647,
+    0.225,
+    0.3854,
+    0.5456
+   ]
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 30000.0,
+   "kcas": 170.0,
+   "throttle_level": 0.332,
+   "throttle_per_deg": 0.08042,
+   "fit_residual": 0.0,
+   "angles": [
+    -2.0,
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.1712,
+    0.332,
+    0.4929,
+    0.6537
+   ]
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 45000.0,
+   "kcas": 110.0,
+   "throttle_level": 0.2807,
+   "throttle_per_deg": 0.16371,
+   "fit_residual": 0.0002,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.2807,
+    0.6084,
+    0.9355
+   ]
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 45000.0,
+   "kcas": 130.0,
+   "throttle_level": 0.3956,
+   "throttle_per_deg": 0.16416,
+   "fit_residual": 0.0,
+   "angles": [
+    -2.0,
+    0.0,
+    2.0
+   ],
+   "throttles": [
+    0.0672,
+    0.3956,
+    0.7238
+   ]
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 45000.0,
+   "kcas": 150.0,
+   "throttle_level": 0.6348,
+   "throttle_per_deg": 0.16088,
+   "fit_residual": 0.0002,
+   "angles": [
+    -2.0,
+    0.0,
+    2.0
+   ],
+   "throttles": [
+    0.3133,
+    0.6348,
+    0.9569
+   ]
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 4000.0,
+   "kcas": 110.0,
+   "throttle_level": 0.0207,
+   "throttle_per_deg": 0.06679,
+   "fit_residual": 0.0001,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.0207,
+    0.1545,
+    0.2879
+   ]
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 4000.0,
+   "kcas": 130.0,
+   "throttle_level": 0.0377,
+   "throttle_per_deg": 0.06887,
+   "fit_residual": 0.0001,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.0377,
+    0.1755,
+    0.3132
+   ]
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 4000.0,
+   "kcas": 150.0,
+   "throttle_level": 0.0649,
+   "throttle_per_deg": 0.071,
+   "fit_residual": 0.0001,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.0649,
+    0.207,
+    0.3489
+   ]
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 4000.0,
+   "kcas": 170.0,
+   "throttle_level": 0.1045,
+   "throttle_per_deg": 0.07323,
+   "fit_residual": 0.0001,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.1045,
+    0.251,
+    0.3974
+   ]
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 20000.0,
+   "kcas": 110.0,
+   "throttle_level": 0.0925,
+   "throttle_per_deg": 0.09368,
+   "fit_residual": 0.0001,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.0925,
+    0.2801,
+    0.4672
+   ]
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 20000.0,
+   "kcas": 130.0,
+   "throttle_level": 0.1147,
+   "throttle_per_deg": 0.09681,
+   "fit_residual": 0.0001,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.1147,
+    0.3085,
+    0.502
+   ]
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 20000.0,
+   "kcas": 150.0,
+   "throttle_level": 0.154,
+   "throttle_per_deg": 0.09989,
+   "fit_residual": 0.0001,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.154,
+    0.3539,
+    0.5535
+   ]
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 20000.0,
+   "kcas": 170.0,
+   "throttle_level": 0.2132,
+   "throttle_per_deg": 0.10298,
+   "fit_residual": 0.0001,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.2132,
+    0.4193,
+    0.6252
+   ]
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 30000.0,
+   "kcas": 110.0,
+   "throttle_level": 0.1634,
+   "throttle_per_deg": 0.13091,
+   "fit_residual": 0.0002,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.1634,
+    0.4256,
+    0.6871
+   ]
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 30000.0,
+   "kcas": 130.0,
+   "throttle_level": 0.1916,
+   "throttle_per_deg": 0.13243,
+   "fit_residual": 0.0002,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.1916,
+    0.4567,
+    0.7213
+   ]
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 30000.0,
+   "kcas": 150.0,
+   "throttle_level": 0.2417,
+   "throttle_per_deg": 0.13393,
+   "fit_residual": 0.0001,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.2417,
+    0.5098,
+    0.7774
+   ]
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 30000.0,
+   "kcas": 170.0,
+   "throttle_level": 0.3159,
+   "throttle_per_deg": 0.13427,
+   "fit_residual": 0.0001,
+   "angles": [
+    -2.0,
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.0473,
+    0.3159,
+    0.5845,
+    0.8529
+   ]
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 4000.0,
+   "kcas": 110.0,
+   "throttle_level": 0.0826,
+   "throttle_per_deg": 0.08722,
+   "fit_residual": 0.0002,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.0826,
+    0.2573,
+    0.4315
+   ]
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 4000.0,
+   "kcas": 130.0,
+   "throttle_level": 0.0576,
+   "throttle_per_deg": 0.08976,
+   "fit_residual": 0.0001,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.0576,
+    0.2374,
+    0.4167
+   ]
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 4000.0,
+   "kcas": 150.0,
+   "throttle_level": 0.0828,
+   "throttle_per_deg": 0.09234,
+   "fit_residual": 0.0001,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.0828,
+    0.2677,
+    0.4522
+   ]
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 4000.0,
+   "kcas": 170.0,
+   "throttle_level": 0.115,
+   "throttle_per_deg": 0.09525,
+   "fit_residual": 0.0001,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.115,
+    0.3056,
+    0.496
+   ]
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 20000.0,
+   "kcas": 110.0,
+   "throttle_level": 0.1742,
+   "throttle_per_deg": 0.12231,
+   "fit_residual": 0.0003,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.1742,
+    0.4192,
+    0.6634
+   ]
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 20000.0,
+   "kcas": 130.0,
+   "throttle_level": 0.1448,
+   "throttle_per_deg": 0.12609,
+   "fit_residual": 0.0001,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.1448,
+    0.3972,
+    0.6491
+   ]
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 20000.0,
+   "kcas": 150.0,
+   "throttle_level": 0.1795,
+   "throttle_per_deg": 0.12993,
+   "fit_residual": 0.0002,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.1795,
+    0.4396,
+    0.6992
+   ]
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 20000.0,
+   "kcas": 170.0,
+   "throttle_level": 0.2277,
+   "throttle_per_deg": 0.13397,
+   "fit_residual": 0.0001,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.2277,
+    0.4958,
+    0.7636
+   ]
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 30000.0,
+   "kcas": 110.0,
+   "throttle_level": 0.2726,
+   "throttle_per_deg": 0.17088,
+   "fit_residual": 0.0004,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.2726,
+    0.6149,
+    0.9561
+   ]
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 30000.0,
+   "kcas": 130.0,
+   "throttle_level": 0.2323,
+   "throttle_per_deg": 0.17234,
+   "fit_residual": 0.0002,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.2323,
+    0.5774,
+    0.9217
+   ]
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 30000.0,
+   "kcas": 150.0,
+   "throttle_level": 0.276,
+   "throttle_per_deg": 0.17422,
+   "fit_residual": 0.0002,
+   "angles": [
+    0.0,
+    2.0,
+    4.0
+   ],
+   "throttles": [
+    0.276,
+    0.6247,
+    0.9728
+   ]
+  }
+ ]
+}

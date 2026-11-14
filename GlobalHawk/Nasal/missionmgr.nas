@@ -8,6 +8,7 @@
 #   {kind:"route", points:[[lat, lon, alt_ft], ...]}        may carry start:[lat, lon]
 #   {kind:"land", fix:[lat, lon], aim:[lat, lon], elev:2300}
 #   {kind:"hold", centre:[lat, lon], alt:20000}
+#   (made by the manager, not given:) {kind:"go_around", ...}   the landing's entry contract broken: a circle over the fix down to the final's height, then the landing
 # lost_link: items flown instead of the rest once ap/link-lost is set. sites: runways for a landing without the engine.
 
 var J = "/fdm/jsbsim/";
@@ -50,7 +51,25 @@ var FINAL_SURPLUS = 300.0;         # ft above the glide path the circle aims to 
 var WING_AREA = 540.0;
 var K_PSI = 1.2;                   # the heading law's gain (fdm/laws.py), deg of bank per deg at 600 ft/s
 var MAX_ALT = 65000.0;             # ft: the aircraft's maximum (NASA 2008)
+# the level-off (fdm/missionmgr.py, docs/PLAN.md "Level-off"): the altitude mode takes over where the capture's profile asks for exactly the climb rate there is
+var LANDING_SPOILER = 0.667;       # the spoilers' command in the landing configuration, before the glide path is taken (the laws' spoiler base)
+var LEVEL_BEGIN_FT = 400.0;        # the landing keeps the level's height command while the aircraft is within this of it
 var HOLD_BANK = 11.5;              # deg: a hold's circle is flown well inside the bank limit
+
+# the landing task's entry contract and the go-around task it hands over to when the contract is broken (docs/PLAN.md, "The aircraft refuses what it cannot fly")
+var ENTRY_CAPTURE_W = [12000.0, 20000.0, 26000.0];    # weights, lb, and ...
+var ENTRY_CAPTURE_FT = [500.0, 1500.0, 2000.0];        # ... ft above the path at 10 nmi the capture still takes over by 1.5 nmi out: flown, above.py
+var ENTRY_MARGIN = 0.8;            # of that
+var ENTRY_TOGO_MIN_NM = 1.5;       # to go at which no height above the path is taken; the limit grows from there with the way to go ...
+var ENTRY_SPAN_NM = 8.5;           # ... as the 10 nmi it was measured at (1.5 to 10 nmi) ...
+var ENTRY_TOGO_MAX_NM = 12.0;      # ... and no further (not measured beyond)
+var LAND_FIX_GAP_FT = 2634.0;      # the height under the glide path the final is begun from: the capture gap flown (2,484 ft, fdm/capability.py) and the planner's 150 ft
+var GO_AROUND_MIN_AGL = 1000.0;    # ft over the ground: the go-around's circle comes down to this at the least
+var GO_AROUND_ALT_ABOVE = 100.0;   # ft: the go-around hands back to the landing no higher than this over the height it came down to (the capture gap has 150 ft of margin) ...
+var GO_AROUND_ALT_BELOW = 300.0;   # ... and no lower than this under it ...
+var GO_AROUND_FIX_FT = 2500.0;     # ... within this of the fix ...
+var GO_AROUND_TRACK_DEG = 20.0;    # ... on a track within this of the final's course
+var go_arounds = 0;                # how many go-arounds any manager has begun: the checks that should land at once count on it being 0 (a go-around hides nothing)
 
 var mod = func(a, b) { return a - b * math.floor(a / b); };
 var clip = func(x, lo, hi) { return x < lo ? lo : (x > hi ? hi : x); };
@@ -122,6 +141,11 @@ var Manager = {
         me.k = 0;
         var kind = it.kind;
         me.note("begin " ~ kind);
+        var vm = int(fget("ap/vmode") + 0.5);                # what the laws' vertical task was doing, before this item takes it over
+        var lv = fget("ap/v-level-alt");
+        fset("ap/vt-on", 0); fset("ap/sp-ext", -1);
+        fset("ap/tk-done", 0); fset("ap/ld-captured", 0);                 # the laws' latches start clear: the item may follow one of its own kind in the same call, and they would never see the task off
+        fset("ap/tk-on", 0); fset("ap/tx-on", 0); fset("ap/ld-on", 0); fset("ap/ci-on", 0);          # the laws' takeoff, taxi, landing and circle tasks: each item turns on its own
         fset("ap/next-valid", 0);
         fset("ap/turn-ack", fget("ap/turn-done"));
         if (kind == "taxi") {
@@ -132,12 +156,16 @@ var Manager = {
             fset("ap/thrust-mode", 4); fset("ap/ground-steer", 1); fset("ap/pitch-mode", 0); fset("ap/roll-mode", 0);
             fset("ap/spoiler-mode", 1); fset("ap/spoiler-cmd", 0.0);
             fset("ap/taxi-speed-kt", opt(it, "speed", 15.0));
+            fset("ap/tx-fast", opt(it, "speed", 15.0)); fset("ap/tx-slow", opt(it, "turn_speed", 8.0)); fset("ap/tx-stop", opt(it, "stop", 1) ? 1 : 0);
+            me.taxi_leg(it);
+            fset("ap/tx-on", 1);
             fset("gear/gear-cmd-norm", 1);
         } elsif (kind == "takeoff") {
             me.leg(it.start, it.end);
             fset("ap/taxi-speed-kt", 0.0);
             fset("ap/thrust-mode", 1); fset("ap/ground-steer", 1); fset("ap/pitch-mode", 3); fset("ap/roll-mode", 2);
             fset("ap/spoiler-mode", 1); fset("ap/spoiler-cmd", 0.0);
+            fset("ap/tk-on", 1);
         } elsif (kind == "route") {
             var first = opt(it, "start", nil) != nil ? [it.start[0], it.start[1]] : me.here();
             var pts = [[first[0], first[1], fget("position/h-sl-ft")]] ~ it.points;
@@ -146,21 +174,33 @@ var Manager = {
             fset("ap/roll-mode", 2); fset("ap/ground-steer", 0);
             me.vertical(pts[1][2]);
         } elsif (kind == "land") {
+            var above = me.above_path(it);
+            if (above > me.entry_limit(course(me.here(), it.aim)[1])) {
+                me.go_around(it, above);               # the entry contract is broken: nothing of the landing is set up
+                return;
+            }
             # level towards the runway in the landing configuration until the glide path comes down to the aircraft
             me.leg(it.fix, it.aim);
             fset("ap/rwy-elev-ft", it.elev);
-            fset("ap/roll-mode", 2); fset("ap/ground-steer", 1);
-            fset("ap/alt-cmd-ft", fget("position/h-sl-ft"));
+            fset("ap/roll-mode", 3); fset("ap/ground-steer", 1);           # the landing task's own lateral law
+            # the height asked for stays the level's if its capture is going on (the aircraft was still coming down to it: a command of the height it has this moment is a step in
+            # what the altitude mode asks), else it is the height it has; the spoilers go out as a ramp (it was a step of 0.12 to 0.67: a load factor of 1.31 and the speed 11 kt down)
+            var h0 = fget("position/h-sl-ft");
+            fset("ap/alt-cmd-ft", (vm == 3 and absv(lv - h0) <= LEVEL_BEGIN_FT) ? lv : h0);
             fset("ap/pitch-mode", 2); fset("ap/thrust-mode", 3);
             fset("ap/speed-schedule", 0);
             fset("ap/speed-cmd-kcas", fget("ap/approach-keas"));
-            fset("ap/spoiler-mode", 1); fset("ap/spoiler-cmd", 0.667);
+            fset("ap/sp-ext", LANDING_SPOILER);          # the laws move the spoilers there at their slew rate, from where they are
             fset("gear/gear-cmd-norm", 1);
             it._on_path = 0;
-        } elsif (kind == "hold") {
+            fset("ap/ld-on", 1);
+        } elsif (kind == "hold" or kind == "go_around") {
             fset("ap/land-mode", 0);
             fset("ap/roll-mode", 1); fset("ap/ground-steer", 0);
             it.side = 1.0;
+            if (opt(it, "radius", nil) == nil) it.radius = me.hold_radius();      # fixed once the hold begins: the station draws it
+            fset("ap/ci-lat", it.centre[0]); fset("ap/ci-lon", it.centre[1]); fset("ap/ci-radius-ft", it.radius); fset("ap/ci-side", it.side);
+            fset("ap/ci-out-max", 30.0); fset("ap/ci-lead", 1); fset("ap/ci-on", 1);          # the laws fly the circle: the heading command about the centre
             me.vertical(it.alt);
         } elsif (kind == "engine_out") {
             me.choose_site(it);
@@ -263,35 +303,64 @@ var Manager = {
         }
     },
 
-    # the heading that flies a circle about a centre: the tangent, turned in or out for the distance off it
-    circle: func(centre, radius, side, out_max = 45.0, lead = 0) {
-        var od = course(centre, me.here());
-        var ahead = 0.0;
-        if (lead) {
-            # the heading law banks in proportion to the heading error, so a steady turn needs the command ahead
-            # of the nose by the error that gives the circle's bank (without it the hold sat 0.7 nmi outside)
-            var vg = fget("velocities/vg-fps");
-            var bank = math.atan2(vg * vg, 32.174 * radius) / D2R;
-            ahead = bank / (K_PSI * maxv(fget("velocities/vt-fps"), 100.0) / 600.0);
-        }
-        fset("ap/heading-cmd-deg", mod(od[0] + 90.0 * side + side * (ahead + clip(60.0 * (od[1] - radius) / radius, -out_max, 80.0)), 360.0));
-        return od;
+    # Tell the laws what the taxi leg is: the last one, or ends in a bend of so many degrees (they work out the speed from the way to go).
+    taxi_leg: func(it) {
+        var pts = it._pts;
+        var last = me.k == size(pts) - 2;
+        fset("ap/tx-last", last ? 1 : 0);
+        if (!last) fset("ap/tx-bend-deg", absv(turn(course(pts[me.k], pts[me.k + 1])[0], course(pts[me.k + 1], pts[me.k + 2])[0])));
     },
     hold_radius: func {
         var vg = maxv(fget("velocities/vg-fps"), 100.0);
         return vg * vg / (32.174 * tand(HOLD_BANK));
     },
 
+    # feet above the glide path to the aiming point (negative under it): the landing task's entry contract is judged on this
+    above_path: func(land) {
+        var h = fget("position/h-sl-ft") - land.elev;
+        return h - (5.3 + GLIDE_TAN * course(me.here(), land.aim)[1]);
+    },
+    # how far above the path the landing may be begun, ft, by the way to go
+    entry_limit: func(togo_ft) {
+        var w = fget("inertia/weight-lbs");
+        var cap10 = ENTRY_CAPTURE_FT[0];
+        if (w >= ENTRY_CAPTURE_W[2]) cap10 = ENTRY_CAPTURE_FT[2];
+        elsif (w >= ENTRY_CAPTURE_W[1]) cap10 = ENTRY_CAPTURE_FT[1] + (ENTRY_CAPTURE_FT[2] - ENTRY_CAPTURE_FT[1]) * (w - ENTRY_CAPTURE_W[1]) / (ENTRY_CAPTURE_W[2] - ENTRY_CAPTURE_W[1]);
+        elsif (w > ENTRY_CAPTURE_W[0]) cap10 = ENTRY_CAPTURE_FT[0] + (ENTRY_CAPTURE_FT[1] - ENTRY_CAPTURE_FT[0]) * (w - ENTRY_CAPTURE_W[0]) / (ENTRY_CAPTURE_W[1] - ENTRY_CAPTURE_W[0]);
+        return ENTRY_MARGIN * cap10 * maxv(0.0, minv(togo_ft / NM, ENTRY_TOGO_MAX_NM) - ENTRY_TOGO_MIN_NM) / ENTRY_SPAN_NM;
+    },
+    # the landing task's entry contract is broken (too high to take the path over): the go-around task takes the aircraft: a right-hand circle
+    # tangent to the final's line at the fix, down to the height the final is begun from, then back to the landing
+    go_around: func(land, above) {
+        var fix = land.fix;
+        var cd = course(fix, land.aim);
+        var r = me.hold_radius();
+        var centre = offset(fix, cd[0] + 90.0, r);
+        var alt = land.elev + maxv(GO_AROUND_MIN_AGL, math.floor((5.3 + GLIDE_TAN * cd[1] - LAND_FIX_GAP_FT) / 100.0) * 100.0);
+        go_arounds += 1;
+        me.note(sprintf("LANDING NOT COMMITTED: %.0f ft above the glide path; go-around, circling over the fix to %.0f ft", above, alt));
+        var ga = { kind: "go_around", reason: "above the glide path", above: above, centre: centre, radius: r, alt: alt, final: cd[0], fix: [fix[0], fix[1]], side: 1.0 };
+        me.plan = subvec(me.plan, 0, me.i) ~ [ga] ~ subvec(me.plan, me.i);
+        me.begin();
+    },
+    # the go-around's contract with the landing: at the height it came down to, at the fix, on the final's course
+    go_around_over: func(it) {
+        var d = course(it.fix, me.here())[1];
+        var dh = fget("position/h-sl-ft") - it.alt;
+        return (dh >= -GO_AROUND_ALT_BELOW and dh <= GO_AROUND_ALT_ABOVE and d <= GO_AROUND_FIX_FT
+                and absv(turn(fget("ap/ground-track-deg"), it.final)) <= GO_AROUND_TRACK_DEG);
+    },
+
     # leave the plan when the link is lost or the engine stops. Only in the air, and only once each
     contingencies: func {
         var kind = me.plan[me.i].kind;
-        if (fget("engine/failed") == 1 and me.contingency != "engine" and (kind == "route" or kind == "land" or kind == "hold")
+        if (fget("engine/failed") == 1 and me.contingency != "engine" and (kind == "route" or kind == "land" or kind == "hold" or kind == "go_around")
             and size(me.sites) and fget("ap/rollout") == 0) {
             me.contingency = "engine";
             me.note("ENGINE FAILED");
             me.plan = me.upto() ~ [{ kind: "engine_out" }];
             me.next();
-        } elsif (fget("ap/link-lost") == 1 and me.contingency == nil and (kind == "route" or kind == "hold")
+        } elsif (fget("ap/link-lost") == 1 and me.contingency == nil and (kind == "route" or kind == "hold" or kind == "go_around")
                  and me.lost_link != nil and size(me.lost_link)) {
             me.contingency = "link";
             me.note("LINK LOST: the contingency route");
@@ -302,31 +371,17 @@ var Manager = {
         }
     },
 
-    # climb, descend or hold towards a height
-    vertical: func(alt) {
-        var h = fget("position/h-sl-ft");
-        alt = minv(alt, MAX_ALT);
-        fset("ap/alt-cmd-ft", alt);
-        fset("ap/speed-schedule", 1);
-        var mode = "";
-        if (absv(alt - h) <= 150.0) {
-            mode = "level";
-            fset("ap/pitch-mode", 2); fset("ap/thrust-mode", 3); fset("ap/spoiler-cmd", 0.0);
-        } elsif (alt > h) {
-            mode = "climb";
-            fset("ap/pitch-mode", 1); fset("ap/thrust-mode", 1); fset("ap/spoiler-cmd", 0.0);
-        } else {
-            mode = "descent";
-            fset("ap/pitch-mode", 1); fset("ap/thrust-mode", 2); fset("ap/spoiler-cmd", 0.5);
-        }
-        fset("ap/spoiler-mode", 1);
-        if (me.vmode != mode) {
+    # Ask the laws for a climb, a descent or a hold towards a height (fdm/laws.py, _mission_vertical: the gate, the mode and the spoilers are theirs); path: the height is the one at the
+    # end of the leg, and a descent steers its slope with the spoilers to get there. What is read back is the mode, for the status and the notes.
+    vertical: func(alt, path = nil) {
+        fset("ap/vt-on", 1); fset("ap/vt-ft", alt); fset("ap/vt-path", path ? 1 : 0);
+        var mode = [nil, "climb", "descent", "level"][int(fget("ap/vmode") + 0.5)];
+        if (mode != nil and me.vmode != mode) {
             me.vmode = mode;
             me.note(sprintf("%s to %.0f ft", mode, alt));
         }
     },
 
-    # call ten times a second
     step: func {
         if (me.done) return;
         me.contingencies();
@@ -335,34 +390,28 @@ var Manager = {
         var kind = it.kind;
         var togo = fget("ap/leg-togo-ft");
         if (kind == "engine_out") { me.engine_out(it); return; }
+        if (kind == "go_around") {
+            me.vertical(it.alt);
+            if (me.go_around_over(it)) {
+                me.note("go-around over: back on the final");
+                me.next();                                      # the landing's contract is judged again as it begins
+            }
+            return;
+        }
         if (kind == "hold") {
-            if (opt(it, "radius", nil) == nil) it.radius = me.hold_radius();      # fixed once the hold begins: the station draws it
-            me.circle(it.centre, it.radius, it.side, 30.0, 1);
             me.vertical(it.alt);
             return;
         }
         if (kind == "taxi") {
             var pts = it._pts;
-            var last = me.k == size(pts) - 2;
-            var fast = opt(it, "speed", 15.0);
-            if (!last) {
-                var bend = absv(turn(course(pts[me.k], pts[me.k + 1])[0], course(pts[me.k + 1], pts[me.k + 2])[0]));
-                # slow for the corner, then take the next leg a little before it
-                var slow = opt(it, "turn_speed", 8.0);
-                fset("ap/taxi-speed-kt", bend <= 20.0 ? fast : clip(slow + (fast - slow) * (togo - 100.0) / 250.0, slow, fast));
-                if (togo < 40.0) {
-                    me.k += 1;
-                    me.leg(pts[me.k], pts[me.k + 1]);
-                }
-            } elsif (opt(it, "stop", 1)) {
-                # come down to a walk, then stop on the point
-                fset("ap/taxi-speed-kt", togo < 12.0 ? 0.0 : minv(fast, maxv(3.0, 0.12 * togo)));
-                if (togo < 12.0 and fget("ap/ground-speed-kt") < 0.3) me.next();
-            } elsif (togo < 40.0) me.next();
+            if (fget("ap/tx-leg") == 1) {                         # the laws: the next leg is to be taken
+                me.k += 1;
+                me.leg(pts[me.k], pts[me.k + 1]);
+                me.taxi_leg(it);
+            } elsif (fget("ap/tx-done") == 1) me.next();          # the laws: the item is over
         } elsif (kind == "takeoff") {
-            if (fget("aero/wheel-height-ft") > 100.0) {
+            if (fget("ap/tk-done") == 1) {                          # the laws took it up: schedule, pitch mode, nose wheel; the gear lever is the supervisor's (FlightGear copies /controls/gear/gear-down into the model every frame, over what the laws write)
                 fset("gear/gear-cmd-norm", 0);
-                fset("ap/speed-schedule", 1); fset("ap/pitch-mode", 1); fset("ap/ground-steer", 0);
                 me.note("airborne, climb");
                 me.next();
             }
@@ -370,7 +419,7 @@ var Manager = {
             # the turn onto the next leg is the aircraft's (fdm/laws.py, ap/turn-*): the manager gives it the next waypoint and moves on when
             # the laws say the turn is done. Past the last waypoint of a route that a landing follows the next point is the aiming point
             var pts = it._pts;
-            me.vertical(opt(it, "alt_override", pts[me.k + 1][2]));
+            me.vertical(opt(it, "alt_override", pts[me.k + 1][2]), 1);
             var last = me.k == size(pts) - 2;
             var nxt = !last ? pts[me.k + 2] : me.after(me.i);
             me.set_next(nxt);
@@ -388,14 +437,11 @@ var Manager = {
             }
         } elsif (kind == "land") {
             if (!it._on_path) {
-                fset("ap/speed-cmd-kcas", fget("ap/approach-keas"));
-                if (fget("ap/glide-error-ft") > -fget("ap/glide-lead-ft") and fget("velocities/vc-kts") - fget("ap/approach-keas") < CAPTURE_SPEED_KT) {
+                if (fget("ap/ld-captured") == 1) {                    # the laws took the glide over: the pitch mode, the land mode, the spoilers
                     it._on_path = 1;
-                    fset("ap/pitch-mode", 1);
-                    fset("ap/land-mode", 1);
                     me.note("glide path");
                 }
-            } elsif (fget("ap/rollout") == 1 and fget("ap/ground-speed-kt") < 15.0) {
+            } elsif (fget("ap/ld-done") == 1) {
                 me.note("rollout over");
                 me.next();
             }

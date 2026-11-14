@@ -6,6 +6,7 @@ Nothing here flies the aircraft: commands change the plan the manager works thro
 """
 import json
 import math
+import os
 
 import missionmgr as MM
 
@@ -13,6 +14,29 @@ NAVS = ('kna', 'knb', 'lna', 'lnb')
 KINDS = ('taxi', 'takeoff', 'route', 'land', 'hold')
 MAX_LEG_NM = 3000.0
 MIN_FINAL_NM = 8.0
+MAX_DESCENT_DEG = 6.0               # a route leg goes down no more steeply than this on average: the glide path is 4.45 deg, the flown descent 2.5 to 3.5 (docs/PLAN.md, "The aircraft refuses what it cannot fly")
+MIN_GRADIENT_LEG_NM = 2.0          # shorter legs are not judged on their slope: the turns at their ends take most of them
+FPS_PER_KT = 1.6878099
+
+
+def crosswind_limit_kt(weight):
+    """The steady crosswind the landing holds its contracts in at a weight, kt (fdm/landlimit.py writes data/landing_limits.json): linear between the weights flown, held at the
+    ends; None when none was measured. The station's plan check reads the same table (js/flightmath.js crosswindLimitKt)."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'landing_limits.json')
+    if not os.path.exists(path):
+        return None
+    d = json.load(open(path))
+    xs, ys = d['weight_lb'], d['crosswind_kt']
+    if any(y is None for y in ys):
+        return None
+    if weight <= xs[0]:
+        return ys[0]
+    for i in range(1, len(xs)):
+        if weight <= xs[i]:
+            return ys[i - 1] + (ys[i] - ys[i - 1]) * (weight - xs[i - 1]) / (xs[i] - xs[i - 1])
+    return ys[-1]
+
+
 FUEL_LOW_LB = 1500.0               # assumed: about an hour and a half at cruise
 AOA_NEAR_DEG, AOA_SEC = 0.3, 3.0
 OFFER_SEC = 120.0                  # a handover offer lapses after this
@@ -57,6 +81,12 @@ def check_items(items, what):
             for a, b in zip(pts[:-1], pts[1:]):
                 if MM.course(a, b)[1] / MM.NM > MAX_LEG_NM:
                     return '%s (%s): a leg longer than %.0f nmi' % (w, kind, MAX_LEG_NM)
+            if kind == 'route':
+                for m, (a, b) in enumerate(zip(pts[:-1], pts[1:])):
+                    ft, drop = MM.course(a, b)[1], a[2] - b[2]
+                    if drop > 0 and ft / MM.NM >= MIN_GRADIENT_LEG_NM and math.degrees(math.atan2(drop, ft)) > MAX_DESCENT_DEG:
+                        return '%s (route): point %d to point %d goes down %.0f ft in %.1f nmi, %.1f deg: the aircraft does not come down more steeply than %g deg' % (
+                            w, m + 1, m + 2, drop, ft / MM.NM, math.degrees(math.atan2(drop, ft)), MAX_DESCENT_DEG)
         elif kind == 'takeoff':
             bad = _point(it.get('start'), 2, w + ' (takeoff) start') or _point(it.get('end'), 2, w + ' (takeoff) end')
             if bad:
@@ -200,7 +230,7 @@ class Onboard:
         return 'unknown command'
 
     def airborne(self):
-        return self.started and self.mgr and not self.mgr.done and self.mgr.plan[self.mgr.i]['kind'] in ('route', 'hold')
+        return self.started and self.mgr and not self.mgr.done and self.mgr.plan[self.mgr.i]['kind'] in ('route', 'hold', 'go_around')
 
     def cmd_plan(self, a):
         bad = check_plan(a)
@@ -431,9 +461,9 @@ class Onboard:
             kind = 'done' if m.done else it['kind']
             s.update(item=m.i, kind=kind, contingency=m.contingency)
             s['doing'], s['next'] = self.describe(m, it, kind)
-            if kind == 'hold':
+            if kind in ('hold', 'go_around'):
                 s['hold'] = dict(lat=it['centre'][0], lon=it['centre'][1], radius_ft=round(it.get('radius') or m.hold_radius()), alt_ft=it['alt'])
-            if kind not in ('done', 'hold'):
+            if kind not in ('done', 'hold', 'go_around'):
                 s['leg'] = [[f['ap/leg-lat0-deg'], f['ap/leg-lon0-deg']], [f['ap/leg-lat1-deg'], f['ap/leg-lon1-deg']]]
             if kind == 'engine_out':
                 s['site'] = it.get('site', {}).get('name')
@@ -462,6 +492,17 @@ class Onboard:
             add('engine', 'warning', 'ENGINE FAILED', ('Gliding to %s by itself. Clear the runway. ' % site if site else '') + 'No restart is modelled')
         if m and m.alert:
             add('no-site', 'warning', 'NO RUNWAY IN REACH', 'Gliding towards the nearest')
+        if m and not m.done and m.plan[min(m.i, len(m.plan) - 1)]['kind'] == 'go_around':
+            ga = m.plan[min(m.i, len(m.plan) - 1)]
+            add('go-around', 'warning', 'LANDING NOT COMMITTED', 'The aircraft was %.0f ft %s at the landing fix. It is circling over the fix to lose height and will land when it can. Check the plan' % (ga['above'], ga['reason']))
+        if m and not m.done and f['ap/engaged'] == 1 and f['ap/land-mode'] == 1 and f['ap/on-mains'] == 0:
+            it = m.plan[min(m.i, len(m.plan) - 1)]
+            lim = crosswind_limit_kt(f['inertia/weight-lbs'])
+            if it['kind'] == 'land' and lim is not None:
+                c = math.radians(MM.course(it['fix'], it['aim'])[0])
+                xw = abs(-f['ap/wind-north-filt-fps'] * math.sin(c) + f['ap/wind-east-filt-fps'] * math.cos(c)) / FPS_PER_KT
+                if xw > lim:
+                    add('crosswind', 'caution', 'CROSSWIND OVER LIMIT', 'The wind across the final is %.0f kt; the landing holds its limits to %.0f kt at %.0f lb. Go around or divert if it is not to be accepted' % (xw, lim, f['inertia/weight-lbs']))
         if f['limits/overstress']:
             add('structure', 'warning', 'STRUCTURAL LIMIT PASSED', 'Land')
         if f['ap/link-lost']:
@@ -486,7 +527,7 @@ class Onboard:
     def describe(self, m, it, kind):
         f = self.f
         rest = [d['kind'] for d in m.plan[m.i + 1:]]
-        after = {'taxi': 'taxi', 'takeoff': 'takeoff', 'route': 'route', 'land': 'landing', 'hold': 'hold', 'engine_out': ''}
+        after = {'taxi': 'taxi', 'takeoff': 'takeoff', 'route': 'route', 'land': 'landing', 'hold': 'hold', 'go_around': 'go-around', 'engine_out': ''}
         nxt = 'then ' + after[rest[0]] if rest else 'end of plan'
         if kind == 'done':
             return 'plan complete', ''
@@ -504,6 +545,8 @@ class Onboard:
                 ('then leg %d' % (m.k + 2) if m.k + 1 < n else nxt)
         if kind == 'hold':
             return 'hold at %.0f ft' % it['alt'], 'until commanded'
+        if kind == 'go_around':
+            return 'GO-AROUND: circling over the fix to %.0f ft, %.0f ft above the glide path when it began' % (it['alt'], it['above']), 'then landing'
         if kind == 'land':
             if f['ap/rollout']:
                 return 'rollout', nxt

@@ -820,5 +820,61 @@
    26700.0
   ]
  ],
- "note": "fdm/capability.py measure: the descent as the mission manager flies it (idle thrust, half spoilers, the speed schedule; where it does not settle, filled_from_trim: the old idle trim times the ratio flown / trim at the highest height of that weight that did settle), and the slowing down in the landing configuration from 150 KCAS"
+ "note": "fdm/capability.py measure: the descent as the mission manager flies it (idle thrust, half spoilers, the speed schedule; where it does not settle, filled_from_trim: the old idle trim times the ratio flown / trim at the highest height of that weight that did settle), and the slowing down in the landing configuration from 150 KCAS",
+ "departure": {
+  "rows": [
+   {
+    "delta_deg": 0.0,
+    "off_ft": 0.0,
+    "back_nm": 0.1,
+    "turned_deg": 0.0
+   },
+   {
+    "delta_deg": 10.0,
+    "off_ft": 430.0,
+    "back_nm": 0.8,
+    "turned_deg": 14.0
+   },
+   {
+    "delta_deg": 20.0,
+    "off_ft": 890.0,
+    "back_nm": 2.4,
+    "turned_deg": 33.0
+   },
+   {
+    "delta_deg": 30.0,
+    "off_ft": 1360.0,
+    "back_nm": 2.8,
+    "turned_deg": 51.0
+   },
+   {
+    "delta_deg": 45.0,
+    "off_ft": 2320.0,
+    "back_nm": 3.1,
+    "turned_deg": 86.0
+   },
+   {
+    "delta_deg": 60.0,
+    "off_ft": 3560.0,
+    "back_nm": 3.6,
+    "turned_deg": 123.0
+   },
+   {
+    "delta_deg": 90.0,
+    "off_ft": 6250.0,
+    "back_nm": 5.7,
+    "turned_deg": 178.0
+   },
+   {
+    "delta_deg": 120.0,
+    "off_ft": 8630.0,
+    "back_nm": 6.4,
+    "turned_deg": 213.0
+   }
+  ],
+  "weight_lb": 25600.0,
+  "field_elev_ft": 2300.0,
+  "takeoff_heading_deg": 40.0,
+  "note": "fdm/departure.py: a first point delta deg off the runway's heading, 40 nmi out; off_ft: the most off the first leg in 200 s after lift-off, back_nm: from the takeoff's end to within 150 ft of the line for 20 s, turned_deg: heading turned through up to then; headless, calm air"
+ }
 }

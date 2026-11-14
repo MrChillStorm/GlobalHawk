@@ -9,11 +9,14 @@ Each alert is raised by its own condition in the flight model and must appear in
 """
 import copy
 import json
+import math
 import os
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import missionmgr as MM             # noqa: E402
+import onboard as OB             # noqa: E402
 import gcs_server as G              # noqa: E402
 import harness as H                 # noqa: E402
 
@@ -78,7 +81,32 @@ def case(fl, i, raise_, clear=None, limit=1.0, wait=40.0, **kw):
     return a
 
 
+def crosswind_alert():
+    """B2 crosswind: on the final in the landing configuration (the laws' land mode on, wheels off), the wind across the final over the weight's limit raises CROSSWIND OVER LIMIT
+    (the limit from fdm/landlimit.py's table, the wind the laws' filtered measured wind); under it, or on the runway, it does not."""
+    sim = G.Sim(PLAN)
+    f, ob = sim.f, sim.ob
+    it = dict(kind='land', fix=[34.695722, -118.088997], aim=[34.9, -117.88])
+
+    class M:
+        plan, i, done, alert, events = [it], 0, False, None, []
+    c = math.radians(MM.course(it['fix'], it['aim'])[0])
+
+    def with_wind(xw_kt, mains=0):
+        f['ap/engaged'], f['ap/land-mode'], f['ap/on-mains'] = 1, 1, mains
+        f['ap/wind-north-filt-fps'] = -xw_kt * 1.6878099 * math.sin(c)
+        f['ap/wind-east-filt-fps'] = xw_kt * 1.6878099 * math.cos(c)
+        return {a['id']: a for a in ob.alerts(M)}
+    lim = OB.crosswind_limit_kt(f['inertia/weight-lbs'])
+    over, under, ground = with_wind(lim + 8), with_wind(lim - 5), with_wind(lim + 8, mains=1)
+    a = over.get('crosswind', {})
+    add('B2', 'crosswind over the limit', 'crosswind' in over and 'CROSSWIND' in a.get('text', '') and '%.0f kt' % lim in a.get('action', '') and 'crosswind' not in under and 'crosswind' not in ground,
+        'at %.0f lb the limit is %.1f kt: %.0f kt raises "%s" (%s); %.0f kt: %s; on the runway: %s' % (f['inertia/weight-lbs'], lim, lim + 8, a.get('text', 'nothing'), a.get('action', ''), lim - 5,
+                                                                                                    'raised' if 'crosswind' in under else 'none', 'raised' if 'crosswind' in ground else 'none'))
+
+
 def main():
+    crosswind_alert()
     plan = json.load(open(PLAN))
     fl = Flight(plan)
     f = fl.f

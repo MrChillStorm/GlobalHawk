@@ -1,0 +1,4406 @@
+{
+ "note": "turnperf.py: level 200 deg turns in calm air, the bank law, the speed and height held; flown_per_cmd = bank flown over bank commanded less 1; cap_deg = the largest bank flown that holds 100 ft, 5 kt and is 0.5 deg under the angle-of-attack limit",
+ "axes": {
+  "speed_kcas": [
+   110.0,
+   130.0,
+   150.0,
+   170.0
+  ],
+  "weight_lb": [
+   12000.0,
+   20000.0,
+   26000.0
+  ],
+  "pressure_alt_ft": [
+   4174.0,
+   20174.0,
+   30174.0,
+   45174.0
+  ]
+ },
+ "grid_flown_per_cmd": [
+  [
+   [
+    0.0318,
+    0.0208,
+    0.0148,
+    0.0074
+   ],
+   [
+    0.1073,
+    0.064,
+    0.0447,
+    0.0232
+   ],
+   [
+    0.1221,
+    0.0688,
+    0.0469,
+    0.0228
+   ]
+  ],
+  [
+   [
+    0.0212,
+    0.0123,
+    0.0081,
+    0.0035
+   ],
+   [
+    0.0455,
+    0.0279,
+    0.0192,
+    0.0096
+   ],
+   [
+    0.0834,
+    0.0495,
+    0.034,
+    0.0171
+   ]
+  ],
+  [
+   [
+    0.0162,
+    0.0087,
+    0.0054,
+    0.0018
+   ],
+   [
+    0.0282,
+    0.0165,
+    0.0111,
+    0.0052
+   ],
+   [
+    0.0434,
+    0.0258,
+    0.0176,
+    0.0085
+   ]
+  ],
+  [
+   [
+    0.0131,
+    0.0066,
+    0.0039,
+    0.0018
+   ],
+   [
+    0.0211,
+    0.0118,
+    0.0078,
+    0.0052
+   ],
+   [
+    0.0287,
+    0.0164,
+    0.011,
+    0.0085
+   ]
+  ]
+ ],
+ "grid_cap_deg": [
+  [
+   [
+    46.5,
+    46.2,
+    46.0,
+    45.5
+   ],
+   [
+    30.3,
+    30.1,
+    28.8,
+    26.5
+   ],
+   [
+    11.3,
+    10.7,
+    10.5,
+    10.2
+   ]
+  ],
+  [
+   [
+    45.9,
+    45.7,
+    45.5,
+    45.3
+   ],
+   [
+    47.7,
+    47.0,
+    46.4,
+    45.7
+   ],
+   [
+    36.5,
+    35.5,
+    34.6,
+    32.7
+   ]
+  ],
+  [
+   [
+    45.7,
+    45.5,
+    45.4,
+    45.2
+   ],
+   [
+    46.6,
+    46.1,
+    45.8,
+    45.4
+   ],
+   [
+    47.8,
+    46.9,
+    46.3,
+    45.3
+   ]
+  ],
+  [
+   [
+    45.6,
+    45.4,
+    45.3,
+    45.2
+   ],
+   [
+    46.1,
+    45.7,
+    45.5,
+    45.4
+   ],
+   [
+    46.7,
+    46.1,
+    45.8,
+    45.3
+   ]
+  ]
+ ],
+ "grid_lag_in_s": [
+  [
+   [
+    2.24,
+    2.23,
+    2.0,
+    1.66
+   ],
+   [
+    2.51,
+    1.88,
+    1.5,
+    0.9
+   ],
+   [
+    2.38,
+    1.8,
+    1.63,
+    1.51
+   ]
+  ],
+  [
+   [
+    3.01,
+    2.58,
+    2.37,
+    2.1
+   ],
+   [
+    2.77,
+    2.22,
+    1.92,
+    1.5
+   ],
+   [
+    2.66,
+    1.96,
+    1.58,
+    1.01
+   ]
+  ],
+  [
+   [
+    3.37,
+    2.93,
+    2.72,
+    2.54
+   ],
+   [
+    3.06,
+    2.55,
+    2.28,
+    1.95
+   ],
+   [
+    2.96,
+    2.34,
+    2.02,
+    1.6
+   ]
+  ],
+  [
+   [
+    3.75,
+    3.28,
+    3.07,
+    2.54
+   ],
+   [
+    3.44,
+    2.92,
+    2.66,
+    1.95
+   ],
+   [
+    3.27,
+    2.69,
+    2.4,
+    1.6
+   ]
+  ]
+ ],
+ "grid_lag_out_s": [
+  [
+   [
+    2.66,
+    2.32,
+    2.16,
+    1.98
+   ],
+   [
+    2.33,
+    1.88,
+    1.62,
+    1.25
+   ],
+   [
+    2.28,
+    1.71,
+    1.42,
+    1.05
+   ]
+  ],
+  [
+   [
+    3.04,
+    2.73,
+    2.59,
+    2.49
+   ],
+   [
+    2.74,
+    2.34,
+    2.14,
+    1.91
+   ],
+   [
+    2.55,
+    2.06,
+    1.81,
+    1.45
+   ]
+  ],
+  [
+   [
+    3.45,
+    3.13,
+    3.0,
+    2.97
+   ],
+   [
+    3.12,
+    2.74,
+    2.56,
+    2.44
+   ],
+   [
+    2.97,
+    2.53,
+    2.31,
+    2.1
+   ]
+  ],
+  [
+   [
+    3.87,
+    3.52,
+    3.4,
+    2.97
+   ],
+   [
+    3.55,
+    3.16,
+    3.0,
+    2.44
+   ],
+   [
+    3.36,
+    2.93,
+    2.74,
+    2.1
+   ]
+  ]
+ ],
+ "grid_moment_in_s2": [
+  [
+   [
+    -5.12,
+    -0.0,
+    -0.76,
+    -2.59
+   ],
+   [
+    0.57,
+    -0.88,
+    -2.02,
+    -5.41
+   ],
+   [
+    -0.04,
+    1.27,
+    6.2,
+    18.1
+   ]
+  ],
+  [
+   [
+    0.99,
+    -0.45,
+    -1.33,
+    -3.37
+   ],
+   [
+    0.6,
+    -1.05,
+    -2.05,
+    -4.8
+   ],
+   [
+    -0.1,
+    -2.2,
+    -3.62,
+    -7.12
+   ]
+  ],
+  [
+   [
+    0.86,
+    -0.88,
+    -1.94,
+    -4.47
+   ],
+   [
+    0.73,
+    -1.23,
+    -2.32,
+    -5.79
+   ],
+   [
+    0.16,
+    -2.04,
+    -3.22,
+    -7.01
+   ]
+  ],
+  [
+   [
+    0.85,
+    -1.31,
+    -2.8,
+    -4.47
+   ],
+   [
+    0.73,
+    -1.51,
+    -2.9,
+    -5.79
+   ],
+   [
+    0.41,
+    -2.0,
+    -3.41,
+    -7.01
+   ]
+  ]
+ ],
+ "grid_moment_out_s2": [
+  [
+   [
+    2.83,
+    2.82,
+    2.99,
+    3.52
+   ],
+   [
+    1.99,
+    2.1,
+    2.31,
+    2.9
+   ],
+   [
+    0.58,
+    0.89,
+    1.29,
+    2.23
+   ]
+  ],
+  [
+   [
+    3.24,
+    3.08,
+    3.2,
+    3.63
+   ],
+   [
+    2.72,
+    2.63,
+    2.81,
+    3.44
+   ],
+   [
+    1.84,
+    1.84,
+    2.1,
+    2.84
+   ]
+  ],
+  [
+   [
+    3.64,
+    3.28,
+    3.3,
+    3.22
+   ],
+   [
+    3.54,
+    3.2,
+    3.28,
+    3.34
+   ],
+   [
+    2.79,
+    2.54,
+    2.71,
+    3.01
+   ]
+  ],
+  [
+   [
+    4.13,
+    3.49,
+    3.38,
+    3.22
+   ],
+   [
+    4.12,
+    3.53,
+    3.48,
+    3.34
+   ],
+   [
+    3.85,
+    3.28,
+    3.28,
+    3.01
+   ]
+  ]
+ ],
+ "holes": [
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 45000.0,
+   "kcas": 170.0,
+   "why": "Mach 0.65 over 0.62"
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 45000.0,
+   "kcas": 170.0,
+   "why": "Mach 0.65 over 0.62"
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 45000.0,
+   "kcas": 170.0,
+   "why": "Mach 0.65 over 0.62"
+  }
+ ],
+ "cells": [
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 4000.0,
+   "kcas": 110.0,
+   "flown_per_cmd": 0.0318,
+   "cap_deg": 46.5,
+   "limited_by": "none",
+   "lag_in_s": 2.24,
+   "lag_out_s": 2.66,
+   "lag_in_spread": 0.78,
+   "lag_out_spread": 0.18,
+   "moment_in_s2": -5.12,
+   "moment_out_s2": 2.83,
+   "moment_in_spread": 12.94,
+   "moment_out_spread": 1.38,
+   "alpha_limit": 6.4,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.26,
+     "alpha": 0.3,
+     "alpha_limit": 6.4,
+     "dalt": 4.05,
+     "dkcas": 4.77,
+     "turned": 200.01,
+     "lag_in": 1.85,
+     "moment_in": -11.59,
+     "lag_out": 2.75,
+     "moment_out": 4.21,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.63
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.6,
+     "alpha": 0.48,
+     "alpha_limit": 6.4,
+     "dalt": 8.74,
+     "dkcas": 1.93,
+     "turned": 200.03,
+     "lag_in": 2.63,
+     "moment_in": 1.34,
+     "lag_out": 2.57,
+     "moment_out": 2.83,
+     "bank_end": 0.0,
+     "turn_rate_dps": 3.43
+    },
+    {
+     "cmd": 30.0,
+     "flown": 31.0,
+     "alpha": 0.89,
+     "alpha_limit": 6.4,
+     "dalt": 21.06,
+     "dkcas": 2.42,
+     "turned": 200.03
+    },
+    {
+     "cmd": 35.0,
+     "flown": 36.2,
+     "alpha": 1.2,
+     "alpha_limit": 6.4,
+     "dalt": 29.34,
+     "dkcas": 3.01,
+     "turned": 200.03
+    },
+    {
+     "cmd": 40.0,
+     "flown": 41.39,
+     "alpha": 1.58,
+     "alpha_limit": 6.4,
+     "dalt": 39.71,
+     "dkcas": 3.76,
+     "turned": 200.04
+    },
+    {
+     "cmd": 45.0,
+     "flown": 46.51,
+     "alpha": 2.08,
+     "alpha_limit": 6.4,
+     "dalt": 51.89,
+     "dkcas": 4.61,
+     "turned": 200.07
+    }
+   ],
+   "mach": 0.179
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 4000.0,
+   "kcas": 130.0,
+   "flown_per_cmd": 0.0212,
+   "cap_deg": 45.9,
+   "limited_by": "none",
+   "lag_in_s": 3.01,
+   "lag_out_s": 3.04,
+   "lag_in_spread": 0.11,
+   "lag_out_spread": 0.19,
+   "moment_in_s2": 0.99,
+   "moment_out_s2": 3.24,
+   "moment_in_spread": 1.48,
+   "moment_out_spread": 1.36,
+   "alpha_limit": 6.29,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.19,
+     "alpha": -1.06,
+     "alpha_limit": 6.29,
+     "dalt": 3.08,
+     "dkcas": 0.07,
+     "turned": 200.0,
+     "lag_in": 2.95,
+     "moment_in": 0.26,
+     "lag_out": 3.14,
+     "moment_out": 4.6,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.41
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.4,
+     "alpha": -0.88,
+     "alpha_limit": 6.29,
+     "dalt": 12.47,
+     "dkcas": 0.25,
+     "turned": 200.0,
+     "lag_in": 3.06,
+     "moment_in": 1.73,
+     "lag_out": 2.94,
+     "moment_out": 3.24,
+     "bank_end": 0.0,
+     "turn_rate_dps": 2.91
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.66,
+     "alpha": -0.51,
+     "alpha_limit": 6.29,
+     "dalt": 27.29,
+     "dkcas": 0.71,
+     "turned": 200.04
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.78,
+     "alpha": -0.22,
+     "alpha_limit": 6.29,
+     "dalt": 36.82,
+     "dkcas": 1.17,
+     "turned": 200.02
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.87,
+     "alpha": 0.14,
+     "alpha_limit": 6.29,
+     "dalt": 47.88,
+     "dkcas": 1.73,
+     "turned": 200.0
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.95,
+     "alpha": 0.53,
+     "alpha_limit": 6.29,
+     "dalt": 60.3,
+     "dkcas": 2.35,
+     "turned": 200.01
+    }
+   ],
+   "mach": 0.212
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 4000.0,
+   "kcas": 150.0,
+   "flown_per_cmd": 0.0162,
+   "cap_deg": 45.7,
+   "limited_by": "none",
+   "lag_in_s": 3.37,
+   "lag_out_s": 3.45,
+   "lag_in_spread": 0.09,
+   "lag_out_spread": 0.19,
+   "moment_in_s2": 0.86,
+   "moment_out_s2": 3.64,
+   "moment_in_spread": 1.38,
+   "moment_out_spread": 1.48,
+   "alpha_limit": 6.18,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.14,
+     "alpha": -1.96,
+     "alpha_limit": 6.18,
+     "dalt": 3.17,
+     "dkcas": 0.06,
+     "turned": 177.25,
+     "lag_in": 3.33,
+     "moment_in": 0.17,
+     "lag_out": 3.55,
+     "moment_out": 5.13,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.22
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.3,
+     "alpha": -1.83,
+     "alpha_limit": 6.18,
+     "dalt": 12.77,
+     "dkcas": 0.23,
+     "turned": 200.02,
+     "lag_in": 3.42,
+     "moment_in": 1.56,
+     "lag_out": 3.36,
+     "moment_out": 3.64,
+     "bank_end": 0.01,
+     "turn_rate_dps": 2.51
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.51,
+     "alpha": -1.57,
+     "alpha_limit": 6.18,
+     "dalt": 28.75,
+     "dkcas": 0.5,
+     "turned": 200.01
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.62,
+     "alpha": -1.38,
+     "alpha_limit": 6.18,
+     "dalt": 39.19,
+     "dkcas": 0.67,
+     "turned": 200.01
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.7,
+     "alpha": -1.14,
+     "alpha_limit": 6.18,
+     "dalt": 51.34,
+     "dkcas": 0.86,
+     "turned": 200.04
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.74,
+     "alpha": -0.81,
+     "alpha_limit": 6.18,
+     "dalt": 65.27,
+     "dkcas": 1.06,
+     "turned": 200.05
+    }
+   ],
+   "mach": 0.245
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 4000.0,
+   "kcas": 170.0,
+   "flown_per_cmd": 0.0131,
+   "cap_deg": 45.6,
+   "limited_by": "none",
+   "lag_in_s": 3.75,
+   "lag_out_s": 3.87,
+   "lag_in_spread": 0.08,
+   "lag_out_spread": 0.21,
+   "moment_in_s2": 0.85,
+   "moment_out_s2": 4.13,
+   "moment_in_spread": 1.41,
+   "moment_out_spread": 1.7,
+   "alpha_limit": 6.08,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.12,
+     "alpha": -2.58,
+     "alpha_limit": 6.08,
+     "dalt": 3.23,
+     "dkcas": 0.06,
+     "turned": 155.61,
+     "lag_in": 3.71,
+     "moment_in": 0.15,
+     "lag_out": 3.97,
+     "moment_out": 5.83,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.07
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.24,
+     "alpha": -2.48,
+     "alpha_limit": 6.08,
+     "dalt": 12.99,
+     "dkcas": 0.23,
+     "turned": 200.01,
+     "lag_in": 3.79,
+     "moment_in": 1.56,
+     "lag_out": 3.76,
+     "moment_out": 4.13,
+     "bank_end": 0.01,
+     "turn_rate_dps": 2.21
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.41,
+     "alpha": -2.27,
+     "alpha_limit": 6.08,
+     "dalt": 29.14,
+     "dkcas": 0.51,
+     "turned": 200.0
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.51,
+     "alpha": -2.12,
+     "alpha_limit": 6.08,
+     "dalt": 39.62,
+     "dkcas": 0.68,
+     "turned": 200.03
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.6,
+     "alpha": -1.93,
+     "alpha_limit": 6.08,
+     "dalt": 51.81,
+     "dkcas": 0.88,
+     "turned": 200.03
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.65,
+     "alpha": -1.69,
+     "alpha_limit": 6.08,
+     "dalt": 66.07,
+     "dkcas": 1.1,
+     "turned": 200.05
+    }
+   ],
+   "mach": 0.277
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 20000.0,
+   "kcas": 110.0,
+   "flown_per_cmd": 0.0208,
+   "cap_deg": 46.2,
+   "limited_by": "none",
+   "lag_in_s": 2.23,
+   "lag_out_s": 2.32,
+   "lag_in_spread": 0.08,
+   "lag_out_spread": 0.18,
+   "moment_in_s2": -0.0,
+   "moment_out_s2": 2.82,
+   "moment_in_spread": 1.08,
+   "moment_out_spread": 1.58,
+   "alpha_limit": 6.18,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.17,
+     "alpha": 0.32,
+     "alpha_limit": 6.18,
+     "dalt": 2.59,
+     "dkcas": 0.05,
+     "turned": 190.68,
+     "lag_in": 2.19,
+     "moment_in": -0.55,
+     "lag_out": 2.41,
+     "moment_out": 4.4,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.3
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.38,
+     "alpha": 0.56,
+     "alpha_limit": 6.18,
+     "dalt": 11.3,
+     "dkcas": 0.23,
+     "turned": 200.0,
+     "lag_in": 2.28,
+     "moment_in": 0.54,
+     "lag_out": 2.23,
+     "moment_out": 2.82,
+     "bank_end": 0.0,
+     "turn_rate_dps": 2.68
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.66,
+     "alpha": 1.03,
+     "alpha_limit": 6.18,
+     "dalt": 25.59,
+     "dkcas": 0.5,
+     "turned": 200.03
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.84,
+     "alpha": 1.4,
+     "alpha_limit": 6.18,
+     "dalt": 35.73,
+     "dkcas": 0.67,
+     "turned": 200.04
+    },
+    {
+     "cmd": 40.0,
+     "flown": 41.04,
+     "alpha": 1.89,
+     "alpha_limit": 6.18,
+     "dalt": 47.74,
+     "dkcas": 0.87,
+     "turned": 200.03
+    },
+    {
+     "cmd": 45.0,
+     "flown": 46.24,
+     "alpha": 2.65,
+     "alpha_limit": 6.18,
+     "dalt": 62.01,
+     "dkcas": 1.17,
+     "turned": 200.04
+    }
+   ],
+   "mach": 0.245
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 20000.0,
+   "kcas": 130.0,
+   "flown_per_cmd": 0.0123,
+   "cap_deg": 45.7,
+   "limited_by": "none",
+   "lag_in_s": 2.58,
+   "lag_out_s": 2.73,
+   "lag_in_spread": 0.05,
+   "lag_out_spread": 0.19,
+   "moment_in_s2": -0.45,
+   "moment_out_s2": 3.08,
+   "moment_in_spread": 0.86,
+   "moment_out_spread": 1.8,
+   "alpha_limit": 6.04,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.11,
+     "alpha": -1.09,
+     "alpha_limit": 6.04,
+     "dalt": 3.05,
+     "dkcas": 0.07,
+     "turned": 160.18,
+     "lag_in": 2.56,
+     "moment_in": -0.89,
+     "lag_out": 2.82,
+     "moment_out": 4.89,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.09
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.22,
+     "alpha": -0.91,
+     "alpha_limit": 6.04,
+     "dalt": 12.35,
+     "dkcas": 0.24,
+     "turned": 200.01,
+     "lag_in": 2.6,
+     "moment_in": -0.02,
+     "lag_out": 2.64,
+     "moment_out": 3.08,
+     "bank_end": 0.0,
+     "turn_rate_dps": 2.25
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.39,
+     "alpha": -0.56,
+     "alpha_limit": 6.04,
+     "dalt": 28.0,
+     "dkcas": 0.51,
+     "turned": 200.02
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.49,
+     "alpha": -0.31,
+     "alpha_limit": 6.04,
+     "dalt": 38.24,
+     "dkcas": 0.68,
+     "turned": 200.0
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.6,
+     "alpha": 0.02,
+     "alpha_limit": 6.04,
+     "dalt": 50.17,
+     "dkcas": 0.86,
+     "turned": 200.03
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.73,
+     "alpha": 0.44,
+     "alpha_limit": 6.04,
+     "dalt": 63.51,
+     "dkcas": 1.06,
+     "turned": 200.02
+    }
+   ],
+   "mach": 0.289
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 20000.0,
+   "kcas": 150.0,
+   "flown_per_cmd": 0.0087,
+   "cap_deg": 45.5,
+   "limited_by": "none",
+   "lag_in_s": 2.93,
+   "lag_out_s": 3.13,
+   "lag_in_spread": 0.04,
+   "lag_out_spread": 0.21,
+   "moment_in_s2": -0.88,
+   "moment_out_s2": 3.28,
+   "moment_in_spread": 1.03,
+   "moment_out_spread": 2.25,
+   "alpha_limit": 5.83,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.08,
+     "alpha": -2.0,
+     "alpha_limit": 5.83,
+     "dalt": 3.13,
+     "dkcas": 0.07,
+     "turned": 138.35,
+     "lag_in": 2.91,
+     "moment_in": -1.4,
+     "lag_out": 3.23,
+     "moment_out": 5.53,
+     "bank_end": 0.0,
+     "turn_rate_dps": 0.95
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.16,
+     "alpha": -1.86,
+     "alpha_limit": 5.83,
+     "dalt": 12.69,
+     "dkcas": 0.23,
+     "turned": 200.01,
+     "lag_in": 2.95,
+     "moment_in": -0.37,
+     "lag_out": 3.02,
+     "moment_out": 3.28,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.95
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.28,
+     "alpha": -1.61,
+     "alpha_limit": 5.83,
+     "dalt": 28.56,
+     "dkcas": 0.49,
+     "turned": 200.01
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.35,
+     "alpha": -1.43,
+     "alpha_limit": 5.83,
+     "dalt": 38.9,
+     "dkcas": 0.65,
+     "turned": 200.03
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.44,
+     "alpha": -1.19,
+     "alpha_limit": 5.83,
+     "dalt": 50.89,
+     "dkcas": 0.83,
+     "turned": 200.0
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.53,
+     "alpha": -0.88,
+     "alpha_limit": 5.83,
+     "dalt": 64.71,
+     "dkcas": 1.03,
+     "turned": 200.01
+    }
+   ],
+   "mach": 0.333
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 20000.0,
+   "kcas": 170.0,
+   "flown_per_cmd": 0.0066,
+   "cap_deg": 45.4,
+   "limited_by": "none",
+   "lag_in_s": 3.28,
+   "lag_out_s": 3.52,
+   "lag_in_spread": 0.07,
+   "lag_out_spread": 0.25,
+   "moment_in_s2": -1.31,
+   "moment_out_s2": 3.49,
+   "moment_in_spread": 1.88,
+   "moment_out_spread": 2.82,
+   "alpha_limit": 5.62,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.06,
+     "alpha": -2.63,
+     "alpha_limit": 5.62,
+     "dalt": 3.21,
+     "dkcas": 0.06,
+     "turned": 121.86,
+     "lag_in": 3.25,
+     "moment_in": -2.25,
+     "lag_out": 3.65,
+     "moment_out": 6.32,
+     "bank_end": 0.0,
+     "turn_rate_dps": 0.84
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.12,
+     "alpha": -2.52,
+     "alpha_limit": 5.62,
+     "dalt": 12.93,
+     "dkcas": 0.23,
+     "turned": 200.01,
+     "lag_in": 3.31,
+     "moment_in": -0.37,
+     "lag_out": 3.39,
+     "moment_out": 3.49,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.72
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.21,
+     "alpha": -2.32,
+     "alpha_limit": 5.62,
+     "dalt": 28.98,
+     "dkcas": 0.51,
+     "turned": 200.02
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.27,
+     "alpha": -2.18,
+     "alpha_limit": 5.62,
+     "dalt": 39.37,
+     "dkcas": 0.7,
+     "turned": 200.01
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.35,
+     "alpha": -1.99,
+     "alpha_limit": 5.62,
+     "dalt": 51.34,
+     "dkcas": 0.9,
+     "turned": 200.01
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.43,
+     "alpha": -1.76,
+     "alpha_limit": 5.62,
+     "dalt": 65.38,
+     "dkcas": 1.12,
+     "turned": 200.0
+    }
+   ],
+   "mach": 0.377
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 30000.0,
+   "kcas": 110.0,
+   "flown_per_cmd": 0.0148,
+   "cap_deg": 46.0,
+   "limited_by": "none",
+   "lag_in_s": 2.0,
+   "lag_out_s": 2.16,
+   "lag_in_spread": 0.04,
+   "lag_out_spread": 0.18,
+   "moment_in_s2": -0.76,
+   "moment_out_s2": 2.99,
+   "moment_in_spread": 0.78,
+   "moment_out_spread": 1.93,
+   "alpha_limit": 5.98,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.12,
+     "alpha": 0.3,
+     "alpha_limit": 5.98,
+     "dalt": 2.62,
+     "dkcas": 0.06,
+     "turned": 160.22,
+     "lag_in": 1.98,
+     "moment_in": -1.15,
+     "lag_out": 2.25,
+     "moment_out": 4.92,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.09
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.26,
+     "alpha": 0.55,
+     "alpha_limit": 5.98,
+     "dalt": 11.48,
+     "dkcas": 0.23,
+     "turned": 200.01,
+     "lag_in": 2.02,
+     "moment_in": -0.37,
+     "lag_out": 2.07,
+     "moment_out": 2.99,
+     "bank_end": 0.0,
+     "turn_rate_dps": 2.25
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.48,
+     "alpha": 1.02,
+     "alpha_limit": 5.98,
+     "dalt": 25.92,
+     "dkcas": 0.54,
+     "turned": 200.03
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.62,
+     "alpha": 1.38,
+     "alpha_limit": 5.98,
+     "dalt": 35.86,
+     "dkcas": 0.75,
+     "turned": 200.04
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.78,
+     "alpha": 1.85,
+     "alpha_limit": 5.98,
+     "dalt": 47.61,
+     "dkcas": 1.0,
+     "turned": 200.02
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.98,
+     "alpha": 2.58,
+     "alpha_limit": 5.98,
+     "dalt": 62.1,
+     "dkcas": 1.32,
+     "turned": 200.01
+    }
+   ],
+   "mach": 0.304
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 30000.0,
+   "kcas": 130.0,
+   "flown_per_cmd": 0.0081,
+   "cap_deg": 45.5,
+   "limited_by": "none",
+   "lag_in_s": 2.37,
+   "lag_out_s": 2.59,
+   "lag_in_spread": 0.02,
+   "lag_out_spread": 0.21,
+   "moment_in_s2": -1.33,
+   "moment_out_s2": 3.2,
+   "moment_in_spread": 0.66,
+   "moment_out_spread": 2.48,
+   "alpha_limit": 5.71,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.07,
+     "alpha": -1.14,
+     "alpha_limit": 5.71,
+     "dalt": 3.07,
+     "dkcas": 0.06,
+     "turned": 135.02,
+     "lag_in": 2.36,
+     "moment_in": -1.66,
+     "lag_out": 2.7,
+     "moment_out": 5.68,
+     "bank_end": 0.0,
+     "turn_rate_dps": 0.92
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.15,
+     "alpha": -0.96,
+     "alpha_limit": 5.71,
+     "dalt": 12.41,
+     "dkcas": 0.22,
+     "turned": 200.01,
+     "lag_in": 2.38,
+     "moment_in": -1.0,
+     "lag_out": 2.48,
+     "moment_out": 3.2,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.89
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.26,
+     "alpha": -0.62,
+     "alpha_limit": 5.71,
+     "dalt": 28.16,
+     "dkcas": 0.51,
+     "turned": 200.02
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.33,
+     "alpha": -0.37,
+     "alpha_limit": 5.71,
+     "dalt": 38.43,
+     "dkcas": 0.7,
+     "turned": 200.02
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.42,
+     "alpha": -0.04,
+     "alpha_limit": 5.71,
+     "dalt": 50.37,
+     "dkcas": 0.93,
+     "turned": 200.02
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.55,
+     "alpha": 0.36,
+     "alpha_limit": 5.71,
+     "dalt": 63.64,
+     "dkcas": 1.22,
+     "turned": 200.04
+    }
+   ],
+   "mach": 0.358
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 30000.0,
+   "kcas": 150.0,
+   "flown_per_cmd": 0.0054,
+   "cap_deg": 45.4,
+   "limited_by": "none",
+   "lag_in_s": 2.72,
+   "lag_out_s": 3.0,
+   "lag_in_spread": 0.05,
+   "lag_out_spread": 0.26,
+   "moment_in_s2": -1.94,
+   "moment_out_s2": 3.3,
+   "moment_in_spread": 1.66,
+   "moment_out_spread": 3.25,
+   "alpha_limit": 5.44,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.05,
+     "alpha": -2.04,
+     "alpha_limit": 5.44,
+     "dalt": 3.16,
+     "dkcas": 0.06,
+     "turned": 116.95,
+     "lag_in": 2.7,
+     "moment_in": -2.77,
+     "lag_out": 3.13,
+     "moment_out": 6.55,
+     "bank_end": 0.0,
+     "turn_rate_dps": 0.8
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.1,
+     "alpha": -1.91,
+     "alpha_limit": 5.44,
+     "dalt": 12.79,
+     "dkcas": 0.23,
+     "turned": 200.01,
+     "lag_in": 2.75,
+     "moment_in": -1.11,
+     "lag_out": 2.87,
+     "moment_out": 3.3,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.64
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.17,
+     "alpha": -1.66,
+     "alpha_limit": 5.44,
+     "dalt": 28.8,
+     "dkcas": 0.48,
+     "turned": 200.01
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.22,
+     "alpha": -1.48,
+     "alpha_limit": 5.44,
+     "dalt": 39.21,
+     "dkcas": 0.64,
+     "turned": 200.01
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.29,
+     "alpha": -1.25,
+     "alpha_limit": 5.44,
+     "dalt": 51.25,
+     "dkcas": 0.83,
+     "turned": 200.0
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.38,
+     "alpha": -0.95,
+     "alpha_limit": 5.44,
+     "dalt": 65.06,
+     "dkcas": 1.07,
+     "turned": 200.04
+    }
+   ],
+   "mach": 0.412
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 30000.0,
+   "kcas": 170.0,
+   "flown_per_cmd": 0.0039,
+   "cap_deg": 45.3,
+   "limited_by": "none",
+   "lag_in_s": 3.07,
+   "lag_out_s": 3.4,
+   "lag_in_spread": 0.09,
+   "lag_out_spread": 0.32,
+   "moment_in_s2": -2.8,
+   "moment_out_s2": 3.38,
+   "moment_in_spread": 3.55,
+   "moment_out_spread": 4.15,
+   "alpha_limit": 5.18,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.03,
+     "alpha": -2.67,
+     "alpha_limit": 5.18,
+     "dalt": 3.24,
+     "dkcas": 0.06,
+     "turned": 103.29,
+     "lag_in": 3.02,
+     "moment_in": -4.58,
+     "lag_out": 3.56,
+     "moment_out": 7.52,
+     "bank_end": 0.0,
+     "turn_rate_dps": 0.71
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.07,
+     "alpha": -2.56,
+     "alpha_limit": 5.18,
+     "dalt": 13.04,
+     "dkcas": 0.23,
+     "turned": 200.01,
+     "lag_in": 3.11,
+     "moment_in": -1.03,
+     "lag_out": 3.24,
+     "moment_out": 3.38,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.45
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.12,
+     "alpha": -2.37,
+     "alpha_limit": 5.18,
+     "dalt": 29.19,
+     "dkcas": 0.52,
+     "turned": 200.0
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.16,
+     "alpha": -2.23,
+     "alpha_limit": 5.18,
+     "dalt": 39.62,
+     "dkcas": 0.71,
+     "turned": 200.02
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.22,
+     "alpha": -2.05,
+     "alpha_limit": 5.18,
+     "dalt": 51.59,
+     "dkcas": 0.92,
+     "turned": 200.0
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.28,
+     "alpha": -1.82,
+     "alpha_limit": 5.18,
+     "dalt": 65.57,
+     "dkcas": 1.15,
+     "turned": 200.02
+    }
+   ],
+   "mach": 0.465
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 45000.0,
+   "kcas": 110.0,
+   "flown_per_cmd": 0.0074,
+   "cap_deg": 45.5,
+   "limited_by": "none",
+   "lag_in_s": 1.66,
+   "lag_out_s": 1.98,
+   "lag_in_spread": 0.02,
+   "lag_out_spread": 0.26,
+   "moment_in_s2": -2.59,
+   "moment_out_s2": 3.52,
+   "moment_in_spread": 1.35,
+   "moment_out_spread": 3.62,
+   "alpha_limit": 5.36,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.06,
+     "alpha": 0.18,
+     "alpha_limit": 5.36,
+     "dalt": 2.62,
+     "dkcas": 0.07,
+     "turned": 116.58,
+     "lag_in": 1.65,
+     "moment_in": -3.26,
+     "lag_out": 2.11,
+     "moment_out": 7.14,
+     "bank_end": 0.0,
+     "turn_rate_dps": 0.79
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.13,
+     "alpha": 0.42,
+     "alpha_limit": 5.36,
+     "dalt": 11.72,
+     "dkcas": 0.29,
+     "turned": 200.01,
+     "lag_in": 1.67,
+     "moment_in": -1.91,
+     "lag_out": 1.85,
+     "moment_out": 3.52,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.63
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.24,
+     "alpha": 0.86,
+     "alpha_limit": 5.36,
+     "dalt": 26.36,
+     "dkcas": 0.66,
+     "turned": 200.01
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.31,
+     "alpha": 1.2,
+     "alpha_limit": 5.36,
+     "dalt": 36.28,
+     "dkcas": 0.91,
+     "turned": 200.02
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.42,
+     "alpha": 1.65,
+     "alpha_limit": 5.36,
+     "dalt": 48.56,
+     "dkcas": 1.22,
+     "turned": 200.01
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.55,
+     "alpha": 2.29,
+     "alpha_limit": 5.36,
+     "dalt": 63.04,
+     "dkcas": 1.62,
+     "turned": 200.01
+    }
+   ],
+   "mach": 0.433
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 45000.0,
+   "kcas": 130.0,
+   "flown_per_cmd": 0.0035,
+   "cap_deg": 45.3,
+   "limited_by": "none",
+   "lag_in_s": 2.1,
+   "lag_out_s": 2.49,
+   "lag_in_spread": 0.04,
+   "lag_out_spread": 0.34,
+   "moment_in_s2": -3.37,
+   "moment_out_s2": 3.63,
+   "moment_in_spread": 2.79,
+   "moment_out_spread": 4.98,
+   "alpha_limit": 4.96,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.03,
+     "alpha": -1.24,
+     "alpha_limit": 4.96,
+     "dalt": 3.22,
+     "dkcas": 0.05,
+     "turned": 98.9,
+     "lag_in": 2.08,
+     "moment_in": -4.77,
+     "lag_out": 2.66,
+     "moment_out": 8.6,
+     "bank_end": 0.0,
+     "turn_rate_dps": 0.67
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.06,
+     "alpha": -1.07,
+     "alpha_limit": 4.96,
+     "dalt": 13.05,
+     "dkcas": 0.23,
+     "turned": 200.0,
+     "lag_in": 2.12,
+     "moment_in": -1.98,
+     "lag_out": 2.31,
+     "moment_out": 3.63,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.38
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.11,
+     "alpha": -0.74,
+     "alpha_limit": 4.96,
+     "dalt": 29.4,
+     "dkcas": 0.55,
+     "turned": 200.01
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.15,
+     "alpha": -0.5,
+     "alpha_limit": 4.96,
+     "dalt": 40.04,
+     "dkcas": 0.77,
+     "turned": 200.01
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.2,
+     "alpha": -0.19,
+     "alpha_limit": 4.96,
+     "dalt": 52.32,
+     "dkcas": 1.03,
+     "turned": 200.01
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.27,
+     "alpha": 0.18,
+     "alpha_limit": 4.96,
+     "dalt": 65.88,
+     "dkcas": 1.37,
+     "turned": 200.01
+    }
+   ],
+   "mach": 0.508
+  },
+  {
+   "weight_lb": 12000.0,
+   "height_ft": 45000.0,
+   "kcas": 150.0,
+   "flown_per_cmd": 0.0018,
+   "cap_deg": 45.2,
+   "limited_by": "none",
+   "lag_in_s": 2.54,
+   "lag_out_s": 2.97,
+   "lag_in_spread": 0.14,
+   "lag_out_spread": 0.45,
+   "moment_in_s2": -4.47,
+   "moment_out_s2": 3.22,
+   "moment_in_spread": 7.1,
+   "moment_out_spread": 6.66,
+   "alpha_limit": 3.87,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.01,
+     "alpha": -2.12,
+     "alpha_limit": 3.87,
+     "dalt": 2.98,
+     "dkcas": 0.08,
+     "turned": 86.14,
+     "lag_in": 2.47,
+     "moment_in": -8.03,
+     "lag_out": 3.2,
+     "moment_out": 9.88,
+     "bank_end": 0.0,
+     "turn_rate_dps": 0.59
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.03,
+     "alpha": -1.98,
+     "alpha_limit": 3.87,
+     "dalt": 11.94,
+     "dkcas": 0.33,
+     "turned": 175.14,
+     "lag_in": 2.61,
+     "moment_in": -0.92,
+     "lag_out": 2.75,
+     "moment_out": 3.22,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.2
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.06,
+     "alpha": -1.76,
+     "alpha_limit": 3.87,
+     "dalt": 28.72,
+     "dkcas": 0.59,
+     "turned": 200.01
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.08,
+     "alpha": -1.58,
+     "alpha_limit": 3.87,
+     "dalt": 39.72,
+     "dkcas": 0.76,
+     "turned": 200.01
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.11,
+     "alpha": -1.36,
+     "alpha_limit": 3.87,
+     "dalt": 52.42,
+     "dkcas": 0.96,
+     "turned": 200.0
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.16,
+     "alpha": -1.07,
+     "alpha_limit": 3.87,
+     "dalt": 66.92,
+     "dkcas": 1.18,
+     "turned": 200.0
+    }
+   ],
+   "mach": 0.582
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 4000.0,
+   "kcas": 110.0,
+   "flown_per_cmd": 0.1073,
+   "cap_deg": 30.3,
+   "limited_by": "alpha",
+   "lag_in_s": 2.51,
+   "lag_out_s": 2.33,
+   "lag_in_spread": 0.29,
+   "lag_out_spread": 0.26,
+   "moment_in_s2": 0.57,
+   "moment_out_s2": 1.99,
+   "moment_in_spread": 2.83,
+   "moment_out_spread": 1.19,
+   "alpha_limit": 6.4,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.76,
+     "alpha": 3.89,
+     "alpha_limit": 6.4,
+     "dalt": 3.91,
+     "dkcas": 0.09,
+     "turned": 200.01,
+     "lag_in": 2.36,
+     "moment_in": -0.85,
+     "lag_out": 2.46,
+     "moment_out": 3.17,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.77
+    },
+    {
+     "cmd": 20.0,
+     "flown": 21.79,
+     "alpha": 4.57,
+     "alpha_limit": 6.4,
+     "dalt": 16.97,
+     "dkcas": 0.37,
+     "turned": 200.03,
+     "lag_in": 2.66,
+     "moment_in": 1.99,
+     "lag_out": 2.2,
+     "moment_out": 1.99,
+     "bank_end": 0.01,
+     "turn_rate_dps": 3.73
+    },
+    {
+     "cmd": 30.0,
+     "flown": 33.56,
+     "alpha": 6.41,
+     "alpha_limit": 6.4,
+     "dalt": 46.03,
+     "dkcas": 1.11,
+     "turned": 200.02
+    },
+    {
+     "cmd": 35.0,
+     "flown": 38.8,
+     "alpha": 6.45,
+     "alpha_limit": 6.4,
+     "dalt": 121.45,
+     "dkcas": 2.77,
+     "turned": 200.02
+    },
+    {
+     "cmd": 40.0,
+     "flown": 43.57,
+     "alpha": 6.75,
+     "alpha_limit": 6.4,
+     "dalt": 198.75,
+     "dkcas": 9.82,
+     "turned": 200.05
+    },
+    {
+     "cmd": 45.0,
+     "flown": 47.83,
+     "alpha": 6.93,
+     "alpha_limit": 6.4,
+     "dalt": 315.24,
+     "dkcas": 18.32,
+     "turned": 200.01
+    }
+   ],
+   "mach": 0.179
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 4000.0,
+   "kcas": 130.0,
+   "flown_per_cmd": 0.0455,
+   "cap_deg": 47.7,
+   "limited_by": "none",
+   "lag_in_s": 2.77,
+   "lag_out_s": 2.74,
+   "lag_in_spread": 0.17,
+   "lag_out_spread": 0.22,
+   "moment_in_s2": 0.6,
+   "moment_out_s2": 2.72,
+   "moment_in_spread": 2.21,
+   "moment_out_spread": 1.4,
+   "alpha_limit": 6.29,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.38,
+     "alpha": 1.23,
+     "alpha_limit": 6.29,
+     "dalt": 3.22,
+     "dkcas": 0.09,
+     "turned": 200.01,
+     "lag_in": 2.68,
+     "moment_in": -0.5,
+     "lag_out": 2.85,
+     "moment_out": 4.12,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.45
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.84,
+     "alpha": 1.56,
+     "alpha_limit": 6.29,
+     "dalt": 13.12,
+     "dkcas": 0.35,
+     "turned": 200.02,
+     "lag_in": 2.85,
+     "moment_in": 1.71,
+     "lag_out": 2.63,
+     "moment_out": 2.72,
+     "bank_end": 0.01,
+     "turn_rate_dps": 3.0
+    },
+    {
+     "cmd": 30.0,
+     "flown": 31.44,
+     "alpha": 2.25,
+     "alpha_limit": 6.29,
+     "dalt": 30.01,
+     "dkcas": 0.78,
+     "turned": 200.03
+    },
+    {
+     "cmd": 35.0,
+     "flown": 36.79,
+     "alpha": 2.85,
+     "alpha_limit": 6.29,
+     "dalt": 40.9,
+     "dkcas": 1.19,
+     "turned": 200.0
+    },
+    {
+     "cmd": 40.0,
+     "flown": 42.21,
+     "alpha": 3.7,
+     "alpha_limit": 6.29,
+     "dalt": 54.36,
+     "dkcas": 1.79,
+     "turned": 200.0
+    },
+    {
+     "cmd": 45.0,
+     "flown": 47.74,
+     "alpha": 4.85,
+     "alpha_limit": 6.29,
+     "dalt": 70.95,
+     "dkcas": 2.35,
+     "turned": 200.02
+    }
+   ],
+   "mach": 0.212
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 4000.0,
+   "kcas": 150.0,
+   "flown_per_cmd": 0.0282,
+   "cap_deg": 46.6,
+   "limited_by": "none",
+   "lag_in_s": 3.06,
+   "lag_out_s": 3.12,
+   "lag_in_spread": 0.12,
+   "lag_out_spread": 0.21,
+   "moment_in_s2": 0.73,
+   "moment_out_s2": 3.54,
+   "moment_in_spread": 1.77,
+   "moment_out_spread": 1.52,
+   "alpha_limit": 6.18,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.24,
+     "alpha": -0.19,
+     "alpha_limit": 6.18,
+     "dalt": 3.21,
+     "dkcas": 0.08,
+     "turned": 180.54,
+     "lag_in": 3.0,
+     "moment_in": -0.16,
+     "lag_out": 3.22,
+     "moment_out": 5.05,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.24
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.51,
+     "alpha": 0.05,
+     "alpha_limit": 6.18,
+     "dalt": 12.96,
+     "dkcas": 0.3,
+     "turned": 200.0,
+     "lag_in": 3.12,
+     "moment_in": 1.62,
+     "lag_out": 3.01,
+     "moment_out": 3.54,
+     "bank_end": 0.01,
+     "turn_rate_dps": 2.55
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.9,
+     "alpha": 0.47,
+     "alpha_limit": 6.18,
+     "dalt": 28.59,
+     "dkcas": 0.64,
+     "turned": 200.03
+    },
+    {
+     "cmd": 35.0,
+     "flown": 36.12,
+     "alpha": 0.79,
+     "alpha_limit": 6.18,
+     "dalt": 38.97,
+     "dkcas": 0.85,
+     "turned": 200.02
+    },
+    {
+     "cmd": 40.0,
+     "flown": 41.35,
+     "alpha": 1.22,
+     "alpha_limit": 6.18,
+     "dalt": 51.57,
+     "dkcas": 1.11,
+     "turned": 200.01
+    },
+    {
+     "cmd": 45.0,
+     "flown": 46.56,
+     "alpha": 1.83,
+     "alpha_limit": 6.18,
+     "dalt": 66.71,
+     "dkcas": 1.54,
+     "turned": 200.03
+    }
+   ],
+   "mach": 0.245
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 4000.0,
+   "kcas": 170.0,
+   "flown_per_cmd": 0.0211,
+   "cap_deg": 46.1,
+   "limited_by": "none",
+   "lag_in_s": 3.44,
+   "lag_out_s": 3.55,
+   "lag_in_spread": 0.09,
+   "lag_out_spread": 0.21,
+   "moment_in_s2": 0.73,
+   "moment_out_s2": 4.12,
+   "moment_in_spread": 1.51,
+   "moment_out_spread": 1.72,
+   "alpha_limit": 6.08,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.19,
+     "alpha": -1.2,
+     "alpha_limit": 6.08,
+     "dalt": 3.24,
+     "dkcas": 0.08,
+     "turned": 158.13,
+     "lag_in": 3.4,
+     "moment_in": -0.02,
+     "lag_out": 3.65,
+     "moment_out": 5.84,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.09
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.39,
+     "alpha": -1.02,
+     "alpha_limit": 6.08,
+     "dalt": 13.11,
+     "dkcas": 0.29,
+     "turned": 200.01,
+     "lag_in": 3.48,
+     "moment_in": 1.49,
+     "lag_out": 3.44,
+     "moment_out": 4.12,
+     "bank_end": 0.01,
+     "turn_rate_dps": 2.24
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.66,
+     "alpha": -0.67,
+     "alpha_limit": 6.08,
+     "dalt": 29.89,
+     "dkcas": 0.63,
+     "turned": 200.0
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.81,
+     "alpha": -0.42,
+     "alpha_limit": 6.08,
+     "dalt": 40.96,
+     "dkcas": 0.84,
+     "turned": 200.02
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.95,
+     "alpha": -0.08,
+     "alpha_limit": 6.08,
+     "dalt": 53.91,
+     "dkcas": 1.08,
+     "turned": 200.0
+    },
+    {
+     "cmd": 45.0,
+     "flown": 46.09,
+     "alpha": 0.34,
+     "alpha_limit": 6.08,
+     "dalt": 68.6,
+     "dkcas": 1.42,
+     "turned": 200.02
+    }
+   ],
+   "mach": 0.277
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 20000.0,
+   "kcas": 110.0,
+   "flown_per_cmd": 0.064,
+   "cap_deg": 30.1,
+   "limited_by": "alpha",
+   "lag_in_s": 1.88,
+   "lag_out_s": 1.88,
+   "lag_in_spread": 0.19,
+   "lag_out_spread": 0.24,
+   "moment_in_s2": -0.88,
+   "moment_out_s2": 2.1,
+   "moment_in_spread": 2.56,
+   "moment_out_spread": 1.62,
+   "alpha_limit": 6.18,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.46,
+     "alpha": 3.84,
+     "alpha_limit": 6.18,
+     "dalt": 3.32,
+     "dkcas": 0.09,
+     "turned": 197.02,
+     "lag_in": 1.78,
+     "moment_in": -2.16,
+     "lag_out": 2.0,
+     "moment_out": 3.71,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.34
+    },
+    {
+     "cmd": 20.0,
+     "flown": 21.06,
+     "alpha": 4.48,
+     "alpha_limit": 6.18,
+     "dalt": 15.93,
+     "dkcas": 0.39,
+     "turned": 200.0,
+     "lag_in": 1.97,
+     "moment_in": 0.4,
+     "lag_out": 1.76,
+     "moment_out": 2.1,
+     "bank_end": 0.01,
+     "turn_rate_dps": 2.79
+    },
+    {
+     "cmd": 30.0,
+     "flown": 32.13,
+     "alpha": 5.95,
+     "alpha_limit": 6.18,
+     "dalt": 41.94,
+     "dkcas": 1.0,
+     "turned": 200.0
+    },
+    {
+     "cmd": 35.0,
+     "flown": 37.18,
+     "alpha": 6.31,
+     "alpha_limit": 6.18,
+     "dalt": 241.28,
+     "dkcas": 1.53,
+     "turned": 200.03
+    },
+    {
+     "cmd": 40.0,
+     "flown": 42.09,
+     "alpha": 6.56,
+     "alpha_limit": 6.18,
+     "dalt": 354.12,
+     "dkcas": 8.66,
+     "turned": 200.02
+    },
+    {
+     "cmd": 45.0,
+     "flown": 46.62,
+     "alpha": 6.63,
+     "alpha_limit": 6.18,
+     "dalt": 540.0,
+     "dkcas": 17.37,
+     "turned": 200.07
+    }
+   ],
+   "mach": 0.245
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 20000.0,
+   "kcas": 130.0,
+   "flown_per_cmd": 0.0279,
+   "cap_deg": 47.0,
+   "limited_by": "none",
+   "lag_in_s": 2.22,
+   "lag_out_s": 2.34,
+   "lag_in_spread": 0.07,
+   "lag_out_spread": 0.2,
+   "moment_in_s2": -1.05,
+   "moment_out_s2": 2.63,
+   "moment_in_spread": 1.25,
+   "moment_out_spread": 1.86,
+   "alpha_limit": 6.04,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.23,
+     "alpha": 1.21,
+     "alpha_limit": 6.04,
+     "dalt": 3.1,
+     "dkcas": 0.08,
+     "turned": 163.2,
+     "lag_in": 2.18,
+     "moment_in": -1.67,
+     "lag_out": 2.44,
+     "moment_out": 4.49,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.11
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.5,
+     "alpha": 1.53,
+     "alpha_limit": 6.04,
+     "dalt": 12.64,
+     "dkcas": 0.31,
+     "turned": 200.0,
+     "lag_in": 2.25,
+     "moment_in": -0.43,
+     "lag_out": 2.24,
+     "moment_out": 2.63,
+     "bank_end": 0.01,
+     "turn_rate_dps": 2.29
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.89,
+     "alpha": 2.16,
+     "alpha_limit": 6.04,
+     "dalt": 28.91,
+     "dkcas": 0.72,
+     "turned": 200.02
+    },
+    {
+     "cmd": 35.0,
+     "flown": 36.15,
+     "alpha": 2.72,
+     "alpha_limit": 6.04,
+     "dalt": 41.18,
+     "dkcas": 1.03,
+     "turned": 200.01
+    },
+    {
+     "cmd": 40.0,
+     "flown": 41.5,
+     "alpha": 3.46,
+     "alpha_limit": 6.04,
+     "dalt": 55.78,
+     "dkcas": 1.45,
+     "turned": 200.02
+    },
+    {
+     "cmd": 45.0,
+     "flown": 46.97,
+     "alpha": 4.55,
+     "alpha_limit": 6.04,
+     "dalt": 73.4,
+     "dkcas": 2.01,
+     "turned": 200.01
+    }
+   ],
+   "mach": 0.289
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 20000.0,
+   "kcas": 150.0,
+   "flown_per_cmd": 0.0165,
+   "cap_deg": 46.1,
+   "limited_by": "none",
+   "lag_in_s": 2.55,
+   "lag_out_s": 2.74,
+   "lag_in_spread": 0.03,
+   "lag_out_spread": 0.21,
+   "moment_in_s2": -1.23,
+   "moment_out_s2": 3.2,
+   "moment_in_spread": 0.81,
+   "moment_out_spread": 2.29,
+   "alpha_limit": 5.83,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.14,
+     "alpha": -0.25,
+     "alpha_limit": 5.83,
+     "dalt": 3.2,
+     "dkcas": 0.07,
+     "turned": 140.2,
+     "lag_in": 2.53,
+     "moment_in": -1.63,
+     "lag_out": 2.85,
+     "moment_out": 5.49,
+     "bank_end": 0.0,
+     "turn_rate_dps": 0.96
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.29,
+     "alpha": -0.02,
+     "alpha_limit": 5.83,
+     "dalt": 12.98,
+     "dkcas": 0.29,
+     "turned": 200.01,
+     "lag_in": 2.56,
+     "moment_in": -0.82,
+     "lag_out": 2.63,
+     "moment_out": 3.2,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.97
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.52,
+     "alpha": 0.4,
+     "alpha_limit": 5.83,
+     "dalt": 28.61,
+     "dkcas": 0.68,
+     "turned": 200.02
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.68,
+     "alpha": 0.71,
+     "alpha_limit": 5.83,
+     "dalt": 38.87,
+     "dkcas": 0.94,
+     "turned": 200.02
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.88,
+     "alpha": 1.12,
+     "alpha_limit": 5.83,
+     "dalt": 50.96,
+     "dkcas": 1.26,
+     "turned": 200.02
+    },
+    {
+     "cmd": 45.0,
+     "flown": 46.1,
+     "alpha": 1.68,
+     "alpha_limit": 5.83,
+     "dalt": 66.54,
+     "dkcas": 1.67,
+     "turned": 200.04
+    }
+   ],
+   "mach": 0.333
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 20000.0,
+   "kcas": 170.0,
+   "flown_per_cmd": 0.0118,
+   "cap_deg": 45.7,
+   "limited_by": "none",
+   "lag_in_s": 2.92,
+   "lag_out_s": 3.16,
+   "lag_in_spread": 0.05,
+   "lag_out_spread": 0.25,
+   "moment_in_s2": -1.51,
+   "moment_out_s2": 3.53,
+   "moment_in_spread": 1.29,
+   "moment_out_spread": 2.87,
+   "alpha_limit": 5.62,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.11,
+     "alpha": -1.26,
+     "alpha_limit": 5.62,
+     "dalt": 3.24,
+     "dkcas": 0.07,
+     "turned": 123.29,
+     "lag_in": 2.9,
+     "moment_in": -2.16,
+     "lag_out": 3.29,
+     "moment_out": 6.4,
+     "bank_end": 0.01,
+     "turn_rate_dps": 0.84
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.22,
+     "alpha": -1.09,
+     "alpha_limit": 5.62,
+     "dalt": 13.12,
+     "dkcas": 0.27,
+     "turned": 200.01,
+     "lag_in": 2.94,
+     "moment_in": -0.87,
+     "lag_out": 3.03,
+     "moment_out": 3.53,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.73
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.37,
+     "alpha": -0.76,
+     "alpha_limit": 5.62,
+     "dalt": 29.84,
+     "dkcas": 0.64,
+     "turned": 200.0
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.47,
+     "alpha": -0.51,
+     "alpha_limit": 5.62,
+     "dalt": 40.89,
+     "dkcas": 0.89,
+     "turned": 200.01
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.59,
+     "alpha": -0.19,
+     "alpha_limit": 5.62,
+     "dalt": 53.81,
+     "dkcas": 1.19,
+     "turned": 200.03
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.74,
+     "alpha": 0.21,
+     "alpha_limit": 5.62,
+     "dalt": 68.52,
+     "dkcas": 1.56,
+     "turned": 200.01
+    }
+   ],
+   "mach": 0.377
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 30000.0,
+   "kcas": 110.0,
+   "flown_per_cmd": 0.0447,
+   "cap_deg": 28.8,
+   "limited_by": "alpha",
+   "lag_in_s": 1.5,
+   "lag_out_s": 1.62,
+   "lag_in_spread": 0.11,
+   "lag_out_spread": 0.23,
+   "moment_in_s2": -2.02,
+   "moment_out_s2": 2.31,
+   "moment_in_spread": 2.28,
+   "moment_out_spread": 1.93,
+   "alpha_limit": 5.98,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.33,
+     "alpha": 3.82,
+     "alpha_limit": 5.98,
+     "dalt": 3.3,
+     "dkcas": 0.1,
+     "turned": 164.26,
+     "lag_in": 1.44,
+     "moment_in": -3.16,
+     "lag_out": 1.73,
+     "moment_out": 4.24,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.11
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.75,
+     "alpha": 4.44,
+     "alpha_limit": 5.98,
+     "dalt": 15.5,
+     "dkcas": 0.46,
+     "turned": 200.02,
+     "lag_in": 1.56,
+     "moment_in": -0.88,
+     "lag_out": 1.5,
+     "moment_out": 2.31,
+     "bank_end": 0.01,
+     "turn_rate_dps": 2.31
+    },
+    {
+     "cmd": 30.0,
+     "flown": 31.48,
+     "alpha": 5.82,
+     "alpha_limit": 5.98,
+     "dalt": 39.39,
+     "dkcas": 1.2,
+     "turned": 200.01
+    },
+    {
+     "cmd": 35.0,
+     "flown": 36.52,
+     "alpha": 6.13,
+     "alpha_limit": 5.98,
+     "dalt": 324.24,
+     "dkcas": 1.06,
+     "turned": 200.04
+    },
+    {
+     "cmd": 40.0,
+     "flown": 41.45,
+     "alpha": 6.35,
+     "alpha_limit": 5.98,
+     "dalt": 489.16,
+     "dkcas": 8.27,
+     "turned": 200.02
+    },
+    {
+     "cmd": 45.0,
+     "flown": 46.11,
+     "alpha": 6.4,
+     "alpha_limit": 5.98,
+     "dalt": 741.38,
+     "dkcas": 17.18,
+     "turned": 200.03
+    }
+   ],
+   "mach": 0.304
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 30000.0,
+   "kcas": 130.0,
+   "flown_per_cmd": 0.0192,
+   "cap_deg": 46.4,
+   "limited_by": "none",
+   "lag_in_s": 1.92,
+   "lag_out_s": 2.14,
+   "lag_in_spread": 0.02,
+   "lag_out_spread": 0.22,
+   "moment_in_s2": -2.05,
+   "moment_out_s2": 2.81,
+   "moment_in_spread": 0.73,
+   "moment_out_spread": 2.56,
+   "alpha_limit": 5.71,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.16,
+     "alpha": 1.13,
+     "alpha_limit": 5.71,
+     "dalt": 3.18,
+     "dkcas": 0.08,
+     "turned": 137.03,
+     "lag_in": 1.91,
+     "moment_in": -2.42,
+     "lag_out": 2.25,
+     "moment_out": 5.38,
+     "bank_end": 0.0,
+     "turn_rate_dps": 0.93
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.35,
+     "alpha": 1.43,
+     "alpha_limit": 5.71,
+     "dalt": 12.97,
+     "dkcas": 0.34,
+     "turned": 200.01,
+     "lag_in": 1.93,
+     "moment_in": -1.68,
+     "lag_out": 2.04,
+     "moment_out": 2.81,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.92
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.61,
+     "alpha": 2.03,
+     "alpha_limit": 5.71,
+     "dalt": 29.54,
+     "dkcas": 0.78,
+     "turned": 200.02
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.81,
+     "alpha": 2.56,
+     "alpha_limit": 5.71,
+     "dalt": 41.59,
+     "dkcas": 1.12,
+     "turned": 200.0
+    },
+    {
+     "cmd": 40.0,
+     "flown": 41.06,
+     "alpha": 3.27,
+     "alpha_limit": 5.71,
+     "dalt": 56.13,
+     "dkcas": 1.58,
+     "turned": 200.01
+    },
+    {
+     "cmd": 45.0,
+     "flown": 46.43,
+     "alpha": 4.26,
+     "alpha_limit": 5.71,
+     "dalt": 72.94,
+     "dkcas": 2.21,
+     "turned": 200.04
+    }
+   ],
+   "mach": 0.358
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 30000.0,
+   "kcas": 150.0,
+   "flown_per_cmd": 0.0111,
+   "cap_deg": 45.8,
+   "limited_by": "none",
+   "lag_in_s": 2.28,
+   "lag_out_s": 2.56,
+   "lag_in_spread": 0.02,
+   "lag_out_spread": 0.26,
+   "moment_in_s2": -2.32,
+   "moment_out_s2": 3.28,
+   "moment_in_spread": 0.87,
+   "moment_out_spread": 3.32,
+   "alpha_limit": 5.44,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.1,
+     "alpha": -0.31,
+     "alpha_limit": 5.44,
+     "dalt": 3.27,
+     "dkcas": 0.07,
+     "turned": 118.26,
+     "lag_in": 2.28,
+     "moment_in": -2.75,
+     "lag_out": 2.7,
+     "moment_out": 6.6,
+     "bank_end": 0.0,
+     "turn_rate_dps": 0.81
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.2,
+     "alpha": -0.09,
+     "alpha_limit": 5.44,
+     "dalt": 13.3,
+     "dkcas": 0.31,
+     "turned": 200.0,
+     "lag_in": 2.29,
+     "moment_in": -1.88,
+     "lag_out": 2.43,
+     "moment_out": 3.28,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.66
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.35,
+     "alpha": 0.32,
+     "alpha_limit": 5.44,
+     "dalt": 29.16,
+     "dkcas": 0.72,
+     "turned": 200.01
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.46,
+     "alpha": 0.61,
+     "alpha_limit": 5.44,
+     "dalt": 39.37,
+     "dkcas": 1.0,
+     "turned": 200.01
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.6,
+     "alpha": 0.99,
+     "alpha_limit": 5.44,
+     "dalt": 51.33,
+     "dkcas": 1.34,
+     "turned": 200.03
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.79,
+     "alpha": 1.53,
+     "alpha_limit": 5.44,
+     "dalt": 66.94,
+     "dkcas": 1.77,
+     "turned": 200.02
+    }
+   ],
+   "mach": 0.412
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 30000.0,
+   "kcas": 170.0,
+   "flown_per_cmd": 0.0078,
+   "cap_deg": 45.5,
+   "limited_by": "none",
+   "lag_in_s": 2.66,
+   "lag_out_s": 3.0,
+   "lag_in_spread": 0.06,
+   "lag_out_spread": 0.32,
+   "moment_in_s2": -2.9,
+   "moment_out_s2": 3.48,
+   "moment_in_spread": 2.5,
+   "moment_out_spread": 4.22,
+   "alpha_limit": 5.18,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.07,
+     "alpha": -1.32,
+     "alpha_limit": 5.18,
+     "dalt": 3.31,
+     "dkcas": 0.06,
+     "turned": 104.31,
+     "lag_in": 2.64,
+     "moment_in": -4.16,
+     "lag_out": 3.16,
+     "moment_out": 7.7,
+     "bank_end": 0.0,
+     "turn_rate_dps": 0.71
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.15,
+     "alpha": -1.15,
+     "alpha_limit": 5.18,
+     "dalt": 13.44,
+     "dkcas": 0.27,
+     "turned": 200.01,
+     "lag_in": 2.69,
+     "moment_in": -1.65,
+     "lag_out": 2.84,
+     "moment_out": 3.48,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.46
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.24,
+     "alpha": -0.83,
+     "alpha_limit": 5.18,
+     "dalt": 30.46,
+     "dkcas": 0.63,
+     "turned": 200.01
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.31,
+     "alpha": -0.59,
+     "alpha_limit": 5.18,
+     "dalt": 41.72,
+     "dkcas": 0.89,
+     "turned": 200.02
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.4,
+     "alpha": -0.28,
+     "alpha_limit": 5.18,
+     "dalt": 54.87,
+     "dkcas": 1.2,
+     "turned": 200.02
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.51,
+     "alpha": 0.11,
+     "alpha_limit": 5.18,
+     "dalt": 69.87,
+     "dkcas": 1.58,
+     "turned": 200.03
+    }
+   ],
+   "mach": 0.465
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 45000.0,
+   "kcas": 110.0,
+   "flown_per_cmd": 0.0232,
+   "cap_deg": 26.5,
+   "limited_by": "alpha",
+   "lag_in_s": 0.9,
+   "lag_out_s": 1.25,
+   "lag_in_spread": 0.08,
+   "lag_out_spread": 0.29,
+   "moment_in_s2": -5.41,
+   "moment_out_s2": 2.9,
+   "moment_in_spread": 4.17,
+   "moment_out_spread": 3.71,
+   "alpha_limit": 5.36,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.18,
+     "alpha": 3.55,
+     "alpha_limit": 5.36,
+     "dalt": 3.39,
+     "dkcas": 0.13,
+     "turned": 118.45,
+     "lag_in": 0.86,
+     "moment_in": -7.49,
+     "lag_out": 1.39,
+     "moment_out": 6.61,
+     "bank_end": 0.0,
+     "turn_rate_dps": 0.8
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.39,
+     "alpha": 4.1,
+     "alpha_limit": 5.36,
+     "dalt": 15.05,
+     "dkcas": 0.54,
+     "turned": 200.01,
+     "lag_in": 0.94,
+     "moment_in": -3.32,
+     "lag_out": 1.1,
+     "moment_out": 2.9,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.65
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.77,
+     "alpha": 5.39,
+     "alpha_limit": 5.36,
+     "dalt": 38.45,
+     "dkcas": 1.52,
+     "turned": 200.02
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.76,
+     "alpha": 5.55,
+     "alpha_limit": 5.36,
+     "dalt": 556.79,
+     "dkcas": 2.19,
+     "turned": 200.02
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.75,
+     "alpha": 5.67,
+     "alpha_limit": 5.36,
+     "dalt": 803.34,
+     "dkcas": 8.76,
+     "turned": 200.03
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.6,
+     "alpha": 5.73,
+     "alpha_limit": 5.36,
+     "dalt": 1236.26,
+     "dkcas": 17.82,
+     "turned": 200.01
+    }
+   ],
+   "mach": 0.433
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 45000.0,
+   "kcas": 130.0,
+   "flown_per_cmd": 0.0096,
+   "cap_deg": 45.7,
+   "limited_by": "none",
+   "lag_in_s": 1.5,
+   "lag_out_s": 1.91,
+   "lag_in_spread": 0.04,
+   "lag_out_spread": 0.34,
+   "moment_in_s2": -4.8,
+   "moment_out_s2": 3.44,
+   "moment_in_spread": 3.2,
+   "moment_out_spread": 5.14,
+   "alpha_limit": 4.96,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.08,
+     "alpha": 0.92,
+     "alpha_limit": 4.96,
+     "dalt": 2.99,
+     "dkcas": 0.08,
+     "turned": 99.95,
+     "lag_in": 1.48,
+     "moment_in": -6.4,
+     "lag_out": 2.08,
+     "moment_out": 8.57,
+     "bank_end": 0.0,
+     "turn_rate_dps": 0.68
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.17,
+     "alpha": 1.21,
+     "alpha_limit": 4.96,
+     "dalt": 13.33,
+     "dkcas": 0.34,
+     "turned": 200.01,
+     "lag_in": 1.52,
+     "moment_in": -3.2,
+     "lag_out": 1.74,
+     "moment_out": 3.44,
+     "bank_end": 0.0,
+     "turn_rate_dps": 1.39
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.3,
+     "alpha": 1.8,
+     "alpha_limit": 4.96,
+     "dalt": 31.73,
+     "dkcas": 0.82,
+     "turned": 200.0
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.4,
+     "alpha": 2.25,
+     "alpha_limit": 4.96,
+     "dalt": 44.18,
+     "dkcas": 1.17,
+     "turned": 200.02
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.53,
+     "alpha": 2.88,
+     "alpha_limit": 4.96,
+     "dalt": 59.4,
+     "dkcas": 1.68,
+     "turned": 200.01
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.75,
+     "alpha": 3.75,
+     "alpha_limit": 4.96,
+     "dalt": 77.12,
+     "dkcas": 2.47,
+     "turned": 200.02
+    }
+   ],
+   "mach": 0.508
+  },
+  {
+   "weight_lb": 20000.0,
+   "height_ft": 45000.0,
+   "kcas": 150.0,
+   "flown_per_cmd": 0.0052,
+   "cap_deg": 45.4,
+   "limited_by": "none",
+   "lag_in_s": 1.95,
+   "lag_out_s": 2.44,
+   "lag_in_spread": 0.06,
+   "lag_out_spread": 0.44,
+   "moment_in_s2": -5.79,
+   "moment_out_s2": 3.34,
+   "moment_in_spread": 4.77,
+   "moment_out_spread": 6.84,
+   "alpha_limit": 3.87,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.04,
+     "alpha": -0.45,
+     "alpha_limit": 3.87,
+     "dalt": 3.43,
+     "dkcas": 0.06,
+     "turned": 86.92,
+     "lag_in": 1.92,
+     "moment_in": -8.18,
+     "lag_out": 2.66,
+     "moment_out": 10.18,
+     "bank_end": 0.0,
+     "turn_rate_dps": 0.59
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.1,
+     "alpha": -0.23,
+     "alpha_limit": 3.87,
+     "dalt": 13.96,
+     "dkcas": 0.28,
+     "turned": 176.82,
+     "lag_in": 1.98,
+     "moment_in": -3.41,
+     "lag_out": 2.21,
+     "moment_out": 3.34,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.21
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.16,
+     "alpha": 0.17,
+     "alpha_limit": 3.87,
+     "dalt": 31.21,
+     "dkcas": 0.66,
+     "turned": 200.01
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.21,
+     "alpha": 0.43,
+     "alpha_limit": 3.87,
+     "dalt": 42.16,
+     "dkcas": 0.95,
+     "turned": 200.02
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.28,
+     "alpha": 0.76,
+     "alpha_limit": 3.87,
+     "dalt": 54.91,
+     "dkcas": 1.31,
+     "turned": 200.01
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.37,
+     "alpha": 1.25,
+     "alpha_limit": 3.87,
+     "dalt": 70.99,
+     "dkcas": 1.75,
+     "turned": 200.02
+    }
+   ],
+   "mach": 0.582
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 4000.0,
+   "kcas": 110.0,
+   "flown_per_cmd": 0.1221,
+   "cap_deg": 11.3,
+   "limited_by": "alt",
+   "lag_in_s": 2.38,
+   "lag_out_s": 2.28,
+   "lag_in_spread": 0.03,
+   "lag_out_spread": 0.17,
+   "moment_in_s2": -0.04,
+   "moment_out_s2": 0.58,
+   "moment_in_spread": 0.42,
+   "moment_out_spread": 1.1,
+   "alpha_limit": 6.4,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 11.26,
+     "alpha": 7.38,
+     "alpha_limit": 6.4,
+     "dalt": 388.75,
+     "dkcas": 6.77,
+     "turned": 200.0,
+     "lag_in": 2.36,
+     "moment_in": 0.17,
+     "lag_out": 2.37,
+     "moment_out": 1.68,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.79
+    },
+    {
+     "cmd": 20.0,
+     "flown": 22.49,
+     "alpha": 7.38,
+     "alpha_limit": 6.4,
+     "dalt": 295.14,
+     "dkcas": 12.15,
+     "turned": 200.01,
+     "lag_in": 2.39,
+     "moment_in": -0.25,
+     "lag_out": 2.2,
+     "moment_out": 0.58,
+     "bank_end": 0.03,
+     "turn_rate_dps": 3.59
+    },
+    {
+     "cmd": 30.0,
+     "flown": 33.61,
+     "alpha": 7.38,
+     "alpha_limit": 6.4,
+     "dalt": 336.23,
+     "dkcas": 21.63,
+     "turned": 200.0
+    },
+    {
+     "cmd": 35.0,
+     "flown": 38.74,
+     "alpha": 7.38,
+     "alpha_limit": 6.4,
+     "dalt": 434.99,
+     "dkcas": 28.02,
+     "turned": 200.03
+    },
+    {
+     "cmd": 40.0,
+     "flown": 43.15,
+     "alpha": 7.38,
+     "alpha_limit": 6.4,
+     "dalt": 557.93,
+     "dkcas": 35.55,
+     "turned": 200.02
+    },
+    {
+     "cmd": 45.0,
+     "flown": 47.1,
+     "alpha": 7.38,
+     "alpha_limit": 6.4,
+     "dalt": 708.93,
+     "dkcas": 44.23,
+     "turned": 200.04
+    }
+   ],
+   "mach": 0.179
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 4000.0,
+   "kcas": 130.0,
+   "flown_per_cmd": 0.0834,
+   "cap_deg": 36.5,
+   "limited_by": "alpha",
+   "lag_in_s": 2.66,
+   "lag_out_s": 2.55,
+   "lag_in_spread": 0.28,
+   "lag_out_spread": 0.27,
+   "moment_in_s2": -0.1,
+   "moment_out_s2": 1.84,
+   "moment_in_spread": 3.6,
+   "moment_out_spread": 1.36,
+   "alpha_limit": 6.29,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.61,
+     "alpha": 3.19,
+     "alpha_limit": 6.29,
+     "dalt": 3.72,
+     "dkcas": 0.09,
+     "turned": 200.0,
+     "lag_in": 2.52,
+     "moment_in": -1.9,
+     "lag_out": 2.69,
+     "moment_out": 3.21,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.48
+    },
+    {
+     "cmd": 20.0,
+     "flown": 21.41,
+     "alpha": 3.74,
+     "alpha_limit": 6.29,
+     "dalt": 15.32,
+     "dkcas": 0.39,
+     "turned": 200.0,
+     "lag_in": 2.8,
+     "moment_in": 1.7,
+     "lag_out": 2.42,
+     "moment_out": 1.84,
+     "bank_end": 0.02,
+     "turn_rate_dps": 3.1
+    },
+    {
+     "cmd": 30.0,
+     "flown": 32.75,
+     "alpha": 4.99,
+     "alpha_limit": 6.29,
+     "dalt": 38.65,
+     "dkcas": 0.99,
+     "turned": 200.01
+    },
+    {
+     "cmd": 35.0,
+     "flown": 38.87,
+     "alpha": 6.32,
+     "alpha_limit": 6.29,
+     "dalt": 59.91,
+     "dkcas": 1.46,
+     "turned": 200.05
+    },
+    {
+     "cmd": 40.0,
+     "flown": 43.75,
+     "alpha": 6.39,
+     "alpha_limit": 6.29,
+     "dalt": 215.22,
+     "dkcas": 4.58,
+     "turned": 200.01
+    },
+    {
+     "cmd": 45.0,
+     "flown": 48.2,
+     "alpha": 6.67,
+     "alpha_limit": 6.29,
+     "dalt": 348.8,
+     "dkcas": 14.07,
+     "turned": 200.0
+    }
+   ],
+   "mach": 0.212
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 4000.0,
+   "kcas": 150.0,
+   "flown_per_cmd": 0.0434,
+   "cap_deg": 47.8,
+   "limited_by": "none",
+   "lag_in_s": 2.96,
+   "lag_out_s": 2.97,
+   "lag_in_spread": 0.16,
+   "lag_out_spread": 0.22,
+   "moment_in_s2": 0.16,
+   "moment_out_s2": 2.79,
+   "moment_in_spread": 2.55,
+   "moment_out_spread": 1.53,
+   "alpha_limit": 6.18,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.36,
+     "alpha": 1.07,
+     "alpha_limit": 6.18,
+     "dalt": 3.22,
+     "dkcas": 0.09,
+     "turned": 183.19,
+     "lag_in": 2.88,
+     "moment_in": -1.12,
+     "lag_out": 3.09,
+     "moment_out": 4.32,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.25
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.79,
+     "alpha": 1.39,
+     "alpha_limit": 6.18,
+     "dalt": 13.45,
+     "dkcas": 0.36,
+     "turned": 200.01,
+     "lag_in": 3.04,
+     "moment_in": 1.44,
+     "lag_out": 2.86,
+     "moment_out": 2.79,
+     "bank_end": 0.02,
+     "turn_rate_dps": 2.6
+    },
+    {
+     "cmd": 30.0,
+     "flown": 31.38,
+     "alpha": 2.02,
+     "alpha_limit": 6.18,
+     "dalt": 30.97,
+     "dkcas": 0.81,
+     "turned": 200.02
+    },
+    {
+     "cmd": 35.0,
+     "flown": 36.75,
+     "alpha": 2.59,
+     "alpha_limit": 6.18,
+     "dalt": 43.55,
+     "dkcas": 1.14,
+     "turned": 200.03
+    },
+    {
+     "cmd": 40.0,
+     "flown": 42.19,
+     "alpha": 3.36,
+     "alpha_limit": 6.18,
+     "dalt": 59.3,
+     "dkcas": 1.6,
+     "turned": 200.0
+    },
+    {
+     "cmd": 45.0,
+     "flown": 47.78,
+     "alpha": 4.57,
+     "alpha_limit": 6.18,
+     "dalt": 77.59,
+     "dkcas": 2.3,
+     "turned": 200.01
+    }
+   ],
+   "mach": 0.245
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 4000.0,
+   "kcas": 170.0,
+   "flown_per_cmd": 0.0287,
+   "cap_deg": 46.7,
+   "limited_by": "none",
+   "lag_in_s": 3.27,
+   "lag_out_s": 3.36,
+   "lag_in_spread": 0.11,
+   "lag_out_spread": 0.22,
+   "moment_in_s2": 0.41,
+   "moment_out_s2": 3.85,
+   "moment_in_spread": 1.92,
+   "moment_out_spread": 1.74,
+   "alpha_limit": 6.08,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.24,
+     "alpha": -0.17,
+     "alpha_limit": 6.08,
+     "dalt": 3.31,
+     "dkcas": 0.09,
+     "turned": 159.54,
+     "lag_in": 3.22,
+     "moment_in": -0.55,
+     "lag_out": 3.47,
+     "moment_out": 5.58,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.09
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.52,
+     "alpha": 0.07,
+     "alpha_limit": 6.08,
+     "dalt": 13.31,
+     "dkcas": 0.33,
+     "turned": 200.01,
+     "lag_in": 3.33,
+     "moment_in": 1.37,
+     "lag_out": 3.26,
+     "moment_out": 3.85,
+     "bank_end": 0.02,
+     "turn_rate_dps": 2.26
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.91,
+     "alpha": 0.51,
+     "alpha_limit": 6.08,
+     "dalt": 29.55,
+     "dkcas": 0.76,
+     "turned": 200.03
+    },
+    {
+     "cmd": 35.0,
+     "flown": 36.16,
+     "alpha": 0.84,
+     "alpha_limit": 6.08,
+     "dalt": 40.35,
+     "dkcas": 1.05,
+     "turned": 200.0
+    },
+    {
+     "cmd": 40.0,
+     "flown": 41.42,
+     "alpha": 1.29,
+     "alpha_limit": 6.08,
+     "dalt": 53.65,
+     "dkcas": 1.41,
+     "turned": 200.02
+    },
+    {
+     "cmd": 45.0,
+     "flown": 46.69,
+     "alpha": 1.9,
+     "alpha_limit": 6.08,
+     "dalt": 70.47,
+     "dkcas": 1.89,
+     "turned": 200.03
+    }
+   ],
+   "mach": 0.277
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 20000.0,
+   "kcas": 110.0,
+   "flown_per_cmd": 0.0688,
+   "cap_deg": 10.7,
+   "limited_by": "alt",
+   "lag_in_s": 1.8,
+   "lag_out_s": 1.71,
+   "lag_in_spread": 0.31,
+   "lag_out_spread": 0.19,
+   "moment_in_s2": 1.27,
+   "moment_out_s2": 0.89,
+   "moment_in_spread": 9.92,
+   "moment_out_spread": 1.52,
+   "alpha_limit": 6.18,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.71,
+     "alpha": 7.15,
+     "alpha_limit": 6.18,
+     "dalt": 918.59,
+     "dkcas": 6.62,
+     "turned": 196.23,
+     "lag_in": 1.96,
+     "moment_in": 6.23,
+     "lag_out": 1.8,
+     "moment_out": 2.41,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.33
+    },
+    {
+     "cmd": 20.0,
+     "flown": 21.4,
+     "alpha": 7.15,
+     "alpha_limit": 6.18,
+     "dalt": 593.92,
+     "dkcas": 12.2,
+     "turned": 200.01,
+     "lag_in": 1.64,
+     "moment_in": -3.69,
+     "lag_out": 1.61,
+     "moment_out": 0.89,
+     "bank_end": 0.02,
+     "turn_rate_dps": 2.66
+    },
+    {
+     "cmd": 30.0,
+     "flown": 32.04,
+     "alpha": 7.15,
+     "alpha_limit": 6.18,
+     "dalt": 577.78,
+     "dkcas": 21.87,
+     "turned": 200.0
+    },
+    {
+     "cmd": 35.0,
+     "flown": 37.28,
+     "alpha": 7.15,
+     "alpha_limit": 6.18,
+     "dalt": 738.71,
+     "dkcas": 28.42,
+     "turned": 200.02
+    },
+    {
+     "cmd": 40.0,
+     "flown": 42.02,
+     "alpha": 7.15,
+     "alpha_limit": 6.18,
+     "dalt": 939.45,
+     "dkcas": 36.24,
+     "turned": 200.0
+    },
+    {
+     "cmd": 45.0,
+     "flown": 46.27,
+     "alpha": 7.15,
+     "alpha_limit": 6.18,
+     "dalt": 1185.93,
+     "dkcas": 45.27,
+     "turned": 200.02
+    }
+   ],
+   "mach": 0.245
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 20000.0,
+   "kcas": 130.0,
+   "flown_per_cmd": 0.0495,
+   "cap_deg": 35.5,
+   "limited_by": "alpha",
+   "lag_in_s": 1.96,
+   "lag_out_s": 2.06,
+   "lag_in_spread": 0.12,
+   "lag_out_spread": 0.23,
+   "moment_in_s2": -2.2,
+   "moment_out_s2": 1.84,
+   "moment_in_spread": 2.45,
+   "moment_out_spread": 1.82,
+   "alpha_limit": 6.04,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.38,
+     "alpha": 3.15,
+     "alpha_limit": 6.04,
+     "dalt": 3.63,
+     "dkcas": 0.11,
+     "turned": 165.81,
+     "lag_in": 1.9,
+     "moment_in": -3.43,
+     "lag_out": 2.18,
+     "moment_out": 3.66,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.13
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.84,
+     "alpha": 3.67,
+     "alpha_limit": 6.04,
+     "dalt": 14.93,
+     "dkcas": 0.46,
+     "turned": 200.01,
+     "lag_in": 2.03,
+     "moment_in": -0.98,
+     "lag_out": 1.95,
+     "moment_out": 1.84,
+     "bank_end": 0.02,
+     "turn_rate_dps": 2.34
+    },
+    {
+     "cmd": 30.0,
+     "flown": 31.62,
+     "alpha": 4.81,
+     "alpha_limit": 6.04,
+     "dalt": 36.37,
+     "dkcas": 1.14,
+     "turned": 200.01
+    },
+    {
+     "cmd": 35.0,
+     "flown": 37.29,
+     "alpha": 5.87,
+     "alpha_limit": 6.04,
+     "dalt": 53.4,
+     "dkcas": 1.69,
+     "turned": 200.03
+    },
+    {
+     "cmd": 40.0,
+     "flown": 42.26,
+     "alpha": 6.2,
+     "alpha_limit": 6.04,
+     "dalt": 328.72,
+     "dkcas": 2.26,
+     "turned": 200.03
+    },
+    {
+     "cmd": 45.0,
+     "flown": 46.92,
+     "alpha": 6.45,
+     "alpha_limit": 6.04,
+     "dalt": 564.9,
+     "dkcas": 12.42,
+     "turned": 200.02
+    }
+   ],
+   "mach": 0.289
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 20000.0,
+   "kcas": 150.0,
+   "flown_per_cmd": 0.0258,
+   "cap_deg": 46.9,
+   "limited_by": "none",
+   "lag_in_s": 2.34,
+   "lag_out_s": 2.53,
+   "lag_in_spread": 0.04,
+   "lag_out_spread": 0.22,
+   "moment_in_s2": -2.04,
+   "moment_out_s2": 2.54,
+   "moment_in_spread": 1.12,
+   "moment_out_spread": 2.33,
+   "alpha_limit": 5.83,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.22,
+     "alpha": 1.01,
+     "alpha_limit": 5.83,
+     "dalt": 3.05,
+     "dkcas": 0.09,
+     "turned": 141.61,
+     "lag_in": 2.32,
+     "moment_in": -2.6,
+     "lag_out": 2.64,
+     "moment_out": 4.86,
+     "bank_end": 0.01,
+     "turn_rate_dps": 0.97
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.47,
+     "alpha": 1.32,
+     "alpha_limit": 5.83,
+     "dalt": 13.25,
+     "dkcas": 0.37,
+     "turned": 200.0,
+     "lag_in": 2.37,
+     "moment_in": -1.48,
+     "lag_out": 2.42,
+     "moment_out": 2.54,
+     "bank_end": 0.02,
+     "turn_rate_dps": 1.99
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.82,
+     "alpha": 1.9,
+     "alpha_limit": 5.83,
+     "dalt": 30.65,
+     "dkcas": 0.88,
+     "turned": 200.03
+    },
+    {
+     "cmd": 35.0,
+     "flown": 36.08,
+     "alpha": 2.42,
+     "alpha_limit": 5.83,
+     "dalt": 42.74,
+     "dkcas": 1.23,
+     "turned": 200.02
+    },
+    {
+     "cmd": 40.0,
+     "flown": 41.4,
+     "alpha": 3.13,
+     "alpha_limit": 5.83,
+     "dalt": 57.95,
+     "dkcas": 1.72,
+     "turned": 200.03
+    },
+    {
+     "cmd": 45.0,
+     "flown": 46.88,
+     "alpha": 4.13,
+     "alpha_limit": 5.83,
+     "dalt": 75.77,
+     "dkcas": 2.41,
+     "turned": 200.04
+    }
+   ],
+   "mach": 0.333
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 20000.0,
+   "kcas": 170.0,
+   "flown_per_cmd": 0.0164,
+   "cap_deg": 46.1,
+   "limited_by": "none",
+   "lag_in_s": 2.69,
+   "lag_out_s": 2.93,
+   "lag_in_spread": 0.03,
+   "lag_out_spread": 0.25,
+   "moment_in_s2": -2.0,
+   "moment_out_s2": 3.28,
+   "moment_in_spread": 1.11,
+   "moment_out_spread": 2.89,
+   "alpha_limit": 5.62,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.14,
+     "alpha": -0.25,
+     "alpha_limit": 5.62,
+     "dalt": 3.35,
+     "dkcas": 0.08,
+     "turned": 124.11,
+     "lag_in": 2.68,
+     "moment_in": -2.56,
+     "lag_out": 3.06,
+     "moment_out": 6.17,
+     "bank_end": 0.01,
+     "turn_rate_dps": 0.85
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.3,
+     "alpha": -0.01,
+     "alpha_limit": 5.62,
+     "dalt": 13.61,
+     "dkcas": 0.35,
+     "turned": 200.0,
+     "lag_in": 2.71,
+     "moment_in": -1.45,
+     "lag_out": 2.81,
+     "moment_out": 3.28,
+     "bank_end": 0.02,
+     "turn_rate_dps": 1.74
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.52,
+     "alpha": 0.4,
+     "alpha_limit": 5.62,
+     "dalt": 29.8,
+     "dkcas": 0.81,
+     "turned": 200.0
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.68,
+     "alpha": 0.71,
+     "alpha_limit": 5.62,
+     "dalt": 40.45,
+     "dkcas": 1.13,
+     "turned": 200.03
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.88,
+     "alpha": 1.12,
+     "alpha_limit": 5.62,
+     "dalt": 53.02,
+     "dkcas": 1.5,
+     "turned": 200.01
+    },
+    {
+     "cmd": 45.0,
+     "flown": 46.13,
+     "alpha": 1.68,
+     "alpha_limit": 5.62,
+     "dalt": 70.03,
+     "dkcas": 2.01,
+     "turned": 200.03
+    }
+   ],
+   "mach": 0.377
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 30000.0,
+   "kcas": 110.0,
+   "flown_per_cmd": 0.0469,
+   "cap_deg": 10.5,
+   "limited_by": "alt",
+   "lag_in_s": 1.63,
+   "lag_out_s": 1.42,
+   "lag_in_spread": 0.53,
+   "lag_out_spread": 0.26,
+   "moment_in_s2": 6.2,
+   "moment_out_s2": 1.29,
+   "moment_in_spread": 20.03,
+   "moment_out_spread": 1.99,
+   "alpha_limit": 5.98,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.48,
+     "alpha": 7.0,
+     "alpha_limit": 5.98,
+     "dalt": 1229.58,
+     "dkcas": 7.11,
+     "turned": 162.09,
+     "lag_in": 1.9,
+     "moment_in": 16.21,
+     "lag_out": 1.55,
+     "moment_out": 3.28,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.1
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.96,
+     "alpha": 7.0,
+     "alpha_limit": 5.98,
+     "dalt": 867.42,
+     "dkcas": 12.63,
+     "turned": 200.02,
+     "lag_in": 1.37,
+     "moment_in": -3.82,
+     "lag_out": 1.28,
+     "moment_out": 1.29,
+     "bank_end": 0.01,
+     "turn_rate_dps": 2.19
+    },
+    {
+     "cmd": 30.0,
+     "flown": 31.38,
+     "alpha": 7.0,
+     "alpha_limit": 5.98,
+     "dalt": 847.1,
+     "dkcas": 22.27,
+     "turned": 200.01
+    },
+    {
+     "cmd": 35.0,
+     "flown": 36.63,
+     "alpha": 7.0,
+     "alpha_limit": 5.98,
+     "dalt": 1022.26,
+     "dkcas": 28.87,
+     "turned": 200.01
+    },
+    {
+     "cmd": 40.0,
+     "flown": 41.52,
+     "alpha": 7.0,
+     "alpha_limit": 5.98,
+     "dalt": 1296.82,
+     "dkcas": 36.87,
+     "turned": 200.01
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.95,
+     "alpha": 7.0,
+     "alpha_limit": 5.98,
+     "dalt": 1628.78,
+     "dkcas": 45.96,
+     "turned": 200.02
+    }
+   ],
+   "mach": 0.304
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 30000.0,
+   "kcas": 130.0,
+   "flown_per_cmd": 0.034,
+   "cap_deg": 34.6,
+   "limited_by": "alpha",
+   "lag_in_s": 1.58,
+   "lag_out_s": 1.81,
+   "lag_in_spread": 0.03,
+   "lag_out_spread": 0.23,
+   "moment_in_s2": -3.62,
+   "moment_out_s2": 2.1,
+   "moment_in_spread": 1.54,
+   "moment_out_spread": 2.54,
+   "alpha_limit": 5.71,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.26,
+     "alpha": 3.02,
+     "alpha_limit": 5.71,
+     "dalt": 3.74,
+     "dkcas": 0.11,
+     "turned": 138.66,
+     "lag_in": 1.56,
+     "moment_in": -4.39,
+     "lag_out": 1.92,
+     "moment_out": 4.63,
+     "bank_end": 0.0,
+     "turn_rate_dps": 0.94
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.58,
+     "alpha": 3.53,
+     "alpha_limit": 5.71,
+     "dalt": 15.12,
+     "dkcas": 0.5,
+     "turned": 200.0,
+     "lag_in": 1.6,
+     "moment_in": -2.84,
+     "lag_out": 1.69,
+     "moment_out": 2.1,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.94
+    },
+    {
+     "cmd": 30.0,
+     "flown": 31.11,
+     "alpha": 4.59,
+     "alpha_limit": 5.71,
+     "dalt": 35.75,
+     "dkcas": 1.26,
+     "turned": 200.02
+    },
+    {
+     "cmd": 35.0,
+     "flown": 36.57,
+     "alpha": 5.56,
+     "alpha_limit": 5.71,
+     "dalt": 51.58,
+     "dkcas": 1.89,
+     "turned": 200.01
+    },
+    {
+     "cmd": 40.0,
+     "flown": 41.56,
+     "alpha": 5.88,
+     "alpha_limit": 5.71,
+     "dalt": 420.29,
+     "dkcas": 1.61,
+     "turned": 200.03
+    },
+    {
+     "cmd": 45.0,
+     "flown": 46.33,
+     "alpha": 6.11,
+     "alpha_limit": 5.71,
+     "dalt": 753.18,
+     "dkcas": 11.88,
+     "turned": 200.03
+    }
+   ],
+   "mach": 0.358
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 30000.0,
+   "kcas": 150.0,
+   "flown_per_cmd": 0.0176,
+   "cap_deg": 46.3,
+   "limited_by": "none",
+   "lag_in_s": 2.02,
+   "lag_out_s": 2.31,
+   "lag_in_spread": 0.01,
+   "lag_out_spread": 0.26,
+   "moment_in_s2": -3.22,
+   "moment_out_s2": 2.71,
+   "moment_in_spread": 0.98,
+   "moment_out_spread": 3.38,
+   "alpha_limit": 5.44,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.15,
+     "alpha": 0.92,
+     "alpha_limit": 5.44,
+     "dalt": 3.08,
+     "dkcas": 0.09,
+     "turned": 119.18,
+     "lag_in": 2.02,
+     "moment_in": -3.71,
+     "lag_out": 2.44,
+     "moment_out": 6.1,
+     "bank_end": 0.01,
+     "turn_rate_dps": 0.81
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.32,
+     "alpha": 1.21,
+     "alpha_limit": 5.44,
+     "dalt": 13.37,
+     "dkcas": 0.38,
+     "turned": 200.01,
+     "lag_in": 2.03,
+     "moment_in": -2.73,
+     "lag_out": 2.18,
+     "moment_out": 2.71,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.67
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.56,
+     "alpha": 1.77,
+     "alpha_limit": 5.44,
+     "dalt": 31.61,
+     "dkcas": 0.89,
+     "turned": 200.02
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.73,
+     "alpha": 2.23,
+     "alpha_limit": 5.44,
+     "dalt": 43.97,
+     "dkcas": 1.26,
+     "turned": 200.0
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.97,
+     "alpha": 2.91,
+     "alpha_limit": 5.44,
+     "dalt": 59.44,
+     "dkcas": 1.76,
+     "turned": 200.02
+    },
+    {
+     "cmd": 45.0,
+     "flown": 46.33,
+     "alpha": 3.81,
+     "alpha_limit": 5.44,
+     "dalt": 77.36,
+     "dkcas": 2.5,
+     "turned": 200.0
+    }
+   ],
+   "mach": 0.412
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 30000.0,
+   "kcas": 170.0,
+   "flown_per_cmd": 0.011,
+   "cap_deg": 45.8,
+   "limited_by": "none",
+   "lag_in_s": 2.4,
+   "lag_out_s": 2.74,
+   "lag_in_spread": 0.03,
+   "lag_out_spread": 0.32,
+   "moment_in_s2": -3.41,
+   "moment_out_s2": 3.28,
+   "moment_in_spread": 1.89,
+   "moment_out_spread": 4.27,
+   "alpha_limit": 5.18,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.1,
+     "alpha": -0.31,
+     "alpha_limit": 5.18,
+     "dalt": 3.44,
+     "dkcas": 0.08,
+     "turned": 104.9,
+     "lag_in": 2.38,
+     "moment_in": -4.36,
+     "lag_out": 2.9,
+     "moment_out": 7.55,
+     "bank_end": 0.01,
+     "turn_rate_dps": 0.72
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.2,
+     "alpha": -0.09,
+     "alpha_limit": 5.18,
+     "dalt": 14.05,
+     "dkcas": 0.34,
+     "turned": 200.01,
+     "lag_in": 2.41,
+     "moment_in": -2.47,
+     "lag_out": 2.58,
+     "moment_out": 3.28,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.47
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.35,
+     "alpha": 0.31,
+     "alpha_limit": 5.18,
+     "dalt": 30.65,
+     "dkcas": 0.81,
+     "turned": 200.02
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.45,
+     "alpha": 0.6,
+     "alpha_limit": 5.18,
+     "dalt": 41.3,
+     "dkcas": 1.13,
+     "turned": 200.01
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.59,
+     "alpha": 0.97,
+     "alpha_limit": 5.18,
+     "dalt": 53.82,
+     "dkcas": 1.51,
+     "turned": 200.02
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.78,
+     "alpha": 1.51,
+     "alpha_limit": 5.18,
+     "dalt": 70.95,
+     "dkcas": 2.01,
+     "turned": 200.03
+    }
+   ],
+   "mach": 0.465
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 45000.0,
+   "kcas": 110.0,
+   "flown_per_cmd": 0.0228,
+   "cap_deg": 10.2,
+   "limited_by": "alt",
+   "lag_in_s": 1.51,
+   "lag_out_s": 1.05,
+   "lag_in_spread": 1.11,
+   "lag_out_spread": 0.26,
+   "moment_in_s2": 18.1,
+   "moment_out_s2": 2.23,
+   "moment_in_spread": 56.31,
+   "moment_out_spread": 3.45,
+   "alpha_limit": 5.36,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.24,
+     "alpha": 6.68,
+     "alpha_limit": 5.36,
+     "dalt": 1780.51,
+     "dkcas": 8.93,
+     "turned": 116.36,
+     "lag_in": 2.07,
+     "moment_in": 46.25,
+     "lag_out": 1.18,
+     "moment_out": 5.68,
+     "bank_end": 0.0,
+     "turn_rate_dps": 0.79
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.48,
+     "alpha": 6.68,
+     "alpha_limit": 5.36,
+     "dalt": 1637.45,
+     "dkcas": 14.12,
+     "turned": 200.01,
+     "lag_in": 0.95,
+     "moment_in": -10.06,
+     "lag_out": 0.92,
+     "moment_out": 2.23,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.58
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.66,
+     "alpha": 6.68,
+     "alpha_limit": 5.36,
+     "dalt": 1810.69,
+     "dkcas": 23.6,
+     "turned": 200.0
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.86,
+     "alpha": 6.68,
+     "alpha_limit": 5.36,
+     "dalt": 1752.81,
+     "dkcas": 30.67,
+     "turned": 200.01
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.85,
+     "alpha": 6.68,
+     "alpha_limit": 5.36,
+     "dalt": 2264.23,
+     "dkcas": 40.03,
+     "turned": 200.01
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.46,
+     "alpha": 6.68,
+     "alpha_limit": 5.36,
+     "dalt": 2973.18,
+     "dkcas": 51.78,
+     "turned": 200.01
+    }
+   ],
+   "mach": 0.433
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 45000.0,
+   "kcas": 130.0,
+   "flown_per_cmd": 0.0171,
+   "cap_deg": 32.7,
+   "limited_by": "alpha",
+   "lag_in_s": 1.01,
+   "lag_out_s": 1.45,
+   "lag_in_spread": 0.03,
+   "lag_out_spread": 0.36,
+   "moment_in_s2": -7.12,
+   "moment_out_s2": 2.84,
+   "moment_in_spread": 4.12,
+   "moment_out_spread": 5.25,
+   "alpha_limit": 4.96,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.14,
+     "alpha": 2.72,
+     "alpha_limit": 4.96,
+     "dalt": 4.05,
+     "dkcas": 0.12,
+     "turned": 100.74,
+     "lag_in": 0.99,
+     "moment_in": -9.18,
+     "lag_out": 1.64,
+     "moment_out": 8.08,
+     "bank_end": 0.0,
+     "turn_rate_dps": 0.68
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.29,
+     "alpha": 3.18,
+     "alpha_limit": 4.96,
+     "dalt": 16.62,
+     "dkcas": 0.53,
+     "turned": 200.0,
+     "lag_in": 1.03,
+     "moment_in": -5.06,
+     "lag_out": 1.27,
+     "moment_out": 2.84,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.4
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.56,
+     "alpha": 4.11,
+     "alpha_limit": 4.96,
+     "dalt": 37.74,
+     "dkcas": 1.39,
+     "turned": 200.01
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.81,
+     "alpha": 4.97,
+     "alpha_limit": 4.96,
+     "dalt": 55.03,
+     "dkcas": 2.26,
+     "turned": 200.0
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.79,
+     "alpha": 5.09,
+     "alpha_limit": 4.96,
+     "dalt": 688.82,
+     "dkcas": 3.08,
+     "turned": 200.01
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.57,
+     "alpha": 5.2,
+     "alpha_limit": 4.96,
+     "dalt": 1344.48,
+     "dkcas": 14.53,
+     "turned": 200.03
+    }
+   ],
+   "mach": 0.508
+  },
+  {
+   "weight_lb": 26000.0,
+   "height_ft": 45000.0,
+   "kcas": 150.0,
+   "flown_per_cmd": 0.0085,
+   "cap_deg": 45.3,
+   "limited_by": "alpha",
+   "lag_in_s": 1.6,
+   "lag_out_s": 2.1,
+   "lag_in_spread": 0.06,
+   "lag_out_spread": 0.44,
+   "moment_in_s2": -7.01,
+   "moment_out_s2": 3.01,
+   "moment_in_spread": 5.15,
+   "moment_out_spread": 6.97,
+   "alpha_limit": 3.87,
+   "runs": [
+    {
+     "cmd": 10.0,
+     "flown": 10.07,
+     "alpha": 0.69,
+     "alpha_limit": 3.87,
+     "dalt": 3.25,
+     "dkcas": 0.08,
+     "turned": 87.39,
+     "lag_in": 1.57,
+     "moment_in": -9.59,
+     "lag_out": 2.32,
+     "moment_out": 9.98,
+     "bank_end": 0.0,
+     "turn_rate_dps": 0.59
+    },
+    {
+     "cmd": 20.0,
+     "flown": 20.15,
+     "alpha": 0.94,
+     "alpha_limit": 3.87,
+     "dalt": 13.37,
+     "dkcas": 0.34,
+     "turned": 177.85,
+     "lag_in": 1.63,
+     "moment_in": -4.44,
+     "lag_out": 1.89,
+     "moment_out": 3.01,
+     "bank_end": 0.01,
+     "turn_rate_dps": 1.21
+    },
+    {
+     "cmd": 30.0,
+     "flown": 30.27,
+     "alpha": 1.55,
+     "alpha_limit": 3.87,
+     "dalt": 34.48,
+     "dkcas": 0.87,
+     "turned": 200.01
+    },
+    {
+     "cmd": 35.0,
+     "flown": 35.35,
+     "alpha": 2.01,
+     "alpha_limit": 3.87,
+     "dalt": 48.9,
+     "dkcas": 1.25,
+     "turned": 200.0
+    },
+    {
+     "cmd": 40.0,
+     "flown": 40.47,
+     "alpha": 2.6,
+     "alpha_limit": 3.87,
+     "dalt": 65.55,
+     "dkcas": 1.82,
+     "turned": 200.0
+    },
+    {
+     "cmd": 45.0,
+     "flown": 45.7,
+     "alpha": 3.44,
+     "alpha_limit": 3.87,
+     "dalt": 94.77,
+     "dkcas": 2.81,
+     "turned": 200.03
+    }
+   ],
+   "mach": 0.582
+  }
+ ]
+}
