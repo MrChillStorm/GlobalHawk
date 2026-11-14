@@ -7,7 +7,7 @@ JSBSim startup beginning ...
 
 T2  the server's traffic reaches the page's reader pass  SHUTTLE1 at 20000 ft, 240 kt on 130, HIGH22 at 36000 ft, 420 kt on 090
 D2  the page's demo plan is the mission file       pass  js/demoplan.js equals Missions/demo-local.json: True
-D2  the demo's stand-in against the model          pass  the demo plan, takeoff to touchdown: the stand-in 42.5 min and 569 lb, the model 42.1 min and 610 lb (+0.9 %, -6.7 %)
+D2  the demo's stand-in against the model          pass  the demo plan, takeoff to touchdown: the stand-in 42.3 min and 540 lb, the model 41.8 min and 556 lb (+1.0 %, -2.8 %)
 
 3 checks, 3 pass, 0 miss
-exit 0 after 6 s
+exit 0 after 8 s

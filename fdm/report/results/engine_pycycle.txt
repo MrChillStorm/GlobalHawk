@@ -22,4 +22,4 @@ pyCycle at Ghazi's 45,000 ft point: pressure ratio 23.6, bypass ratio 4.52, turb
   X5   pressure ratio at the limit, 60,000 ft               23.72        23    +3.1     10  pass  (predicted)
   X4   maximum thrust at 65000 ft, M 0.6, lbf (ours)        502.3     503.4    -0.2      5  pass  (model against model)
   X4   bare TSFC at 65000 ft, M 0.6 (ours)                 0.5719    0.5797    -1.4      5  pass  (model against model)
-exit 0 after 55 s
+exit 0 after 67 s

@@ -1,13 +1,13 @@
 B1 & weight, full, lb  26750  26750  +0.00\%  0.1 & G & pass & (generated) \\
 B1 & centre of gravity, full, \% MAC  21.997  22  -0.00  0.1 & G & pass & (generated) \\
-B1 & ixx, full, slug ft2  1.6466e+05 1.6466e+05  -0.00\%  5.0 & G & pass & (generated) \\
-B1 & iyy, full, slug ft2  37195  37195  +0.00\%  2.0 & G & pass & (generated) \\
-B1 & izz, full, slug ft2  1.9904e+05 1.9904e+05  -0.00\%  2.0 & G & pass & (generated) \\
+B1 & ixx, full, slug ft2  1.6442e+05 1.6442e+05  -0.00\%  5.0 & G & pass & (generated) \\
+B1 & iyy, full, slug ft2  37186  37186  +0.00\%  2.0 & G & pass & (generated) \\
+B1 & izz, full, slug ft2  1.9881e+05 1.9881e+05  -0.00\%  2.0 & G & pass & (generated) \\
 B1 & weight, no fuel, lb  11450  11450  +0.00\%  0.1 & G & pass & (generated) \\
 B1 & centre of gravity, no fuel, \% MAC  21.992  22  -0.01  0.1 & G & pass & (generated) \\
-B1 & ixx, no fuel, slug ft2  45996  45997  -0.00\%  5.0 & G & pass & (generated) \\
-B1 & iyy, no fuel, slug ft2  32436  32436  +0.00\%  2.0 & G & pass & (generated) \\
-B1 & izz, no fuel, slug ft2  75993  75993  -0.00\%  2.0 & G & pass & (generated) \\
+B1 & ixx, no fuel, slug ft2  45760  45761  -0.00\%  5.0 & G & pass & (generated) \\
+B1 & iyy, no fuel, slug ft2  32427  32427  +0.00\%  2.0 & G & pass & (generated) \\
+B1 & izz, no fuel, slug ft2  75766  75766  -0.00\%  2.0 & G & pass & (generated) \\
 B3 & maximum thrust at 0 ft, Mach 0.10, lbf  6679.6  6679.6  -0.00\%  1.0 & G & pass & (generated) \\
 B3 & its fuel flow, lb/h  2978.6  2978.6  -0.00\%  1.0 & G & pass & (generated) \\
 B3 & maximum thrust at 10000 ft, Mach 0.27, lbf  4748  4739.7  +0.17\%  1.0 & G & pass & (generated) \\
@@ -22,17 +22,20 @@ B3x & maximum thrust with 20 kW taken off, at 45000 ft, Mach 0.55: change, \%  -
 B3x & fuel flow at it with 20 kW taken off, at 45000 ft, Mach 0.55: change, \%  0.65602  0.65184  +0.64\%  2.0 & G & pass & (generated) \\
 B3x & maximum thrust with 20 kW taken off, at 60000 ft, Mach 0.60: change, \%  -0.51658  -0.51698  +0.08\%  2.0 & G & pass & (generated) \\
 B3x & fuel flow at it with 20 kW taken off, at 60000 ft, Mach 0.60: change, \%  1.2901  1.2817  +0.65\%  2.0 & G & pass & (generated) \\
-B5 & ships build trims at cruise & D & pass & (flies: throttle 86 \%, ruddervators +1.7 deg, residual 0.0486) \\
-B2 & lift coefficient at the cruise trim  0.72456  0.73061  -0.83\%  2.0 & G & pass & (generated) \\
-B2 & drag coefficient at the cruise trim  0.028311  0.028057  +0.91\%  2.0 & G & pass & (generated) \\
-B6 & ships build flies 120 s from the cruise trim & D & pass & (flies: height within 4 ft, speed within 0.0 kt (limits 100 ft, 3 kt)) \\
-B5 & ships build trims at climb & D & pass & (flies: throttle 14 \%, ruddervators +0.6 deg, residual 0.0246) \\
-B2 & lift coefficient at the climb trim  0.65231  0.6543  -0.30\%  2.0 & G & pass & (generated) \\
-B2 & drag coefficient at the climb trim  0.024012  0.024052  -0.17\%  2.0 & G & pass & (generated) \\
+B3s & fan speed from 0.60 to 0.90 of the final after a throttle step, s  1.3083  1.24  +5.51\%  20.0 & M* & pass & (after the fit) \\
+B3s & fan speed from 0.60 to 0.98 of the final after a throttle step, s  1.9167  1.76  +8.90\%  20.0 & M* & pass & (after the fit) \\
+B3s & thrust from 15 to 95 \% of the maximum after a throttle step within 5.0 s & G & pass & (generated: 3.67 s (a bound, not this engine's figure)) \\
+B5 & ships build trims at cruise & D & pass & (flies: throttle 81 \%, ruddervators -0.7 deg, residual 0.0486) \\
+B2 & lift coefficient at the cruise trim  0.72459  0.72539  -0.11\%  2.0 & G & pass & (generated) \\
+B2 & drag coefficient at the cruise trim  0.026485  0.026433  +0.19\%  2.0 & G & pass & (generated) \\
+B6 & ships build flies 120 s from the cruise trim & D & pass & (flies: height within 5 ft, speed within 0.0 kt (limits 100 ft, 3 kt)) \\
+B5 & ships build trims at climb & D & pass & (flies: throttle 12 \%, ruddervators -0.8 deg, residual 0.0246) \\
+B2 & lift coefficient at the climb trim  0.65236  0.65432  -0.30\%  2.0 & G & pass & (generated) \\
+B2 & drag coefficient at the climb trim  0.021541  0.021645  -0.48\%  2.0 & G & pass & (generated) \\
 B6 & ships build flies 120 s from the climb trim & D & pass & (flies: height within 1 ft, speed within 0.0 kt (limits 100 ft, 3 kt)) \\
-B5 & ref build trims at cruise & D & \textbf{MISS} & (flies: throttle 100 \%, ruddervators -14.2 deg, residual 0.168) \\
-B6 & ref build flies 120 s from the cruise trim & D & \textbf{MISS} & (flies: height within 1496 ft, speed within 20.2 kt (limits 100 ft, 3 kt)) \\
-B5 & ref build trims at climb & D & pass & (flies: throttle 14 \%, ruddervators -6.9 deg, residual 0.0246) \\
+B5 & ref build trims at cruise & D & \textbf{MISS} & (flies: throttle 98 \%, ruddervators -13.3 deg, residual 0.0486) \\
+B6 & ref build flies 120 s from the cruise trim & D & pass & (flies: height within 63 ft, speed within 0.9 kt (limits 100 ft, 3 kt)) \\
+B5 & ref build trims at climb & D & pass & (flies: throttle 12 \%, ruddervators -7.5 deg, residual 0.0246) \\
 B6 & ref build flies 120 s from the climb trim & D & pass & (flies: height within 1 ft, speed within 0.0 kt (limits 100 ft, 3 kt)) \\
-B4 & fuel gone from the tanks in 10 min against the flow integrated, lb  61.735  61.734  +0.00\%  0.5 & D & pass & (generated) \\
-B4 & centre of gravity moved in those 10 min, \% MAC  -2.9713e-05  0  -0.00  0.2 & D & pass & (flies) \\
+B4 & fuel gone from the tanks in 10 min against the flow integrated, lb  57.629  57.629  +0.00\%  0.5 & D & pass & (generated) \\
+B4 & centre of gravity moved in those 10 min, \% MAC  -2.773e-05  0  -0.00  0.2 & D & pass & (flies) \\

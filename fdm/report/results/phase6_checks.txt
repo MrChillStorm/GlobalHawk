@@ -5,12 +5,12 @@
 
 JSBSim startup beginning ...
 
-cruise, 15,000 lb: tip +2.57 ft; roll due to sideslip -0.00008 per deg rigid, -0.00114 bent
-   lateral modes, rigid: real -2.6580 /s (time constant 0.4 s); period 8.2 s, damping 0.068; real +0.0098 /s (doubles in 70.5 s)
-   lateral modes, bent : real -2.7062 /s (time constant 0.4 s); period 7.3 s, damping 0.030; real +0.0055 /s (doubles in 125.0 s)
-climb, 26,750 lb: tip +4.30 ft; roll due to sideslip -0.00016 per deg rigid, -0.00195 bent
-   lateral modes, rigid: real -3.7640 /s (time constant 0.3 s); period 6.2 s, damping 0.126; real +0.0219 /s (doubles in 31.6 s)
-   lateral modes, bent : real -3.8391 /s (time constant 0.3 s); period 5.4 s, damping 0.073; real +0.0107 /s (doubles in 64.7 s)
+cruise, 15,000 lb: tip +2.57 ft; roll due to sideslip -0.00019 per deg rigid, -0.00124 bent
+   lateral modes, rigid: real -2.6708 /s (time constant 0.4 s); period 6.3 s, damping 0.060; real +0.0097 /s (doubles in 71.7 s)
+   lateral modes, bent : real -2.7180 /s (time constant 0.4 s); period 5.9 s, damping 0.032; real +0.0064 /s (doubles in 107.9 s)
+climb, 26,750 lb: tip +4.30 ft; roll due to sideslip -0.00021 per deg rigid, -0.00200 bent
+   lateral modes, rigid: real -3.7726 /s (time constant 0.3 s); period 6.1 s, damping 0.123; real +0.0217 /s (doubles in 31.9 s)
+   lateral modes, bent : real -3.8470 /s (time constant 0.3 s); period 5.3 s, damping 0.073; real +0.0109 /s (doubles in 63.8 s)
 
      check                                                   JSBSim      beam    error  limit
 F1   tip deflection at the cruise, 15,000 lb trim, ft         2.570     2.570   -0.00%   3.0%  pass

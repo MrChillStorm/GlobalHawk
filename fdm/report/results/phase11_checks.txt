@@ -1,0 +1,53 @@
+
+
+     JSBSim Flight Dynamics Model v1.3.3 [GitHub build 2002/commit 66f7fafc07fe13e7ede9db20873030fed2881713] Oct 16 2026 00:38:24
+            [JSBSim-ML v2.0]
+
+JSBSim startup beginning ...
+
+O1  +0 K, high: hands off 300 s                                    pass  height within 0.5 ft, speed within 0.01 kt; throttle 73 % (limits 30 ft, 2 kt)
+O1  +0 K, climb: hands off 300 s                                   pass  height within 0.3 ft, speed within 0.01 kt; throttle 17 % (limits 30 ft, 2 kt)
+O1  +0 K, low: hands off 300 s                                     pass  height within 0.4 ft, speed within 0.01 kt; throttle 4 % (limits 30 ft, 2 kt)
+O1  -20 K, high: hands off 300 s                                   pass  height within 0.5 ft, speed within 0.01 kt; throttle 80 % (limits 30 ft, 2 kt)
+O1  -20 K, climb: hands off 300 s                                  pass  height within 0.3 ft, speed within 0.02 kt; throttle 16 % (limits 30 ft, 2 kt)
+O1  -20 K, low: hands off 300 s                                    pass  height within 0.4 ft, speed within 0.01 kt; throttle 4 % (limits 30 ft, 2 kt)
+O1  +15 K, high: hands off 300 s                                   pass  height within 0.5 ft, speed within 0.01 kt; throttle 80 % (limits 30 ft, 2 kt)
+O1  +15 K, climb: hands off 300 s                                  pass  height within 0.3 ft, speed within 0.01 kt; throttle 19 % (limits 30 ft, 2 kt)
+O1  +15 K, low: hands off 300 s                                    pass  height within 0.4 ft, speed within 0.01 kt; throttle 5 % (limits 30 ft, 2 kt)
+O1  +30 K, high: hands off 300 s                                   pass  height within 0.5 ft, speed within 0.01 kt; throttle 94 % (limits 30 ft, 2 kt)
+O1  +30 K, climb: hands off 300 s                                  pass  height within 0.4 ft, speed within 0.01 kt; throttle 21 % (limits 30 ft, 2 kt)
+O1  +30 K, low: hands off 300 s                                    pass  height within 0.4 ft, speed within 0.01 kt; throttle 6 % (limits 30 ft, 2 kt)
+O2  time from 10,000 to 55,000 ft (pressure) grows with the temperature MISS  -20 K: 3115 s; +0 K: 3021 s; +15 K: not reached (rate under 100 ft/min above 55000 ft); +30 K: not reached (rate under 100 ft/min above 52500 ft)
+O2  climb rate at 20,000, 40,000 and 50,000 ft (pressure), ft/min  reported  -20 K: 3009, 1096, 434; +0 K: 2638, 1153, 457; +15 K: 2270, 1054, 326; +30 K: 1920, 827, 135
+O2  the quasi-steady flight on each day: endurance (geometric heights: a trend only) reported  -20 K: 37.1 h, highest 65000 ft; +0 K: 34.9 h, highest 65000 ft; +15 K: 32.5 h, highest 65000 ft; +30 K: 27.5 h, highest 65000 ft
+O3  maximum thrust at 20,000 ft, Mach 0.4: change per K (-20 to 0 K, 0 to +15 K), % pass  -0.55 and -0.87 %/K (limits -1.5 to -0.1)
+O4  2013 at -20 K landing: approach from 3 nmi                     pass  glide path within 1.2 ft, speed within 0.09 kt, spoilers 0.68 to 0.70 (inside 0.15-0.95 for 100 % of it), 8.4 ft off the centreline at the flare
+O4  2013 at -20 K landing: touchdown                               pass  sink 0.66 m/s, pitch 2.25 deg, 129.1 KEAS, spoilers 0.36, 1057 ft past the aiming point (measured 0.66 m/s, 2.4 deg, 130 KEAS)
+O4  2013 at +30 K landing: approach from 3 nmi                     pass  glide path within 1.2 ft, speed within 0.07 kt, spoilers 0.69 to 0.70 (inside 0.15-0.95 for 100 % of it), 8.6 ft off the centreline at the flare
+O4  2013 at +30 K landing: touchdown                               pass  sink 0.66 m/s, pitch 2.24 deg, 129.7 KEAS, spoilers 0.36, 1088 ft past the aiming point (measured 0.66 m/s, 2.4 deg, 130 KEAS)
+W1  cruise in turbulence at 60,000 ft, severity 5 (sigma_w 2.01 m/s): height within 150 ft, bank within 8 deg, no alert pass  height within 75 ft, bank within 1.0 deg, limit flag 0
+W1  cruise in turbulence at 60,000 ft, severity 5 (sigma_w 2.01 m/s): airspeed within 5 kt MISS  airspeed over 11.3 kt, ground speed over 12.6 kt, the gust along the heading over 25.1 kt; throttle 0.40 to 1.00
+W1  cruise in turbulence at 60,000 ft, severity 5 (sigma_w 2.01 m/s): load factor 0.7 to 1.3 MISS  load factor 0.70 to 1.25
+W1  cruise in turbulence at 20,000 ft, severity 3 (sigma_w 1.11 m/s): height within 150 ft, bank within 8 deg, no alert pass  height within 67 ft, bank within 1.8 deg, limit flag 0
+W1  cruise in turbulence at 20,000 ft, severity 3 (sigma_w 1.11 m/s): airspeed within 5 kt MISS  airspeed over 11.2 kt, ground speed over 8.8 kt, the gust along the heading over 15.2 kt; throttle 0.00 to 0.44
+W1  cruise in turbulence at 20,000 ft, severity 3 (sigma_w 1.11 m/s): load factor 0.7 to 1.3 pass  load factor 0.77 to 1.23
+W2  mission, 25 kt wind from the runway heading, light turbulence: the whole mission, hands off pass  completed in 40 min; ends 11 ft from the last point at 0.4 kt; highest 20067 ft; fuel used 544 lb
+W2  mission, 25 kt wind, light turbulence: taxi out                reported  within 11.5 ft of the path (the corners), within 1.4 ft for 70 % of the way; 1.1 kt over the commanded speed at most; bank up to 0.77 deg (as phase 7b would judge it: pass)
+W2  mission, 25 kt wind, light turbulence: taxi in                 reported  within 7.4 ft of the path (the corners), within 1.1 ft for 70 % of the way; 0.8 kt over the commanded speed at most; bank up to 0.46 deg (as phase 7b would judge it: pass)
+W2  mission, 25 kt wind, light turbulence: takeoff                 reported  130 KIAS 25.3 s after the start (Pastor 37.5); nose through 1 deg at 25.5 s; liftoff at 132 KEAS and 3.8 deg; within 45.9 ft of the centreline (as phase 7b would judge it: MISS)
+W2  mission, 25 kt wind, light turbulence: takeoff: climb 30 to 40 s after lift-off reported  149.7 KEAS (147-151), 9.5 deg (10-14), 2165 ft/min (2,250-3,650) (as phase 7b would judge it: MISS)
+W2  mission, 25 kt wind, light turbulence: enroute: height         reported  capture within 148 ft of the commanded height, held within 69.6 ft and 5.83 kt after two minutes level (as phase 7b would judge it: MISS)
+W2  mission, 25 kt wind, light turbulence: enroute: track within 0.25 nmi for 95 % of the route MISS  cross-track error under 0.25 nmi for 94 % of the route; largest 2.33 nmi (in the turns); bank up to 22.4 deg (phase 7b's own rule, 80 %: pass)
+W2  mission, 25 kt wind, light turbulence: enroute: bank inside the limit reported  bank up to 22.4 deg (limit 25 below 30,000 ft, 1 deg allowed over) (as phase 7b would judge it: pass)
+W2  mission, 25 kt wind, light turbulence: mission landing: approach from 3 nmi reported  glide path within 103.2 ft, speed within 11.35 kt, spoilers 0.10 to 1.00 (inside 0.15-0.95 for 81 % of it), 3.3 ft off the centreline at the flare (as phase 7b would judge it: MISS)
+W2  mission, 25 kt wind, light turbulence: mission landing: touchdown reported  sink 11.11 m/s, pitch -1.46 deg, 146.4 KEAS, spoilers 0.10, -1452 ft past the aiming point (as phase 7b would judge it: MISS)
+W2  mission, 25 kt wind, light turbulence: mission landing: rollout reported  deceleration 0.238 g between 100 and 50 kt, within 11.1 ft of the centreline, down to 15 kt (as phase 7b would judge it: pass)
+W3  2013 landing, 10 kt crosswind from the right, light turbulence pass  down 6 ft from the centreline (9 ft at most on the rollout), sink 0.47 m/s, pitch 2.4 deg, 128 KEAS, sideslip up to 1.5 deg before it, bank on the ground up to 1.0 deg, down to 15 kt; 1450 ft past the aiming point
+W3  2013 landing, 20 kt crosswind from the right, light turbulence reported  down 1 ft from the centreline (23 ft at most on the rollout), sink 0.39 m/s, pitch 2.3 deg, 129 KEAS, sideslip up to 1.4 deg before it, bank on the ground up to 1.4 deg, down to 15 kt; 1325 ft past the aiming point
+W3  2013 landing, 10 kt crosswind from the right, no turbulence    reported  down -9 ft from the centreline (9 ft at most on the rollout), sink 0.66 m/s, pitch 2.3 deg, 129 KEAS, sideslip up to 0.0 deg before it, bank on the ground up to 0.6 deg, down to 15 kt; 1070 ft past the aiming point
+W3  2013 landing, 0 kt crosswind from the right, light turbulence  reported  down -62 ft from the centreline (62 ft at most on the rollout), sink 0.67 m/s, pitch 2.3 deg, 126 KEAS, sideslip up to 2.1 deg before it, bank on the ground up to 1.7 deg, down to 15 kt; 481 ft past the aiming point
+W3  2013 landing, 10 kt crosswind from the right, severe turbulence (severity 5, sigma_w 4 m/s at the field) reported  down 47 ft from the centreline (47 ft at most on the rollout), sink 1.77 m/s, pitch 2.7 deg, 133 KEAS, sideslip up to 4.4 deg before it, bank on the ground up to 3.8 deg, down to 15 kt; 1706 ft past the aiming point
+W3  2013 landing, 0 kt crosswind from the right, severe turbulence (severity 5, sigma_w 4 m/s at the field) reported  down -93 ft from the centreline (93 ft at most on the rollout), sink 1.73 m/s, pitch 2.2 deg, 127 KEAS, sideslip up to 4.1 deg before it, bank on the ground up to 4.0 deg, down to 15 kt; 809 ft past the aiming point
+
+27 checks, 22 pass, 5 miss
+exit 0 after 40 s

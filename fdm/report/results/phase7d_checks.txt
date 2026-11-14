@@ -5,37 +5,37 @@
 
 JSBSim startup beginning ...
 
-H1  cruise: automatic to protected                 pass     surfaces move 0.000 deg, height 0.08 ft in 5 s
-H2  cruise: hands off 300 s                        pass     pitch attitude within 0.00 deg, bank within 0.00 deg; speed drifts -0.0 kt, height +9 ft
-H3  cruise: full back stick 30 s                   pass     angle of attack 0.17 deg over its limit at most; load factor 0.66 to 1.31; nose up to 19.0 deg, speed down to 71 KCAS
-H3  cruise: full forward stick 30 s                pass     Mach 0.649, 123 KCAS at most; load factor 0.06 to 1.41; nose down to -9.0 deg
-H4  cruise: full side stick 30 s, then released    pass     bank up to 13.0 deg (limit 15); 0.01 deg 15 s after release; sideslip up to 0.66 deg
+H1  cruise: automatic to protected                 pass     surfaces move 0.000 deg, height 0.09 ft in 5 s
+H2  cruise: hands off 300 s                        pass     pitch attitude within 0.00 deg, bank within 0.00 deg; speed drifts -0.0 kt, height +8 ft
+H3  cruise: full back stick 30 s                   pass     angle of attack 0.17 deg over its limit at most; load factor 0.66 to 1.31; nose up to 18.9 deg, speed down to 71 KCAS
+H3  cruise: full forward stick 30 s                pass     Mach 0.643, 122 KCAS at most; load factor 0.28 to 1.39; nose down to -8.5 deg
+H4  cruise: full side stick 30 s, then released    pass     bank up to 13.0 deg (limit 15); 0.01 deg 15 s after release; sideslip up to 0.52 deg
 H7  cruise: protected to direct and back           pass     surfaces move 0.001 deg going to direct, 0.002 deg coming back
 H1  climb: automatic to protected                  pass     surfaces move 0.000 deg, height 0.01 ft in 5 s
 H2  climb: hands off 300 s                         pass     pitch attitude within 0.00 deg, bank within 0.00 deg; speed drifts -0.1 kt, height +1 ft
-H3  climb: full back stick 30 s                    pass     angle of attack 0.22 deg over its limit at most; load factor 0.72 to 1.48; nose up to 19.4 deg, speed down to 92 KCAS
+H3  climb: full back stick 30 s                    pass     angle of attack 0.22 deg over its limit at most; load factor 0.72 to 1.48; nose up to 19.5 deg, speed down to 92 KCAS
 H3  climb: full forward stick 30 s                 pass     Mach 0.388, 179 KCAS at most; load factor 0.46 to 1.67; nose down to -14.8 deg
-H4  climb: full side stick 30 s, then released     pass     bank up to 22.0 deg (limit 25); 0.14 deg 15 s after release; sideslip up to 0.74 deg
+H4  climb: full side stick 30 s, then released     pass     bank up to 22.0 deg (limit 25); 0.14 deg 15 s after release; sideslip up to 0.72 deg
 H7  climb: protected to direct and back            pass     surfaces move 0.000 deg going to direct, 0.001 deg coming back
 H1  low: automatic to protected                    pass     surfaces move 0.000 deg, height 0.01 ft in 5 s
-H2  low: hands off 300 s                           pass     pitch attitude within 0.00 deg, bank within 0.00 deg; speed drifts -0.1 kt, height +3 ft
-H3  low: full back stick 30 s                      pass     angle of attack 0.25 deg over its limit at most; load factor 0.73 to 1.39; nose up to 19.5 deg, speed down to 83 KCAS
-H3  low: full forward stick 30 s                   pass     Mach 0.292, 179 KCAS at most; load factor 0.55 to 1.53; nose down to -16.6 deg
-H4  low: full side stick 30 s, then released       pass     bank up to 22.2 deg (limit 25); 0.23 deg 15 s after release; sideslip up to 0.90 deg
+H2  low: hands off 300 s                           pass     pitch attitude within 0.00 deg, bank within 0.00 deg; speed drifts -0.1 kt, height +2 ft
+H3  low: full back stick 30 s                      pass     angle of attack 0.25 deg over its limit at most; load factor 0.73 to 1.39; nose up to 19.6 deg, speed down to 82 KCAS
+H3  low: full forward stick 30 s                   pass     Mach 0.293, 180 KCAS at most; load factor 0.53 to 1.54; nose down to -16.7 deg
+H4  low: full side stick 30 s, then released       pass     bank up to 22.2 deg (limit 25); 0.23 deg 15 s after release; sideslip up to 0.89 deg
 H7  low: protected to direct and back              pass     surfaces move 0.000 deg going to direct, 0.001 deg coming back
-H5  pilot task, stick delayed 0.0 s                pass     ends 4 ft and 0.4 deg from the targets; over the last 30 s height moves 0 ft, bank 0.0 deg; bank up to 20.1 deg
-H5  pilot task, stick delayed 0.3 s                pass     ends 6 ft and 0.3 deg from the targets; over the last 30 s height moves 11 ft, bank 0.0 deg; bank up to 20.4 deg
-H5  pilot task, stick delayed 1.5 s                reported ends 12 ft and 1.0 deg from the targets; over the last 30 s height moves 84 ft, bank 0.0 deg; bank up to 21.1 deg
-H6  takeoff by hand through the protected law      pass     lifts off after 36.6 s at 143 KEAS and 4.0 deg; 4992 ft above the field and 157 KCAS after 150 s; bank within 0.0 deg
-H6  landing by hand through the protected law      pass     touches down 1398 ft past the aiming point at 1.43 m/s, 128.8 KEAS and 2.1 deg, 7.9 ft off the centreline; down to 0 kt, within 10 ft of the centreline on the roll
-D1  cruise, direct: Dutch roll                     pass     damping ratio 0.35, period 9.0 s
-D2  cruise, direct: a nudge on the stick, then hands off reported 78 s until 10 deg of bank or 10 kt off (bank 0.0 deg, speed +10.1 kt then)
-D1  climb, direct: Dutch roll                      pass     damping ratio 0.30, period 6.3 s
-D2  climb, direct: a nudge on the stick, then hands off reported still within 10 deg and 10 kt after 600 s (bank 1.7 deg, speed +0.3 kt)
-D1  low, direct: Dutch roll                        pass     damping ratio 0.29, period 6.9 s
-D2  low, direct: a nudge on the stick, then hands off reported still within 10 deg and 10 kt after 600 s (bank 5.1 deg, speed +0.8 kt)
-S1  direct, low: dive 6 s, then full back stick    pass     load factor passed 2.5 at 6.92 s, flagged 0.008 s later; reached 3.28; not past the ultimate; never flagged in H3 or H4: true
+H5  pilot task, stick delayed 0.0 s                pass     ends 4 ft and 0.4 deg from the targets; over the last 30 s height moves 0 ft, bank 0.0 deg; bank up to 20.2 deg
+H5  pilot task, stick delayed 0.3 s                pass     ends 5 ft and 0.2 deg from the targets; over the last 30 s height moves 12 ft, bank 0.0 deg; bank up to 20.4 deg
+H5  pilot task, stick delayed 1.5 s                reported ends 17 ft and 1.0 deg from the targets; over the last 30 s height moves 86 ft, bank 0.0 deg; bank up to 21.1 deg
+H6  takeoff by hand through the protected law      pass     lifts off after 38.9 s at 144 KEAS and 4.1 deg; 4976 ft above the field and 157 KCAS after 150 s; bank within 0.0 deg
+H6  landing by hand through the protected law      pass     touches down 1463 ft past the aiming point at 1.22 m/s, 128.3 KEAS and 2.0 deg, 7.9 ft off the centreline; down to 0 kt, within 10 ft of the centreline on the roll
+D1  cruise, direct: Dutch roll                     pass     damping ratio 0.28, period 7.8 s
+D2  cruise, direct: a nudge on the stick, then hands off reported 107 s until 10 deg of bank or 10 kt off (bank 0.0 deg, speed +10.0 kt then)
+D1  climb, direct: Dutch roll                      pass     damping ratio 0.29, period 6.1 s
+D2  climb, direct: a nudge on the stick, then hands off reported still within 10 deg and 10 kt after 600 s (bank 1.6 deg, speed -0.2 kt)
+D1  low, direct: Dutch roll                        pass     damping ratio 0.37, period 6.6 s
+D2  low, direct: a nudge on the stick, then hands off reported still within 10 deg and 10 kt after 600 s (bank 5.0 deg, speed +0.8 kt)
+S1  direct, low: dive 6 s, then full back stick    pass     load factor passed 2.5 at 6.95 s, flagged 0.008 s later; reached 3.31; not past the ultimate; never flagged in H3 or H4: true
 S1  limits/reset                                   reported clears the flags: True
 
 26 checks, 26 pass, 0 miss; 5 reported
-exit 0 after 11 s
+exit 0 after 12 s

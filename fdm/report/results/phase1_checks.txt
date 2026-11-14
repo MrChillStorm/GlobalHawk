@@ -15,7 +15,7 @@ without fuel: gross less fuel, lb                                  by constructi
 not checks, no published figure to compare with (estimates):
   nose gear load 17.4 to 17.4 % of the weight (looked for: 8 to 20 %)
   centre of gravity 22.0 to 22.0 % of the mean chord, full to no fuel
-  V-tail volumes: horizontal 0.277, vertical 0.0137
+  V-tail volumes: horizontal 0.236, vertical 0.0144
   the symbol on the side view sits at 51.3 % of the mean chord
 
 12 checks, 4 pass, 8 miss

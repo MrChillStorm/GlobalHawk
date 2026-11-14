@@ -5,17 +5,17 @@
 
 JSBSim startup beginning ...
 
-B2  a normal flight, stand to 15,000 ft  pass  alerts seen in 8 minutes: none; at 18684 ft
+B2  a normal flight, stand to 15,000 ft  pass  alerts seen in 8 minutes: none; at 18969 ft
 B2  off-plan                             pass  raised after 0.0 s: "OFF THE PLAN: HOLD" (); cleared after 0.0 s
 B2  nav-one                              pass  raised after 0.5 s: "ONE NAVIGATOR LEFT" (No cross-check of attitude is left. Switch one on); cleared after 0.5 s
 B2  nav-disagree                         pass  raised after 0.5 s: "NAVIGATORS DISAGREE" (The aircraft is using the one that matches its turn rate. Land); cleared after 0.5 s
 B2  fuel-low                             pass  raised after 0.5 s: "FUEL LOW" (Return home); cleared after 0.5 s
 B2  structure                            pass  raised after 0.5 s: "STRUCTURAL LIMIT PASSED" (Land); cleared after 0.4 s
-B2  aoa                                  pass  raised 3.5 s after the angle of attack came within 0.3 deg of its limit: "ANGLE OF ATTACK LIMIT" (The aircraft is holding it); cleared 1.0 s after the stick was released
+B2  aoa                                  pass  raised 3.8 s after the angle of attack came within 0.3 deg of its limit: "ANGLE OF ATTACK LIMIT" (The aircraft is holding it); cleared 1.5 s after the stick was released
 B2  link                                 pass  raised 29.5 s into the silence: "LINK WAS LOST" (The aircraft left its plan when the link was lost. Resume when ready); cleared 0.0 s after a resume
 B2  engine                               pass  raised after 0.5 s: "ENGINE FAILED" (Gliding to Demo field 04 by itself. Clear the runway. No restart is modelled)
 B2  engine: names the site               pass  Gliding to Demo field 04 by itself. Clear the runway. No restart is modelled
 B2  no-site                              pass  raised after 0.5 s: "NO RUNWAY IN REACH" (Gliding towards the nearest)
 
 11 checks, 11 pass, 0 miss
-exit 0 after 3 s
+exit 0 after 4 s

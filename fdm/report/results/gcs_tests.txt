@@ -5,7 +5,7 @@
 alerts OK
 camera: ok
 controls OK
-  demo plan: 44.6 min in all, 585 lb; forecast from the takeoff 43.0 min, 596 lb
+  demo plan: 44.4 min in all, 556 lb; forecast from the takeoff 42.7 min, 568 lb
 demo OK
 editor OK
 geo OK
