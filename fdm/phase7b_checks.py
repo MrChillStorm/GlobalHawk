@@ -144,6 +144,80 @@ def entry_contract():
     return MM.Manager.go_arounds - n0
 
 
+def gate_case(weight, imbalance, heal, seconds=3300.0, setup=None, seed=None):
+    """M11's flight: a landing item begun on the glide 5 nmi out (as M6's landings are), flown by the manager, with tank 0 emptied by the share `imbalance` into tank 1 (a rolling moment the roll law
+    holds the wings level against: the final settles off the line, flight 34's drift made on purpose). heal: the tanks are made even again at the first missed approach (the cause goes away).
+    Returns the missed approaches (height over the runway, the cause, the lowest height in the 60 s after it, and whether the wheels touched), the touchdown, and whether the aircraft ended holding."""
+    f = H.load(rebuild=False)
+    if seed:
+        f['simulation/randomseed'] = seed
+    elev = 2357.0
+    fld = MM.Field(35.0, -117.0, elev)
+    u = unit(COURSE)
+    aim, fix, start = fld.ll(0, 0), fld.ll(*(-10 * NM * u)), fld.ll(*(-5 * NM * u))
+    keas = math.sqrt(weight / (0.645 * 540 * 0.5 * 0.0023769)) / H.KT
+    t = H.trim(f, alt=elev + 5.3 + 5 * NM * MM.GLIDE_TAN, kcas=keas, weight=weight, gamma=-4.45, gear=1.0, spoiler=2 / 3, lat=start[0], lon=start[1], psi=COURSE, terrain=elev)
+    H.engage(f, t)
+    if imbalance:
+        f['propulsion/tank[1]/contents-lbs'] = f['propulsion/tank[1]/contents-lbs'] * (1 + imbalance)
+        f['propulsion/tank[0]/contents-lbs'] = f['propulsion/tank[0]/contents-lbs'] * (1 - imbalance)
+    if setup:
+        setup(f)                                     # the weather: turbulence, a wind brought up over 30 s
+    mgr = MM.Manager(f, [dict(kind='land', fix=fix, aim=aim, elev=elev)])
+    f['ap/engaged'] = 1
+    misses, seen, watch, td, healed, held_at = [], 0, None, None, False, None
+    low, gear_up, climb = None, False, 0.0
+    for _ in range(int(seconds * H.HZ)):
+        mgr.step()
+        if not f.run():
+            break
+        agl = f['position/h-sl-ft'] - elev - 5.3
+        if mgr.missed > seen:
+            seen = mgr.missed
+            misses.append(dict(t=f['simulation/sim-time-sec'], h=agl, down=False, why=[e for _, e in mgr.events if 'MISSED' in e or 'ABANDONED' in e][-1], low=agl, gear_up=False))
+            watch = f['simulation/sim-time-sec'] + 60.0
+            if heal and not healed:
+                healed = True
+                tk = [f['propulsion/tank[%d]/contents-lbs' % i] for i in (0, 1)]
+                f['propulsion/tank[0]/contents-lbs'] = f['propulsion/tank[1]/contents-lbs'] = 0.5 * sum(tk)
+        if misses and watch is not None:
+            if f['simulation/sim-time-sec'] < watch:
+                misses[-1]['low'] = min(misses[-1]['low'], agl)
+                misses[-1]['down'] = misses[-1]['down'] or f['ap/on-mains'] > 0
+            misses[-1]['gear_up'] = misses[-1]['gear_up'] or f['gear/gear-pos-norm'] < 0.05
+        if f['ap/on-mains'] > 0 and td is None:
+            td = dict(past=-f['ap/leg-togo-ft'], sink=-f['velocities/h-dot-fps'] * 0.3048, xt=abs(f['ap/leg-xt-ft']), n_before=seen)
+        if td is not None and f['ap/rollout'] == 1 and f['ap/ground-speed-kt'] < 40:
+            break
+        it = mgr.plan[min(mgr.i, len(mgr.plan) - 1)]
+        if it['kind'] == 'hold' and it.get('abandoned'):
+            held_at = held_at or f['simulation/sim-time-sec']
+            if f['simulation/sim-time-sec'] - held_at > 150.0:
+                break
+    return dict(misses=misses, td=td, abandoned=held_at is not None, events=mgr.events, hold_alt=(mgr.plan[min(mgr.i, len(mgr.plan) - 1)].get('alt') if held_at else None), alt=f['position/h-sl-ft'])
+
+
+def gate_checks():
+    """M11: the stabilised-approach gate and the missed approach (docs/PLAN.md, "The approach that cannot hold its line"). Tank 0 emptied 40 % into tank 1 at 20,800 lb leaves the final 100 ft off the
+    line from 500 ft down, and then the roll law cannot bring it back. (a) The cause stays: the gate breaks between 150 and 500 ft, the missed approach climbs out (no more than 100 ft lost, gear up),
+    flies the circuit and comes back; it breaks again (second miss); the third time the aircraft climbs out as before and holds over the fix: LANDING ABANDONED. (b) The cause goes away after the first miss (the tanks
+    are made even): the second approach lands within M5b's and M7's and M8's limits."""
+    n0 = MM.Manager.go_arounds
+    r = gate_case(20800.0, 0.4, False)
+    m = r['misses']
+    ok = len(m) == 3 and r['abandoned'] and r['td'] is None and all(150.0 <= x['h'] <= 500.0 for x in m) and all(x['h'] - x['low'] <= 100.0 and x['gear_up'] and not x['down'] for x in m) and r['hold_alt'] is not None and abs(r['alt'] - r['hold_alt']) <= 300.0
+    add('M11', 'the line cannot be held: missed approach, again, then the landing is abandoned', ok,
+        '%s; %s; holding at %.0f ft (asked %.0f)' % ('; '.join('%s at %.0f s, gear up %s, %.0f ft lost' % (x['why'].split(';')[0].replace('MISSED APPROACH: ', '').replace('LANDING ABANDONED: ', 'abandoned: '), x['t'], 'yes' if x['gear_up'] else 'NO', x['h'] - x['low']) for x in m),
+                                                                     'ended holding' if r['abandoned'] else 'did not end holding (%s)' % ('landed' if r['td'] else 'flying'), r['alt'], r['hold_alt'] or 0.0))
+    r = gate_case(20800.0, 0.4, True)
+    m, td = r['misses'], r['td']
+    ok = len(m) == 1 and td is not None and td['n_before'] == 1 and 0.2 <= td['sink'] <= 1.2 and -50 <= td['past'] <= 2000 and td['xt'] <= 15.0 and m[0]['h'] - m[0]['low'] <= 100.0
+    add('M11', 'the cause goes away after the first miss: the second approach lands', ok,
+        'one missed approach (%s: %.0f ft lost), then down %s' % (m[0]['why'].split(';')[0].replace('MISSED APPROACH: ', '') if m else 'none', (m[0]['h'] - m[0]['low']) if m else 0.0,
+                                                                  'never' if td is None else '%.0f ft past the aiming point, %.2f m/s, %.1f ft off the line' % (td['past'], td['sink'], td['xt'])))
+    return MM.Manager.go_arounds - n0
+
+
 def judge_landing(log, name, meas=None):
     air = log['mains'] == 0
     if not (log['mains'] > 0).any():
@@ -179,8 +253,10 @@ def mission(f):
         dict(kind='takeoff', start=P(0), end=P(10000), elev=elev),
         # 14,000 ft, not 20,000: the last leg is 26 nmi, from 20,000 ft down to the fix at 6,500 ft that is 5 deg and the aircraft needs 50 nmi: it began the landing 2,345 ft over
         # the path (the go-around task caught it, docs/PLAN.md "The aircraft refuses what it cannot fly"); from 14,000 ft it is 2.7 deg
+        # The third point was at COURSE + 210: the leg to the fix then arrived 151.8 deg off the final's course, past TURN_FLY_BY_MAX (the aircraft flies over such a corner and ends about two radii off the new
+        # leg: the landing began 3.6 nmi off the line in the 25 kt wind and the stabilised-approach gate went around). At COURSE + 190 the corner at the fix is 134.6 deg (docs/PLAN.md, "The join onto the final").
         dict(kind='route', points=[P(25 * NM) + (14000.0,), P(25 * NM, 25 * NM) + (14000.0,),
-                                   fld.ll(*(25 * NM * u + 25 * NM * r + 25 * NM * unit(COURSE + 210.0))) + (14000.0,),
+                                   fld.ll(*(25 * NM * u + 25 * NM * r + 25 * NM * unit(COURSE + 190.0))) + (14000.0,),
                                    P(-20 * NM) + (6500.0,)]),
         dict(kind='land', fix=P(-20 * NM), aim=P(0), elev=elev),
         dict(kind='taxi', points=lambda m: [fld.ll(*(np.array(fld.ne(*m.here())) + 400 * u)), fld.ll(*(np.array(fld.ne(*m.here())) + 400 * u + 300 * r))],
@@ -192,6 +268,7 @@ def mission(f):
     f['ap/theta-cmd-deg'] = f['attitude/theta-deg']
     mgr = MM.Manager(f, plan)
     f['ap/engaged'] = 1
+    ids = {id(it): n for n, it in enumerate(plan)}                  # the items of the plan as given: a missed approach inserts items, which are -1, and the later items keep their numbers
     keys = H.AP_LOG + (('item', None), ('steer', 'fcs/steer-pos-deg'), ('taxi', 'ap/taxi-speed-kt'), ('altcmd', 'ap/alt-cmd-ft'), ('pm', 'ap/pitch-mode'), ('len', 'ap/leg-length-ft'))
     log = {k: [] for k, _ in keys}
     t0 = f['simulation/sim-time-sec']
@@ -201,7 +278,7 @@ def mission(f):
             break
         if i % 12 == 0:
             for k, p in keys:
-                log[k].append(mgr.i if p is None else f[p])
+                log[k].append(ids.get(id(mgr.plan[min(mgr.i, len(mgr.plan) - 1)]), -1) if p is None else f[p])
     log = {k: np.array(v) for k, v in log.items()}
     log['t'] = log['t'] - t0
     finite = bool(np.all(np.isfinite(log['alt'])) and np.all(np.isfinite(log['phi'])))
@@ -284,7 +361,9 @@ def mission(f):
         add('M4', 'enroute: track', np.percentile(xt_nm, 80) <= 0.25, 'cross-track error under 0.25 nmi for %.0f %% of the route; largest %.2f nmi (in the turns); bank up to %.1f deg' % (
             100 * np.mean(xt_nm <= 0.25), xt_nm.max(), np.abs(log['phi'][k]).max()))
         add('M4', 'enroute: bank inside the limit', np.abs(log['phi'][k]).max() <= 26.0, 'bank up to %.1f deg (limit 25 below 30,000 ft, 1 deg allowed over)' % np.abs(log['phi'][k]).max())
-    k = log['item'] == 3
+    # the landing is judged from its last begin (a missed approach before it is the gate's, and counted by G0)
+    t_land = max([t - t0 for t, e in mgr.events if e == 'begin land'] or [0.0])
+    k = (log['item'] == 3) & (log['t'] >= t_land)
     if k.any():
         sub = {key: val[k] for key, val in log.items()}
         judge_landing(sub, 'mission landing')
@@ -300,6 +379,8 @@ def main():
     add('G0', 'no go-around in the flights above (a go-around hides nothing)', MM.Manager.go_arounds == 0, '%d go-arounds' % MM.Manager.go_arounds)
     started = entry_contract()
     add('G1', 'the entry contract made its go-arounds, six of nine cases', started == 6, '%d go-arounds' % started)
+    flown = gate_checks()
+    add('G2', 'the gate made its missed approaches: three in the first flight, one in the second', flown == 4, '%d missed approaches' % flown)
     for tag, name, ok, detail in rows:
         print('%-3s %-44s %s  %s' % (tag, name, 'pass' if ok else 'MISS', detail))
     miss = sum(1 for r in rows if not r[2])

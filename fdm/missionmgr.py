@@ -9,6 +9,7 @@ A plan is a list of items:
     dict(kind='land', fix=(lat, lon), aim=(lat, lon), elev=2300)
     dict(kind='hold', centre=(lat, lon), alt=20000)                           a circle; never ends by itself
     (made by the manager, not given:) dict(kind='go_around', ...)            the landing's entry contract broken: a circle over the fix down to the final's height, then the landing
+    (made by the manager, not given:) dict(kind='route', ga=dict(...), ...)  the missed approach: the stabilised-approach gate broken on the glide: the climb-out and a right-hand circuit back to the fix, then the landing again
 A route may carry start=(lat, lon): its first leg then begins there, not where the aircraft is (resuming a plan).
 
 Contingencies (docs/FLIGHT-LAWS.md, section 6):
@@ -51,6 +52,22 @@ GO_AROUND_ALT_ABOVE = 100.0    # ft: the go-around hands back to the landing no 
 GO_AROUND_ALT_BELOW = 300.0    # ... and no lower than this under it ...
 GO_AROUND_FIX_FT = 2500.0      # ... within this of the fix ...
 GO_AROUND_TRACK_DEG = 20.0     # ... on a track within this of the final's course
+# the stabilised-approach gate and the missed approach (docs/PLAN.md, "The approach that cannot hold its line")
+GATE = 1                       # 1: the landing's glide is watched and a missed approach is flown when it is not stable
+GATE_TOP_FT = 1000.0           # ft over the runway: the gate looks from here down to the decision height ...
+GATE_DH_FT = 150.0             # ... below which the aircraft is committed (a go-around from the flare's last seconds is no safer than the landing)
+GATE_LINE_FT = (15.0, 0.3)     # ft off the line the gate allows, at a wheel height h: the first plus the second times h (315 ft at 1,000 ft, 165 at 500, 60 at 150)
+GATE_PATH_FT = (15.0, 0.2)     # ft off the glide path, the same way (215, 115, 45)
+GATE_SLOW_KT = 15.0            # kt under the approach speed
+GATE_FAST_KT = 20.0            # kt over it
+GATE_PERSIST_S = 2.0           # s: a gust is not a reason; the limit has to be passed this long
+GA_CLIMBOUT_FT = 2.0 * NM      # ft past the aiming point the missed approach climbs out straight ahead, on the final's line ...
+GA_OFFSET_FT = 2.0 * NM        # ... turns right and flies out this far to the side ...
+GA_EXTRA_FT = 3.0 * NM         # ... flies back downwind to this far behind the fix, and turns right twice onto the final's line, so that the final is this long before the fix
+GA_CIRCUIT_ABOVE_FT = 1000.0   # ft: the circuit is flown this far above the height the final is begun from, and the last leg comes down to it
+GA_GEAR_UP_FT = 150.0          # ft of height gained, climbing: the gear comes up (the landing puts it down again where the circuit levels at the fix)
+GA_FREE_FT = 1000.0            # ft of height gained: the go-around's own speed and rates are given up to the route's
+GA_MAX = 2                     # missed approaches the manager flies; the next one it holds over the fix and asks the operator
 
 
 class Field:
@@ -85,6 +102,7 @@ class Manager:
         self.contingency, self.alert = None, None
         self.i, self.k, self.frame, self.done = 0, 0, 0, False
         self.events = []
+        self.missed = 0                 # the missed approaches this manager has flown
         self.begin()
 
     def note(self, text):
@@ -123,6 +141,7 @@ class Manager:
         f['ap/vt-on'], f['ap/sp-ext'], f['ap/vt-sp-end'] = 0, -1, 0
         f['ap/tk-done'], f['ap/ld-captured'] = 0, 0                 # the laws' latches start clear: the item may follow one of its own kind in the same call, and they would never see the task off
         f['ap/tk-on'], f['ap/tx-on'], f['ap/ld-on'], f['ap/ci-on'] = 0, 0, 0, 0          # the laws' takeoff, taxi, landing and circle tasks: each item turns on its own
+        f['ap/ga-on'] = 0                                           # the laws' go-around task (the missed approach's climb-out): the item that is one turns it on
         f['ap/next-valid'] = 0
         f['ap/turn-ack'] = f['ap/turn-done']
         if kind == 'taxi':
@@ -150,6 +169,10 @@ class Manager:
             it['_pts'] = pts
             self.leg(pts[0], pts[1])
             f['ap/roll-mode'], f['ap/ground-steer'] = 2, 0
+            if it.get('ga'):
+                f['ap/land-mode'] = 0                            # the landing task is left: the glide's laws go with it
+                f['ap/ga-h0-ft'], f['ap/ga-on'] = f['position/h-sl-ft'], 1
+                it['ga']['h0'] = f['position/h-sl-ft']
             self.vertical(pts[1][2])
         elif kind == 'land':
             above = self.above_path(it)
@@ -326,6 +349,63 @@ class Manager:
         return (-GO_AROUND_ALT_BELOW <= f['position/h-sl-ft'] - it['alt'] <= GO_AROUND_ALT_ABOVE and d <= GO_AROUND_FIX_FT
                 and abs(turn(f['ap/ground-track-deg'], it['final'])) <= GO_AROUND_TRACK_DEG)
 
+    def gate(self, it):
+        """The stabilised-approach gate: on the glide, from GATE_TOP_FT of wheel height down to the decision height, the aircraft must be within the funnel of GATE_LINE_FT, GATE_PATH_FT
+        and the speed's limits for GATE_PERSIST_S together; if it is not, the landing task has broken its contract with the flare and the missed approach takes the aircraft."""
+        f = self.f
+        h = f['position/h-sl-ft'] - it['elev'] - 5.3                # the height over the runway (the wheel height reads no more than 1,000 ft)
+        if not (GATE and it.get('_on_path') and f['ap/flare'] == 0 and f['ap/on-mains'] == 0 and f['ap/manual'] == 0 and f['ap/rollout'] == 0 and GATE_DH_FT <= h <= GATE_TOP_FT):
+            it['_gate_t'] = None
+            return False
+        xt, ge, se = f['ap/leg-xt-ft'], f['ap/glide-error-ft'], f['ap/speed-error-kt']
+        why = None
+        if abs(xt) > GATE_LINE_FT[0] + GATE_LINE_FT[1] * h:
+            why = '%.0f ft %s of the line at %.0f ft' % (abs(xt), 'right' if xt > 0 else 'left', h)
+        elif abs(ge) > GATE_PATH_FT[0] + GATE_PATH_FT[1] * h:
+            why = '%.0f ft %s the glide path at %.0f ft' % (abs(ge), 'above' if ge > 0 else 'below', h)
+        elif se > GATE_FAST_KT or se < -GATE_SLOW_KT:
+            why = '%.0f kt %s the approach speed at %.0f ft' % (abs(se), 'over' if se > 0 else 'under', h)
+        now = f['simulation/sim-time-sec']
+        if why is None:
+            it['_gate_t'] = None
+            return False
+        if it.get('_gate_t') is None:
+            it['_gate_t'] = now
+        if now - it['_gate_t'] < GATE_PERSIST_S:
+            return False
+        self.missed_approach(it, why)
+        return True
+
+    def missed_approach(self, land, why):
+        """The landing task's glide broke the gate: the climb-out straight ahead on the final's line to the circuit's height, a right-hand circuit (out to the side, downwind, back onto the
+        line GA_EXTRA_FT behind the fix) and the landing again from the fix, as the landing is begun. The second time it is flown the aircraft holds over the fix and asks the operator."""
+        f = self.f
+        fix, aim = land['fix'], land['aim']
+        fc, d = course(fix, aim)
+        Manager.go_arounds += 1
+        self.missed += 1
+        alt = land['elev'] + max(GO_AROUND_MIN_AGL, math.floor((5.3 + GLIDE_TAN * d - LAND_FIX_GAP_FT) / 100.0) * 100.0)         # the height the final is begun from, as the entry contract's go-around has it
+        fld = Field(aim[0], aim[1], land['elev'])
+        c = math.radians(fc)
+        u, r = (math.cos(c), math.sin(c)), (-math.sin(c), math.cos(c))               # along the final's course, and to the right of it (north, east)
+
+        def at(a, b):
+            return fld.ll(a * u[0] + b * r[0], a * u[1] + b * r[1])
+        circuit = alt + GA_CIRCUIT_ABOVE_FT
+        if self.missed > GA_MAX:
+            # the third time: the same climb-out, then a hold over the fix (a right-hand circle tangent to the final's line there), until the operator decides
+            rad = self.hold_radius()
+            self.note('LANDING ABANDONED: %s; climbing out and holding over the fix at %.0f ft' % (why, circuit))
+            self.plan[self.i:self.i] = [dict(kind='route', points=[at(GA_CLIMBOUT_FT, 0.0) + (circuit,)], ga=dict(why=why, attempt=self.missed, alt=circuit, fix_alt=alt, abandoned=True)),
+                                        dict(kind='hold', centre=at(-d, rad), alt=circuit, radius=rad, abandoned=why)]
+            self.begin()
+            return
+        back = d + GA_EXTRA_FT
+        pts = [at(GA_CLIMBOUT_FT, 0.0) + (circuit,), at(GA_CLIMBOUT_FT, GA_OFFSET_FT) + (circuit,), at(-back, GA_OFFSET_FT) + (circuit,), at(-back, 0.0) + (circuit,), tuple(fix) + (alt,)]
+        self.note('MISSED APPROACH: %s; climbing out and round for another approach (attempt %d)' % (why, self.missed))
+        self.plan.insert(self.i, dict(kind='route', points=pts, ga=dict(why=why, attempt=self.missed, alt=circuit, fix_alt=alt)))
+        self.begin()
+
     def contingencies(self):
         """Leave the plan when the link is lost or the engine stops. Only in the air, and only once each."""
         f = self.f
@@ -392,6 +472,13 @@ class Manager:
             # the turn onto the next leg is the aircraft's (fdm/laws.py, ap/turn-*): the manager gives it the next waypoint and moves on when
             # the laws say the turn is done. Past the last waypoint of a route that a landing follows the next point is the aiming point
             pts = it['_pts']
+            if it.get('ga'):
+                gained = f['position/h-sl-ft'] - it['ga']['h0']
+                if f['gear/gear-cmd-norm'] > 0.5 and gained >= GA_GEAR_UP_FT and f['velocities/h-dot-fps'] > 0.0:
+                    f['gear/gear-cmd-norm'] = 0
+                    self.note('missed approach: positive climb, gear up')
+                if f['ap/ga-on'] == 1 and gained >= GA_FREE_FT:
+                    f['ap/ga-on'] = 0                           # the route's speed and rates from here
             self.vertical(it.get('alt_override', pts[self.k + 1][2]), path=True)
             last = self.k == len(pts) - 2
             if last and LANDING_LEVEL and self.i + 1 < len(self.plan) and self.plan[self.i + 1]['kind'] == 'land':
@@ -414,6 +501,8 @@ class Manager:
             elif last and nxt is None and togo < 500.0:
                 self.next()
         elif kind == 'land':
+            if self.gate(it):
+                return
             if not it['_on_path']:
                 if f['ap/ld-captured'] == 1:                    # the laws took the glide over: the pitch mode, the land mode, the spoilers
                     it['_on_path'] = True

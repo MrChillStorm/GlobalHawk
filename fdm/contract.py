@@ -27,7 +27,7 @@ CONTRACTS = {
     'turn.line': ('Turn', 'Leg', 'how far past the new line the arc ends', 150.0, 'ft; P5'),
     'route.entry': ('Route', 'Landing', 'height above the glide path at the landing fix (the entry contract)', None, 'ft; fdm/missionmgr.py entry_limit: 0.8 of what the capture takes at the weight'),
     'route.line': ('Route', 'Landing', 'distance off the final\'s line where the landing begins', 150.0, 'ft; mine'),
-    'final.gate': ('Final', 'Flare', 'off the line, off the path, off the speed at the flare gate', None, 'ft, ft, kt: 10, 12 and 3; M5b and M5, mine for the line'),
+    'final.gate': ('Final', 'Flare', 'off the line, off the path, off the speed at the flare gate', None, 'ft, ft, kt: 10, 12 and 3; M5b and M5, mine for the line; and the stabilised-approach gate above it (a missed approach is this contract broken)'),
     'flare.touchdown': ('Flare', 'Touchdown', 'sink, pitch, line and heading at the first wheel', None, 'M7 (0.3 to 1.2 m/s, 1.5 to 3.5 deg), 15 ft, 5 deg'),
     'rollout.line': ('Rollout', 'Stop', 'largest distance off the line from touchdown to 15 kt', 15.0, 'ft; M8'),
 }
@@ -104,6 +104,11 @@ def main():
     if ga:
         res.append((t[ga[0]] - t0, 'route.entry', False, 'the go-around task took the aircraft at %.0f s and held it %.0f s (%s): the landing was not committed because the route did not hand over at the glide path' % (
             t[ga[0]] - t0, t[ga[-1]] - t[ga[0]], status[ga[0]][:90])))
+    # ---- a missed approach is the final's contract with the flare broken (the stabilised-approach gate): the status text says MISSED APPROACH (or LANDING ABANDONED) while the aircraft climbs out and circles
+    ma = [i for i, text in enumerate(status) if 'MISSED APPROACH' in text.upper() or 'LANDING ABANDONED' in text.upper()]
+    if ma:
+        res.append((t[ma[0]] - t0, 'final.gate', False, 'the missed approach took the aircraft at %.0f s and held it %.0f s (%s): the final did not hand over to the flare inside the gate (docs/FLIGHT-LAWS.md 5.6c)' % (
+            t[ma[0]] - t0, t[ma[-1]] - t[ma[0]], status[ma[0]][:90])))
     # ---- route to landing: where the landing begins (landing mode on), judged on the entry contract
     on = np.nonzero(lm == 1)[0]
     if len(on):

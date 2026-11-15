@@ -223,6 +223,38 @@ def crosswind_landing(f, kt, name, weight=20800.0, elev=2357.0, turb=True, sever
                 past=float(-log['togo'][i]), finite=bool(np.all(np.isfinite(log['alt']))))
 
 
+def gate_weather():
+    """W4: the stabilised-approach gate (docs/PLAN.md, "The approach that cannot hold its line") in the weather the landings are claimed for: the manager flies the landing from 5 nmi out
+    (as M11) and no missed approach is begun and the aircraft lands, at three weights in calm air and at 20,800 lb in a 20 kt crosswind and light turbulence (six turbulence sequences); and
+    in severe turbulence (sigma_w 4 m/s, beyond the claim: reported) every missed approach the gate begins ends with the wheels not touching in the minute after it."""
+    n0 = B.MM.Manager.go_arounds
+    rows, bad = [], []
+    for w, kt, sev, seed in [(12450.0, 0, 0, None), (20800.0, 0, 0, None), (26749.0, 0, 0, None)] + [(20800.0, 20, 3, s) for s in range(1, 7)]:
+        def weather(f, kt=kt, sev=sev):
+            turbulence(f, sev > 0, 15.0, max(sev, 1))
+            if kt:
+                Gale(B.COURSE + 90.0, float(kt)).install(f)
+        r = B.gate_case(w, 0.0, False, seconds=400.0, setup=weather, seed=seed)
+        rows.append('%d lb%s: %s' % (w, (', %d kt, sequence %d' % (kt, seed)) if kt else ', calm', 'no missed approach, down %.0f ft past the aiming point, %.2f m/s' % (r['td']['past'], r['td']['sink']) if r['td'] and not r['misses'] else 'MISSED APPROACH or not down: %s' % [m['why'].split(';')[0] for m in r['misses']]))
+        if r['misses'] or r['td'] is None:
+            bad.append(rows[-1])
+    add('W4', 'the gate lets the landings in calm air and in light turbulence with a 20 kt crosswind through (9 landings)', not bad, '; '.join(rows[:3]) + '; ... six of 20,800 lb at 20 kt in light turbulence: ' + ('all landed with no missed approach' if not bad else '%d of 9 did not: %s' % (len(bad), ' / '.join(bad))))
+    out, started, down = [], 0, 0
+    for w in (12450.0, 20800.0):
+        for s in range(1, 7):
+            def weather(f):
+                turbulence(f, True, 15.0, 5)
+                Gale(B.COURSE + 90.0, 10.0).install(f)
+            r = B.gate_case(w, 0.0, False, seconds=220.0, setup=weather, seed=s)
+            if r['misses']:
+                started += 1
+                down += 1 if r['misses'][0]['down'] else 0
+                out.append('%d lb sequence %d: %s, lowest %.0f ft over the runway after it%s' % (w, s, r['misses'][0]['why'].split(';')[0].replace('MISSED APPROACH: ', ''), r['misses'][0]['low'], ', WHEELS DOWN' if r['misses'][0]['down'] else ''))
+    add('W4', 'severe turbulence (sigma_w 4 m/s, beyond the claim): the missed approaches the gate begins do not end on the ground', down == 0,
+        '%d of 12 landings made one, %d touched the ground in the minute after it; %s' % (started, down, '; '.join(out)), 'reported')
+    return B.MM.Manager.go_arounds - n0
+
+
 def wind_checks(f):
     # W1
     for sev, alt, cond, name in ((5, 60000, {}, 'at 60,000 ft, severity 5'), (3, 20000, dict(kcas=150, weight=24000), 'at 20,000 ft, severity 3')):
@@ -273,6 +305,7 @@ def main():
         wind_checks(f)
     if which in ('all', 'wind'):
         add('G0', 'no go-around in the wind flights (a go-around hides nothing)', B.MM.Manager.go_arounds == 0, '%d go-arounds' % B.MM.Manager.go_arounds)
+        gate_weather()
     for tag, name, status, detail in rows:
         print('%-3s %-62s %s  %s' % (tag, name, status, detail))
     miss = sum(1 for r in rows if r[2] == 'MISS')

@@ -9,6 +9,7 @@
 #   {kind:"land", fix:[lat, lon], aim:[lat, lon], elev:2300}
 #   {kind:"hold", centre:[lat, lon], alt:20000}
 #   (made by the manager, not given:) {kind:"go_around", ...}   the landing's entry contract broken: a circle over the fix down to the final's height, then the landing
+#   (made by the manager, not given:) {kind:"route", ga:{...}, ...}   the missed approach: the stabilised-approach gate broken on the glide: the climb-out and a right-hand circuit back to the fix, then the landing again
 # lost_link: items flown instead of the rest once ap/link-lost is set. sites: runways for a landing without the engine.
 
 var J = "/fdm/jsbsim/";
@@ -70,6 +71,22 @@ var GO_AROUND_ALT_ABOVE = 100.0;   # ft: the go-around hands back to the landing
 var GO_AROUND_ALT_BELOW = 300.0;   # ... and no lower than this under it ...
 var GO_AROUND_FIX_FT = 2500.0;     # ... within this of the fix ...
 var GO_AROUND_TRACK_DEG = 20.0;    # ... on a track within this of the final's course
+# the stabilised-approach gate and the missed approach (docs/PLAN.md, "The approach that cannot hold its line")
+var GATE = 1;                      # 1: the landing's glide is watched and a missed approach is flown when it is not stable
+var GATE_TOP_FT = 1000.0;          # ft over the runway: the gate looks from here down to the decision height ...
+var GATE_DH_FT = 150.0;            # ... below which the aircraft is committed (a go-around from the flare's last seconds is no safer than the landing)
+var GATE_LINE_FT = [15.0, 0.3];    # ft off the line the gate allows, at a height h: the first plus the second times h (315 ft at 1,000 ft, 165 at 500, 60 at 150)
+var GATE_PATH_FT = [15.0, 0.2];    # ft off the glide path, the same way (215, 115, 45)
+var GATE_SLOW_KT = 15.0;           # kt under the approach speed
+var GATE_FAST_KT = 20.0;           # kt over it
+var GATE_PERSIST_S = 2.0;          # s: a gust is not a reason; the limit has to be passed this long
+var GA_CLIMBOUT_FT = 2.0 * NM;     # ft past the aiming point the missed approach climbs out straight ahead, on the final's line ...
+var GA_OFFSET_FT = 2.0 * NM;       # ... turns right and flies out this far to the side ...
+var GA_EXTRA_FT = 3.0 * NM;        # ... flies back downwind to this far behind the fix, and turns right twice onto the final's line, so that the final is this long before the fix
+var GA_CIRCUIT_ABOVE_FT = 1000.0;  # ft: the circuit is flown this far above the height the final is begun from, and the last leg comes down to it
+var GA_GEAR_UP_FT = 150.0;         # ft of height gained, climbing: the gear comes up (the landing puts it down again where the circuit levels at the fix)
+var GA_FREE_FT = 1000.0;           # ft of height gained: the go-around's own speed and rates are given up to the route's
+var GA_MAX = 2;                    # missed approaches the manager flies; the next one it holds over the fix and asks the operator
 var go_arounds = 0;                # how many go-arounds any manager has begun: the checks that should land at once count on it being 0 (a go-around hides nothing)
 
 var mod = func(a, b) { return a - b * math.floor(a / b); };
@@ -106,6 +123,7 @@ var Manager = {
         m.k = 0;
         m.done = 0;
         m.vmode = nil;
+        m.missed = 0;
         m.events = [];
         m.begin();
         return m;
@@ -147,6 +165,7 @@ var Manager = {
         fset("ap/vt-on", 0); fset("ap/sp-ext", -1); fset("ap/vt-sp-end", 0);
         fset("ap/tk-done", 0); fset("ap/ld-captured", 0);                 # the laws' latches start clear: the item may follow one of its own kind in the same call, and they would never see the task off
         fset("ap/tk-on", 0); fset("ap/tx-on", 0); fset("ap/ld-on", 0); fset("ap/ci-on", 0);          # the laws' takeoff, taxi, landing and circle tasks: each item turns on its own
+        fset("ap/ga-on", 0);                                           # the laws' go-around task (the missed approach's climb-out): the item that is one turns it on
         fset("ap/next-valid", 0);
         fset("ap/turn-ack", fget("ap/turn-done"));
         if (kind == "taxi") {
@@ -173,6 +192,11 @@ var Manager = {
             it._pts = pts;
             me.leg(pts[0], pts[1]);
             fset("ap/roll-mode", 2); fset("ap/ground-steer", 0);
+            if (opt(it, "ga", nil) != nil) {
+                fset("ap/land-mode", 0);                             # the landing task is left: the glide's laws go with it
+                fset("ap/ga-h0-ft", fget("position/h-sl-ft")); fset("ap/ga-on", 1);
+                it.ga.h0 = fget("position/h-sl-ft");
+            }
             me.vertical(pts[1][2]);
         } elsif (kind == "land") {
             var above = me.above_path(it);
@@ -352,6 +376,77 @@ var Manager = {
                 and absv(turn(fget("ap/ground-track-deg"), it.final)) <= GO_AROUND_TRACK_DEG);
     },
 
+    # the stabilised-approach gate: on the glide, from GATE_TOP_FT of height down to the decision height, the aircraft must be within the funnel of GATE_LINE_FT, GATE_PATH_FT and the speed's
+    # limits for GATE_PERSIST_S together; if it is not, the landing task has broken its contract with the flare and the missed approach takes the aircraft
+    gate: func(it) {
+        var h = fget("position/h-sl-ft") - it.elev - 5.3;              # the height over the runway (the wheel height reads no more than 1,000 ft)
+        if (!(GATE and it._on_path and fget("ap/flare") == 0 and fget("ap/on-mains") == 0 and fget("ap/manual") == 0 and fget("ap/rollout") == 0
+              and h >= GATE_DH_FT and h <= GATE_TOP_FT)) {
+            it._gate_t = nil;
+            return 0;
+        }
+        var xt = fget("ap/leg-xt-ft");
+        var ge = fget("ap/glide-error-ft");
+        var se = fget("ap/speed-error-kt");
+        var why = nil;
+        if (absv(xt) > GATE_LINE_FT[0] + GATE_LINE_FT[1] * h)
+            why = sprintf("%.0f ft %s of the line at %.0f ft", absv(xt), xt > 0 ? "right" : "left", h);
+        elsif (absv(ge) > GATE_PATH_FT[0] + GATE_PATH_FT[1] * h)
+            why = sprintf("%.0f ft %s the glide path at %.0f ft", absv(ge), ge > 0 ? "above" : "below", h);
+        elsif (se > GATE_FAST_KT or se < -GATE_SLOW_KT)
+            why = sprintf("%.0f kt %s the approach speed at %.0f ft", absv(se), se > 0 ? "over" : "under", h);
+        var now = fget("simulation/sim-time-sec");
+        if (why == nil) {
+            it._gate_t = nil;
+            return 0;
+        }
+        if (opt(it, "_gate_t", nil) == nil) it._gate_t = now;
+        if (now - it._gate_t < GATE_PERSIST_S) return 0;
+        me.missed_approach(it, why);
+        return 1;
+    },
+    # the landing task's glide broke the gate: the climb-out straight ahead on the final's line to the circuit's height, a right-hand circuit (out to the side, downwind, back onto the
+    # line GA_EXTRA_FT behind the fix) and the landing again from the fix, as the landing is begun. The next time it is needed the aircraft holds over the fix and asks the operator
+    missed_approach: func(land, why) {
+        var fix = land.fix;
+        var aim = land.aim;
+        var cd = course(fix, aim);
+        var fc = cd[0];
+        var d = cd[1];
+        go_arounds += 1;
+        me.missed += 1;
+        var alt = land.elev + maxv(GO_AROUND_MIN_AGL, math.floor((5.3 + GLIDE_TAN * d - LAND_FIX_GAP_FT) / 100.0) * 100.0);          # the height the final is begun from, as the entry contract's go-around has it
+        var c = fc * D2R;
+        var at = func(a, b) {           # a feet along the final's course and b to the right of it from the aiming point, on a flat earth about it (as Field.ll)
+            var n = a * math.cos(c) - b * math.sin(c);
+            var e = a * math.sin(c) + b * math.cos(c);
+            return [aim[0] + n / FT_PER_DEG, aim[1] + e / (FT_PER_DEG * math.cos(aim[0] * D2R))];
+        };
+        var circuit = alt + GA_CIRCUIT_ABOVE_FT;
+        if (me.missed > GA_MAX) {
+            # the third time: the same climb-out, then a hold over the fix (a right-hand circle tangent to the final's line there), until the operator decides
+            var rad = me.hold_radius();
+            var pa = at(GA_CLIMBOUT_FT, 0.0);
+            var centre = at(-d, rad);
+            me.note(sprintf("LANDING ABANDONED: %s; climbing out and holding over the fix at %.0f ft", why, circuit));
+            var ra = { kind: "route", points: [[pa[0], pa[1], circuit]], ga: { why: why, attempt: me.missed, alt: circuit, fix_alt: alt, abandoned: 1 } };
+            var ha = { kind: "hold", centre: centre, alt: circuit, radius: rad, abandoned: why };
+            me.plan = subvec(me.plan, 0, me.i) ~ [ra, ha] ~ subvec(me.plan, me.i);
+            me.begin();
+            return;
+        }
+        var back = d + GA_EXTRA_FT;
+        var p1 = at(GA_CLIMBOUT_FT, 0.0);
+        var p2 = at(GA_CLIMBOUT_FT, GA_OFFSET_FT);
+        var p3 = at(-back, GA_OFFSET_FT);
+        var p4 = at(-back, 0.0);
+        var pts = [[p1[0], p1[1], circuit], [p2[0], p2[1], circuit], [p3[0], p3[1], circuit], [p4[0], p4[1], circuit], [fix[0], fix[1], alt]];
+        me.note(sprintf("MISSED APPROACH: %s; climbing out and round for another approach (attempt %d)", why, me.missed));
+        var r = { kind: "route", points: pts, ga: { why: why, attempt: me.missed, alt: circuit, fix_alt: alt } };
+        me.plan = subvec(me.plan, 0, me.i) ~ [r] ~ subvec(me.plan, me.i);
+        me.begin();
+    },
+
     # leave the plan when the link is lost or the engine stops. Only in the air, and only once each
     contingencies: func {
         var kind = me.plan[me.i].kind;
@@ -420,6 +515,14 @@ var Manager = {
             # the turn onto the next leg is the aircraft's (fdm/laws.py, ap/turn-*): the manager gives it the next waypoint and moves on when
             # the laws say the turn is done. Past the last waypoint of a route that a landing follows the next point is the aiming point
             var pts = it._pts;
+            if (opt(it, "ga", nil) != nil) {
+                var gained = fget("position/h-sl-ft") - it.ga.h0;
+                if (fget("gear/gear-cmd-norm") > 0.5 and gained >= GA_GEAR_UP_FT and fget("velocities/h-dot-fps") > 0.0) {
+                    fset("gear/gear-cmd-norm", 0);
+                    me.note("missed approach: positive climb, gear up");
+                }
+                if (fget("ap/ga-on") == 1 and gained >= GA_FREE_FT) fset("ap/ga-on", 0);          # the route's speed and rates from here
+            }
             me.vertical(opt(it, "alt_override", pts[me.k + 1][2]), 1);
             var last = me.k == size(pts) - 2;
             if (last and LANDING_LEVEL and me.i + 1 < size(me.plan) and me.plan[me.i + 1].kind == "land") {
@@ -445,6 +548,7 @@ var Manager = {
                 me.next();
             }
         } elsif (kind == "land") {
+            if (me.gate(it)) return;
             if (!it._on_path) {
                 if (fget("ap/ld-captured") == 1) {                    # the laws took the glide over: the pitch mode, the land mode, the spoilers
                     it._on_path = 1;
