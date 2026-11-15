@@ -38,7 +38,7 @@ import harness as H             # noqa: E402
 import laws                     # noqa: E402
 
 WEIGHTS = (12000.0, 14000.0, 16000.0, 18000.0, 20000.0, 23000.0, 26750.0)       # lb: the empty aircraft with a little fuel to full tanks (26,750)
-HEIGHTS = tuple(5000.0 * i for i in range(14))          # pressure altitude, ft: 0 to 65,000 (the laws' limit), every 5,000
+HEIGHTS = tuple(5000.0 * i for i in range(9)) + tuple(42500.0 + 2500.0 * i for i in range(10))          # pressure altitude, ft: 0 to 40,000 every 5,000, 42,500 to 65,000 (the laws' limit) every 2,500: the grid's errors between its points grow above 40,000 ft (docs/PLAN.md, "the grid")
 SPEEDS = tuple(float(k) for k in range(80, 171, 10))    # KCAS: the approach speed of a light aircraft to FAST_KCAS (175): above it the pitch governor takes the nose up and the height is not held
 MAX_MACH = 0.62                                         # the governor's Mach 0.63 less a margin
 TERRAIN = -5000.0                                       # ft: the ground well below at every height: no ground effect anywhere on the grid
