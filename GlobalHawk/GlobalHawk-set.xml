@@ -11,7 +11,11 @@
   <author>JSBSim model, flight laws and ground station from public data</author>
   <aircraft-version>0.1</aircraft-version>
   <status>alpha</status>
-  <minimum-fg-version>2020.3.0</minimum-fg-version>
+  <minimum-fg-version>2024.2.0</minimum-fg-version>
+  <!-- for the launcher of FlightGear 2024.2 and later, whose only renderer is HDR: without the version above and this flag it is left out of the launcher's Browse list. The model is
+       built for it: its paint, metal, rubber and glass are Effects/model-pbr (Models/Effects/gh-*.eff), the livery drives them through the pbr animation, and its lights are
+       Effects/model-pbr-transparent (Models/Lights) -->
+  <compatibility><pbr-model type="bool">true</pbr-model></compatibility>
   <flight-model>jsb</flight-model>
   <aero>GlobalHawk</aero>
   <model>
@@ -58,7 +62,7 @@
   <!-- the ratings are the author's own judgement (2026-11-15). Cockpit: there is none to sit in; the pilot's interface is the browser ground station (GlobalHawk/gcs), which is outside
        the simulator, and in it a head-up display and two cameras: rated as that interface, not as a panel -->
   <rating><FDM type="int">4</FDM><systems type="int">4</systems><cockpit type="int">3</cockpit><model type="int">3</model></rating>
-  <tags><tag>uav</tag><tag>jet</tag><tag>high-altitude</tag><tag>nasa</tag></tags>
+  <tags><tag>uav</tag><tag>jet</tag><tag>high-altitude</tag><tag>nasa</tag><tag>compositor</tag><tag>HDR</tag></tags>
   <!-- the camera in the nose: there is no cockpit to sit in -->
   <view n="0">
    <name>Nose Camera</name>
