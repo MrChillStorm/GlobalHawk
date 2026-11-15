@@ -16,6 +16,7 @@ var DEFAULTS = {
     "ap/spoiler-base": 0.667,
     "ap/flare-height-ft": 45,
     "ap/link-timeout-sec": 30,
+    "ap/yaw-air-w": 1,
     "ap/tx-fast": 15,
     "ap/tx-slow": 8,
     "ap/tx-stop": 1,

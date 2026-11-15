@@ -30,7 +30,7 @@ LEVEL_I_FAR_FT = 150.0          # ft: and out to this where the aircraft is sett
 LEVEL_I_RATE_FPS = 3.0          # ft/s: settled: the climb rate under this
 LEVEL_I_RATE_GATE = 1           # the integral's band is the near one whatever the rate, the far one only where settled
 LEVEL_I_HOLD = 1                # the integral keeps its value while the gate is off (JSBSim's trigger resets it to zero: with the climb rate crossing 3 ft/s every 8 s it was reset every 8 s, the pitch swung 3.5 to 5.8 deg and the aircraft held 95 ft low, docs/PLAN.md)
-LEVEL_OFFSET_TO_I = 1           # the pitch the previous mode was holding beyond its path angle, which the altitude mode lets go over LEVEL_OFFSET_TC, moves into the small integral instead of vanishing (offset + integral stay what they were): level flight needs the angle of attack (0.9 deg at 150 kt: 3.5 ft/s of sink) and the integral, winding 0.07 deg a second at 15 ft, took it back slowly: the descent's level-off went 20 ft under the height in the bench, 13 ft with this (docs/PLAN.md)
+LEVEL_OFFSET_TO_I = 2           # 1: always, 2: only where the height is below the aircraft (a capture from above), 0: never. In climbs it carried the pitch of the climb and the capture, whose lag and lead were tuned with the pitch let go, overshot 11 ft and rang (the user, 5,510 then 5,490); in descents it is what takes the dip from 20 to 13 ft. The pitch the previous mode was holding beyond its path angle, which the altitude mode lets go over LEVEL_OFFSET_TC, moves into the small integral instead of vanishing (offset + integral stay what they were): level flight needs the angle of attack (0.9 deg at 150 kt: 3.5 ft/s of sink) and the integral, winding 0.07 deg a second at 15 ft, took it back slowly: the descent's level-off went 20 ft under the height in the bench, 13 ft with this (docs/PLAN.md)
 THRUST_ENTRY_TABLE = 1          # the speed law's throttle starts, where the mode begins in flight, from the aircraft's own table: the level-flight throttle at this speed, weight and height plus the path angle's and the configuration's terms (the baseline is latched afresh): the speed law began every hold from zero, the integral took 40 s to find the level throttle and the aircraft bled 153 to 145 kt in the descent's level-off (docs/PLAN.md)
 LEVEL_SPOILER_PITCH = 5.0       # deg of pitch per unit of spoiler (its actual position less its position at engagement) in the altitude mode: the spoilers dump 0.53 of lift coefficient a unit (data/calibration.json) and the lift curve's slope at the approach is 0.09 to 0.12 a degree, so the wing needs about 5 deg more angle of attack; the altitude mode had nothing to give it but a slow climb-rate command (docs/PLAN.md)
 CFG_THRUST_FF = 1               # the speed law's throttle follows the drag of the spoilers and the gear (as a path angle, with the one feed-forward it has for the flight path angle): with the engine at idle
@@ -77,6 +77,7 @@ DESCENT_SPOILER_K = 0.04        # spoiler travel per ft/s of sink the path asks 
 DESCENT_SPOILER_KI = 0.003       # the same per second of ft/s lacking: the integral takes out the steady error of the proportional law (it left the aircraft 1.7 ft/s short of the sink the path asked for, falling behind it all the way down, and the spoilers piled on at the end: 0.56 to 0.75 in the box flight)
 DESCENT_SPOILER_I_MAX = 0.4     # the integral's limit (spoiler travel)
 DESCENT_LEAD_S = 20.0           # s: the path is flown to arrive this long before the point, the capture's time
+LEVEL_SPOILER_END = 1             # the level-off of a descent ends at the spoiler setting ap/vt-sp-end (the manager gives the landing's when a landing follows), not at none
 LEVEL_SPOILER_RAMP = 1          # coming out of a descent the spoilers go in with the height left to the level, over the capture, from where they were
 SPOILER_SLEW = 0.06             # per second: the spoilers' command moves at most this fast at SPOILER_SLEW_LB (0.5 in 8 s): going in or coming out is a ramp, not a lift step
 SPOILER_SLEW_LB = 20800.0       # lb: and in proportion to the weight below it (the same lift step is a larger load factor on a lighter aircraft)
@@ -84,8 +85,11 @@ LEVEL_RESPONSE_S = 2.5          # s: the aircraft's climb rate lags the command 
 LEVEL_SPOILER_ONESIDED = 1      # the spoilers go in with the height still to lose, none once the aircraft is under the height (by the distance from it they came back out after the crossing and held it down: 55 ft under 1,900 ft in the box flight)
 LEVEL_SPOILER_LEAD = 0          # the capture of a descent with the spoilers out begins earlier by the time they take to come in (0.06 a second: 10 s from 0.63, the capture's 150 ft at 14 ft/s is 11 s: the aircraft was still shedding lift when it should have been level)
 DESCENT_PATH_TO_TURN = 1        # the path to the height ends where the turn onto the next leg begins (the leg's end less the turn's lead), not at the corner: the aircraft was still settling onto 1,900 ft when it rolled into the 100 deg turn onto the final, and the bank (Nz 1.10) took it to 1,845 ft
-LEVEL_BANK_FF = 1.0             # the altitude hold feeds forward the pitch a bank asks for: the load factor above 1 times the angle of attack over the zero-lift angle (a turn of 22 deg at 1.08 g took the aircraft 10 ft under the height; 0: none)
-ALPHA_ZERO_DEG = -3.0           # deg: the zero-lift angle of attack (the wing's: about 2.8 deg at the approach's lift coefficient of 0.645)
+LEVEL_BANK_FF = 1.0              # the altitude hold feeds forward the pitch a bank asks for: the load factor above 1 times the angle of attack over the zero-lift angle (a turn of 22 deg at 1.08 g took the aircraft 10 ft under the height; 0: none)
+LEVEL_BANK_CLALPHA = 0.117       # per deg: the lift curve's slope the bank's pitch feed-forward is worked out with
+LEVEL_BANK_PHYS = 1              # 1: the bank's feed-forward is (sec bank - 1) x the lift coefficient over the lift curve's slope, not the angle of attack over the zero-lift angle
+LEVEL_BANK_LEAD_S = 4.0           # s: the bank-for-pitch feed-forward looks this far ahead along the bank's rate; 0: the bank now
+ALPHA_ZERO_DEG = -3.0          # deg: the zero-lift angle of attack (the wing's: about 2.8 deg at the approach's lift coefficient of 0.645)
 LEVEL_I_GAIN_X = 4.0            # times the altitude integral's gain
 LEVEL_A_FPS2 = 2.6              # ft/s^2: 0.08 g of vertical acceleration at the level-off
 BANK_COMMAND = 0.86            # of the bank limit: 21.5 deg low down (Pastor: 21), 13 deg at height (ATTREX: 15)
@@ -120,13 +124,16 @@ GLIDE_TAU = 4.0                  # s: the path error dies away with this time co
 GLIDE_AZ = 3.0                   # ft/s2: far off the path the profile asks the sink rate to change no faster than this (it matters beyond 2 a tau^2, 96 ft)
 GLIDE_KS, GLIDE_KIS, GLIDE_ICLIP = 0.15, 0.01, 0.25    # spoiler per ft/s of sink error against the profile; its integral per ft/s*s; the integral's limit
 GLIDE_IBAND = 30.0               # ft: the integral runs only this close to the path and is held at zero outside (JSBSim's clip limits the output, not the state: it wound up far off the path)
-ROLL_NO_BETA = 1                 # 1: the sideslip law is off while the takeoff roll holds the line (on the mains, steering, not landing)
+YAW_AIR_BLEND_S = 3.0            # s: after lift-off the sideslip law comes in and the ground yaw term goes out over this time, not at once (at once: the yaw command stepped 8 deg in 0.5 s, the nose turned 7 deg in 1.5 s and the loop rang for 4 s; 0: at once)
+ROLL_NO_BETA = 1               # 1: the sideslip law is off while the takeoff roll holds the line (on the mains, steering, not landing)
 # The flare and the rotation, set against the records on 2026-11-13 (docs/PLAN.md, "FDM issues"): the first design (flare at
 # 70 ft, gain 0.25, 2.3 ft/s wanted) touched down at 1.1 m/s where the two recorded landings had 0.66 and 0.75; at a gain
 # of 0.6, 1.6 ft/s wanted and a flare from 45 ft it is 0.64 to 0.71 m/s from 12,500 to 26,000 lb, at 2.2 deg, with a peak
 # of 1.4 g. The rotation began at 130 KIAS (Pastor's milestone, not a rotation speed) and the aircraft left the ground
 # at 144 KEAS, above the 121 to 139 of the records; from 120 KIAS to 6.5 deg it leaves at 137 KEAS and 6.7 to 6.9 deg (records: 4.5 to 7).
-FLARE_HEIGHT = 45.0              # ft of wheel height
+PITCH_Q_TAKEOFF_X = 3.0        # times the pitch-rate damper's gain in the takeoff mode (pitch mode 3): the pitch pop at rotation; 1: as it was
+ROLLOUT_NOSE_BLEND_S = 2.0        # s: the rollout's nose-down (3 deg of ruddervator) is blended in over this time, the pitch law flying the derotation meanwhile; 0: the step
+FLARE_HEIGHT = 45.0             # ft of wheel height
 FLARE_PITCH = 2.4                # deg: the measured touchdowns
 FLARE_SINK = 1.6                 # ft/s wanted at the ground (0.5 m/s)
 FLARE_GAIN = 0.6                 # spoiler travel per ft/s of sink error in the flare
@@ -457,7 +464,10 @@ def _mission_vertical():
                   'the spoilers in a descent: steering the slope onto the point (a path), else the fixed setting'))
     togo_h = MAX(V(0), M(V(-1), err)) if LEVEL_SPOILER_ONESIDED else ABS(err)          # the height still to lose (a descent: the height under the aircraft)
     frac = IF(EQ(P('ap/v-from-eff'), V(2)), MIN(V(1), Q(togo_h, P('ap/v-span-eff'))), V(0)) if LEVEL_SPOILER_RAMP else V(0)
-    ch.append(_fn('ap/v-sp-want', IF(EQ(mode, V(3)), M(P('ap/v-sp0-eff'), frac), IF(EQ(mode, V(1)), V(0), P('ap/v-sp-descent'))), 'the spoilers\' command the task wants, before the slew'))
+    # the spoilers' level: coming out of a descent they go in with the height left to the setting the task ends at (ap/vt-sp-end: 0, or the landing's when a landing follows, so that the level
+    # before it is already in the landing configuration and there is no retracting and putting them out again 76 s later: that was the dip of 21 ft of which the spoilers were 16)
+    level_sp = IF(EQ(P('ap/v-from-eff'), V(2)), S(P('ap/vt-sp-end'), M(D(P('ap/v-sp0-eff'), P('ap/vt-sp-end')), frac)), M(P('ap/v-sp0-eff'), frac)) if LEVEL_SPOILER_END else M(P('ap/v-sp0-eff'), frac)
+    ch.append(_fn('ap/v-sp-want', IF(EQ(mode, V(3)), level_sp, IF(EQ(mode, V(1)), V(0), P('ap/v-sp-descent'))), 'the spoilers\' command the task wants, before the slew'))
     own = OR(on, GE(P('ap/sp-ext'), V(0)))
     rate = P('ap/v-sp-rate')
     want = IF(on, P('ap/v-sp-want'), P('ap/sp-ext'))
@@ -552,10 +562,10 @@ def laws_file():
         ('spoiler-mode', 0), ('spoiler-cmd', 0), ('rwy-elev-ft', 0), ('leg-lat0-deg', 0), ('leg-lon0-deg', 0), ('leg-lat1-deg', 0.01),
         ('leg-lon1-deg', 0), ('rollout', 0), ('spoiler-base', 0.667), ('flare-height-ft', FLARE_HEIGHT), ('link-last-sec', 0), ('link-timeout-sec', 30), ('link-monitor', 0),
         ('link-lost', 0), ('manual', 0), ('direct-pitch-deg', 0), ('direct-roll-deg', 0), ('direct-yaw-deg', 0),
-        ('next-lat-deg', 0), ('next-lon-deg', 0), ('next-valid', 0), ('turn-phase', 0), ('turn-done', 0), ('turn-ack', 0), ('decrab-w', 0),
+        ('next-lat-deg', 0), ('next-lon-deg', 0), ('next-valid', 0), ('turn-phase', 0), ('turn-done', 0), ('yaw-air-w', 1), ('rollout-w', 0), ('turn-ack', 0), ('decrab-w', 0),
         ('tk-on', 0), ('tk-done', 0), ('tx-on', 0), ('tx-fast', 15), ('tx-slow', 8), ('tx-bend-deg', 0), ('tx-last', 0), ('tx-stop', 1), ('ld-on', 0), ('ld-captured', 0),
         ('ci-on', 0), ('ci-lat', 0), ('ci-lon', 0), ('ci-radius-ft', 1000), ('ci-side', 1), ('ci-out-max', 30), ('ci-lead', 1),
-        ('vt-on', 0), ('v-sp-i', 0), ('vt-ft', 0), ('vt-path', 0), ('sp-ext', -1), ('vmode', 0), ('v-level-alt', 0), ('v-level-from', 0), ('v-level-span', LEVEL_GATE_FT), ('v-level-sp0', 0)))
+        ('vt-on', 0), ('vt-sp-end', 0), ('v-sp-i', 0), ('vt-ft', 0), ('vt-path', 0), ('sp-ext', -1), ('vmode', 0), ('v-level-alt', 0), ('v-level-from', 0), ('v-level-span', LEVEL_GATE_FT), ('v-level-sp0', 0)))
     props += ''.join('  <property value="0">limits/%s</property>\n' % k for k in ('overstress', 'failed', 'reset'))
     ch = []
     # ---- part C: navigators and the link, ahead of everything that uses them
@@ -812,7 +822,8 @@ def laws_file():
             ch.append(_fn('ap/theta-alt-i-next', X_('ifthen', X_('and', X_('eq', _p('ap/engaged'), _v(1)), X_('eq', _p('ap/pitch-mode'), _v(2))),
                                                    X_('max', _v(-12), X_('min', _v(12), X_('sum', _p('ap/theta-alt-i-deg'),
                                                       X_('ifthen', X_('eq', _p('ap/alt-i-enable'), _v(1)), X_('product', _v(G['K_h_i'] * LEVEL_I_GAIN_X), err, _p('simulation/dt')), _v(0)),
-                                                      *((X_('product', _p('ap/theta-alt-offset-deg'), _p('simulation/dt'), _v(1.0 / LEVEL_OFFSET_TC)),) if LEVEL_OFFSET_TO_I else ())))),
+                                                      *((X_('ifthen', X_('lt', _p('ap/alt-dir'), _v(0)) if LEVEL_OFFSET_TO_I == 2 else X_('gt', _v(1), _v(0)),
+                                                            X_('product', _p('ap/theta-alt-offset-deg'), _p('simulation/dt'), _v(1.0 / LEVEL_OFFSET_TC)), _v(0)),) if LEVEL_OFFSET_TO_I else ())))),
                                                    _v(0)),
                           'the small integral of the height error, deg: runs while the gate is open, held (not reset) while it is shut, zero while the altitude mode is not flying', out='ap/theta-alt-i-deg'))
         else:
@@ -829,8 +840,18 @@ def laws_file():
       <input>ap/theta-alt-offset-in-deg</input>
       <c1>%g</c1>
     </lag_filter>''' % (LEVEL_OFFSET_TC, 1.0 / LEVEL_OFFSET_TC))
-        bank_ff = X_('product', _v(LEVEL_BANK_FF), X_('max', _v(0), X_('difference', X_('quotient', _v(1), X_('max', _v(0.5), X_('cos', X_('toradians', _p('attitude/phi-deg'))))), _v(1))),
-                     X_('max', _v(0), X_('difference', _p('aero/alpha-deg'), _v(ALPHA_ZERO_DEG)))) if LEVEL_BANK_FF else _v(0)
+        # the bank the pitch is fed forward for is the bank LEVEL_BANK_LEAD_S from now (bank plus its rate times the lead): the pitch follows with the response time, so with the bank itself the load factor
+        # came first and the aircraft sank 6 ft rolling in, rose 8 ft rolling out and sank 6 ft again as the integral unwound (the user: "turns are ringing between 5490 and 5510")
+        phi_ff = X_('sum', _p('attitude/phi-deg'), X_('product', _v(LEVEL_BANK_LEAD_S), X_('todegrees', _p('velocities/phidot-rad_sec')))) if LEVEL_BANK_LEAD_S else _p('attitude/phi-deg')
+        sec_less_1 = X_('max', _v(0), X_('difference', X_('quotient', _v(1), X_('max', _v(0.5), X_('cos', X_('toradians', phi_ff)))), _v(1)))
+        if LEVEL_BANK_PHYS:
+            # the extra angle of attack a bank asks for: the extra lift is (sec bank - 1) of the weight, a lift coefficient of (sec - 1) x the one flown (ap/cl-now: the total, the spoilers' dump
+            # included, which does not scale with the bank), over the lift curve's slope (0.117 a degree below 2 deg of angle of attack). The old form, the angle of attack over the zero-lift
+            # angle, grows with the angle of attack: 0.8 deg wanted in the landing configuration where 0.45 does it (the aircraft climbed 1.3 ft/s in the turn); the lift curve's flattening at the
+            # approach's angle of attack (0.079 a degree) asked for 50 % more than that (+8 ft): the same slope in both configurations is what the two turns want (docs/PLAN.md)
+            bank_ff = X_('product', _v(LEVEL_BANK_FF), sec_less_1, X_('quotient', _p('ap/cl-now'), _v(LEVEL_BANK_CLALPHA))) if LEVEL_BANK_FF else _v(0)
+        else:
+            bank_ff = X_('product', _v(LEVEL_BANK_FF), sec_less_1, X_('max', _v(0), X_('difference', _p('aero/alpha-deg'), _v(ALPHA_ZERO_DEG)))) if LEVEL_BANK_FF else _v(0)
         ch.append(_fn('ap/theta-alt-deg', X_('sum', ff, X_('product', _v(G['K_hd']), X_('difference', _p('ap/alt-vs-cmd-fps'), _p('velocities/h-dot-fps'))), _p('ap/theta-alt-i-deg'), _p('ap/theta-alt-offset-deg'), bank_ff, *((sp_ff,) if LEVEL_SPOILER_PITCH else ())),
                       'pitch attitude for the climb rate asked for, and the small integral of the height error (the old law\'s clip of 12 deg held a climb of 17 deg to 12 at the handover: a 0.5 g unload)', clip=('-%g' % LEVEL_THETA_MAX, '%g' % LEVEL_THETA_MAX)))
     else:
@@ -944,18 +965,31 @@ def laws_file():
       </test>
     </switch>''' % (ROTATE_KIAS - 5.0))
     ch.append(_pid('ap/pitch-pi-deg', 'ap/theta-error-deg', 'ap/k-theta', 'ap/k-theta-i', 'pitch', clip=('-25', '25')))
+    kq_pitch = _p('ap/k-q')
+    if PITCH_Q_TAKEOFF_X != 1:
+        # the rate damper is stronger in the takeoff mode (pitch mode 3): the nose gear needs about -13 deg of ruddervator to unload at 135 kt and about -6.6 deg is enough once the nose is free, so the surplus
+        # rotated the aircraft at 7 deg/s into 1.9 deg of overshoot and 1.5 g at lift-off; while the nose is pinned the rate is zero and the damper asks for nothing, so the breakaway is not delayed
+        kq_pitch = '<ifthen><eq>%s%s</eq><product>%s%s</product>%s</ifthen>' % (_p('ap/pitch-mode'), _v(3), _p('ap/k-q'), _v(PITCH_Q_TAKEOFF_X), _p('ap/k-q'))
     ch.append(_fn('ap/pitch-law-deg', '        <sum>%s%s<product>%s%s%s</product></sum>' % (
-        _p('ap/bias-pitch-deg'), _p('ap/pitch-pi-deg'), _p('ap/k-q'), _v(57.29578), _p('velocities/q-rad_sec')),
+        _p('ap/bias-pitch-deg'), _p('ap/pitch-pi-deg'), kq_pitch, _v(57.29578), _p('velocities/q-rad_sec')),
         'ruddervators together, trailing edge down positive', clip=('-20', '20')))
+    if ROLLOUT_NOSE_BLEND_S:
+        # the nose-down of the rollout comes in as a blend over ROLLOUT_NOSE_BLEND_S, the pitch law (with its rate damper) flying the derotation meanwhile: at once it was a step of 4.7 deg of
+        # ruddervator in a quarter second on top of the fall onto the nose wheel, a pitch rate of -14 deg/s, and a ramp from the old value threw away what the damper asked as the nose fell
+        ch.append(_fn('ap/rollout-w-next', '        <ifthen><and><eq>%s%s</eq><eq>%s%s</eq></and><min>%s<sum>%s<product>%s%s</product></sum></min>%s</ifthen>' % (
+            _p('ap/rollout'), _v(1), _p('ap/manual'), _v(0), _v(1), _p('ap/rollout-w'), _p('simulation/dt'), _v(1.0 / ROLLOUT_NOSE_BLEND_S), _v(0)),
+            'the weight of the rollout\'s nose-down: 0 until the rollout, then up to 1 over ROLLOUT_NOSE_BLEND_S', out='ap/rollout-w'))
+        ch.append(_fn('ap/rollout-nose-deg', '        <sum>%s<product>%s<difference>%s%s</difference></product></sum>' % (
+            _p('ap/pitch-law-deg'), _p('ap/rollout-w'), _v(3), _p('ap/pitch-law-deg')), 'the pitch law with 3 deg of nose-down blended in by the rollout\'s weight'))
     ch.append('''    <switch name="ap/pitch-out-deg">
       <description>on the runway after landing: 3 deg nose-down</description>
       <default value="ap/pitch-law-deg"/>
       <test value="ap/pitch-direct-deg">ap/manual == 2</test>
-      <test logic="AND" value="3">
+      <test logic="AND" value="%s">
         ap/rollout == 1
         ap/manual == 0
       </test>
-    </switch>''')
+    </switch>''' % ('ap/rollout-nose-deg' if ROLLOUT_NOSE_BLEND_S else '3'))
     ch.insert(len(ch) - 1, _direct_latch('pitch', 'ap/pitch-law-deg'))
     ch.insert(len(ch) - 1, _fn('ap/pitch-direct-deg', '        <sum>%s<product>%s%s</product><product>%s%s%s</product></sum>' % (
         _p('ap/direct-pitch-deg'), _v(DIRECT['pitch']), _p('ap/stick-pitch'), _p('ap/k-q'), _v(57.29578), _p('velocities/q-rad_sec')),
@@ -1200,16 +1234,29 @@ def laws_file():
     </washout_filter>''')
     ch.append(_fn('ap/takeoff-roll', '        <ifthen><and><eq>%s%s</eq><gt>%s%s</gt><eq>%s%s</eq></and>%s%s</ifthen>' % (
         _p('ap/ground-steer'), _v(1), _p('ap/on-mains'), _v(0), _p('ap/land-mode'), _v(0), _v(1), _v(0)), 'on the mains with steering on and not landing: the takeoff roll'))
+    if YAW_AIR_BLEND_S:
+        # 0 on the takeoff roll, then up to 1 over YAW_AIR_BLEND_S from the frame the wheels leave: the sideslip law comes in and the ground term goes out together, not at once
+        ch.append(_fn('ap/yaw-air-w-next', '        <ifthen><eq>%s%s</eq>%s<min>%s<sum>%s<product>%s%s</product></sum></min></ifthen>' % (
+            _p('ap/takeoff-roll'), _v(1), _v(0), _v(1), _p('ap/yaw-air-w'), _p('simulation/dt'), _v(1.0 / YAW_AIR_BLEND_S)),
+            'the weight of the airborne yaw law: 0 on the takeoff roll, rising to 1 over %g s from lift-off' % YAW_AIR_BLEND_S, out='ap/yaw-air-w'))
     ch.append(_trigger('beta', *((('ap/takeoff-roll == 0',) if ROLL_NO_BETA else ()) + (('ap/decrab-w lt 0.01',) if DECRAB else ()))))
     ch.append(_fn('ap/beta-error-deg', '        <sum>%s<product>%s%s%s</product></sum>' % (_p('aero/beta-deg'), _v(MANUAL_BETA), _p('ap/protected'), _p('ap/pedal')),
                   'sideslip less the pedals\' (nose right is negative sideslip)'))
-    beta_gate = (('<difference>%s%s</difference>' % (_v(1), _p('ap/takeoff-roll'))) if ROLL_NO_BETA else '') + (('<difference>%s%s</difference>' % (_v(1), _p('ap/decrab-w'))) if DECRAB else '')
+    roll_gate = (_p('ap/yaw-air-w') if YAW_AIR_BLEND_S else '<difference>%s%s</difference>' % (_v(1), _p('ap/takeoff-roll'))) if ROLL_NO_BETA else ''
+    beta_gate = roll_gate + (('<difference>%s%s</difference>' % (_v(1), _p('ap/decrab-w'))) if DECRAB else '')
     ch.append(_fn('ap/beta-gated-deg', '        <product>%s<max>%s<min>%s<quotient><difference>%s%s</difference>%s</quotient></min></max>%s</product>' % (
         _p('ap/beta-error-deg'), _v(0), _v(1), _p('velocities/vc-kts'), _v(40), _v(20), beta_gate),
         'sideslip, faded out below 60 kt: it means nothing at a walk' + ('; off on the takeoff roll' if ROLL_NO_BETA else '') + ('; faded out by the decrab\'s weight' if DECRAB else '')))
     ch.append(_pid('ap/yaw-beta-deg', 'ap/beta-gated-deg', 'ap/k-beta', 'ap/k-beta-i', 'beta', clip=('-12', '12')))
-    ch.append(_fn('ap/yaw-ground-deg', _op('product', _p('ap/ground-steer'), MAX(MIN(V(1), P('ap/on-mains')), P('ap/decrab-w')),
-                                           IF(GT(P('ap/on-mains'), V(0)), V(0.5), V(DECRAB_K)), _p('ap/ground-error-deg')),
+    if YAW_AIR_BLEND_S:
+        # on the mains as before; in the air the crab's decrab weight at its gain, and for the blend after lift-off the ground term fades out with the weight at the gain it had on the ground
+        ground_w = IF(GT(P('ap/on-mains'), V(0)), _op('product', MAX(MIN(V(1), P('ap/on-mains')), P('ap/decrab-w')), V(0.5)),
+                      MAX(_op('product', P('ap/decrab-w'), V(DECRAB_K)), _op('product', _op('difference', V(1), P('ap/yaw-air-w')), V(0.5))))
+        yaw_ground = _op('product', _p('ap/ground-steer'), ground_w, _p('ap/ground-error-deg'))
+    else:
+        yaw_ground = _op('product', _p('ap/ground-steer'), MAX(MIN(V(1), P('ap/on-mains')), P('ap/decrab-w')),
+                         IF(GT(P('ap/on-mains'), V(0)), V(0.5), V(DECRAB_K)), _p('ap/ground-error-deg'))
+    ch.append(_fn('ap/yaw-ground-deg', yaw_ground,
                   'the ruddervators on the heading error to the course the line gives: help the nose wheel on the ground, and take the crab off in the air from the decrab\'s weight', clip=('-10', '10')))
     ch.append(_fn('ap/yaw-law-deg', '''        <sum>
           %s

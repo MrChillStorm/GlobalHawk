@@ -34,6 +34,7 @@ CIRCLE_BANK = 15.0             # deg
 FINAL_SURPLUS = 300.0          # ft above the glide path the circle aims to leave for the final
 WING_AREA = 540.0
 K_PSI = 1.2                    # the heading law's gain (fdm/laws.py), deg of bank per deg at 600 ft/s
+LANDING_LEVEL = 1                # the level-off before a landing is flown in the landing configuration: the spoilers end at LANDING_SPOILER and the gear goes down as it begins (retracted to nothing and put out again at the landing's start they dipped it 21 ft)
 LANDING_SPOILER = 0.667        # the spoilers' command in the landing configuration, before the glide path is taken (the laws' spoiler base)
 LEVEL_BEGIN_FT = 400.0         # the landing keeps the level's height command while the aircraft is within this of it
 MAX_ALT = 65000.0              # ft: the aircraft's maximum (NASA 2008)
@@ -119,7 +120,7 @@ class Manager:
         kind = it['kind']
         self.note('begin ' + kind)
         vm, lv = int(round(f['ap/vmode'])), f['ap/v-level-alt']          # what the vertical task was doing, before this item takes it over
-        f['ap/vt-on'], f['ap/sp-ext'] = 0, -1
+        f['ap/vt-on'], f['ap/sp-ext'], f['ap/vt-sp-end'] = 0, -1, 0
         f['ap/tk-done'], f['ap/ld-captured'] = 0, 0                 # the laws' latches start clear: the item may follow one of its own kind in the same call, and they would never see the task off
         f['ap/tk-on'], f['ap/tx-on'], f['ap/ld-on'], f['ap/ci-on'] = 0, 0, 0, 0          # the laws' takeoff, taxi, landing and circle tasks: each item turns on its own
         f['ap/next-valid'] = 0
@@ -393,6 +394,12 @@ class Manager:
             pts = it['_pts']
             self.vertical(it.get('alt_override', pts[self.k + 1][2]), path=True)
             last = self.k == len(pts) - 2
+            if last and LANDING_LEVEL and self.i + 1 < len(self.plan) and self.plan[self.i + 1]['kind'] == 'land':
+                # a landing follows: the level-off of the descent ends in the landing configuration (the laws take the spoilers there as they level), and the gear goes down as the level begins
+                f['ap/vt-sp-end'] = LANDING_SPOILER
+                if int(round(f['ap/vmode'])) == 3 and int(round(f['ap/v-level-from'])) == 2 and f['gear/gear-cmd-norm'] < 0.5:
+                    f['gear/gear-cmd-norm'] = 1
+                    self.note('gear down for the landing')
             nxt = pts[self.k + 2] if not last else self.after(self.i)
             self.set_next(nxt)
             if f['ap/turn-done'] > f['ap/turn-ack']:

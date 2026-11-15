@@ -52,7 +52,8 @@ var WING_AREA = 540.0;
 var K_PSI = 1.2;                   # the heading law's gain (fdm/laws.py), deg of bank per deg at 600 ft/s
 var MAX_ALT = 65000.0;             # ft: the aircraft's maximum (NASA 2008)
 # the level-off (fdm/missionmgr.py, docs/PLAN.md "Level-off"): the altitude mode takes over where the capture's profile asks for exactly the climb rate there is
-var LANDING_SPOILER = 0.667;       # the spoilers' command in the landing configuration, before the glide path is taken (the laws' spoiler base)
+var LANDING_LEVEL = 1;             # the level-off before a landing is flown in the landing configuration: the spoilers end at LANDING_SPOILER and the gear goes down as it begins (retracted to nothing and put out again at the landing's start they dipped it 21 ft)
+var LANDING_SPOILER = 0.667;      # the spoilers' command in the landing configuration, before the glide path is taken (the laws' spoiler base)
 var LEVEL_BEGIN_FT = 400.0;        # the landing keeps the level's height command while the aircraft is within this of it
 var HOLD_BANK = 11.5;              # deg: a hold's circle is flown well inside the bank limit
 
@@ -143,7 +144,7 @@ var Manager = {
         me.note("begin " ~ kind);
         var vm = int(fget("ap/vmode") + 0.5);                # what the laws' vertical task was doing, before this item takes it over
         var lv = fget("ap/v-level-alt");
-        fset("ap/vt-on", 0); fset("ap/sp-ext", -1);
+        fset("ap/vt-on", 0); fset("ap/sp-ext", -1); fset("ap/vt-sp-end", 0);
         fset("ap/tk-done", 0); fset("ap/ld-captured", 0);                 # the laws' latches start clear: the item may follow one of its own kind in the same call, and they would never see the task off
         fset("ap/tk-on", 0); fset("ap/tx-on", 0); fset("ap/ld-on", 0); fset("ap/ci-on", 0);          # the laws' takeoff, taxi, landing and circle tasks: each item turns on its own
         fset("ap/next-valid", 0);
@@ -421,6 +422,14 @@ var Manager = {
             var pts = it._pts;
             me.vertical(opt(it, "alt_override", pts[me.k + 1][2]), 1);
             var last = me.k == size(pts) - 2;
+            if (last and LANDING_LEVEL and me.i + 1 < size(me.plan) and me.plan[me.i + 1].kind == "land") {
+                # a landing follows: the level-off of the descent ends in the landing configuration (the laws take the spoilers there as they level), and the gear goes down as the level begins
+                fset("ap/vt-sp-end", LANDING_SPOILER);
+                if (int(fget("ap/vmode") + 0.5) == 3 and int(fget("ap/v-level-from") + 0.5) == 2 and fget("gear/gear-cmd-norm") < 0.5) {
+                    fset("gear/gear-cmd-norm", 1);
+                    me.note("gear down for the landing");
+                }
+            }
             var nxt = !last ? pts[me.k + 2] : me.after(me.i);
             me.set_next(nxt);
             if (fget("ap/turn-done") > fget("ap/turn-ack")) {

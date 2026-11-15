@@ -47,6 +47,8 @@
   <property value="0">ap/next-valid</property>
   <property value="0">ap/turn-phase</property>
   <property value="0">ap/turn-done</property>
+  <property value="1">ap/yaw-air-w</property>
+  <property value="0">ap/rollout-w</property>
   <property value="0">ap/turn-ack</property>
   <property value="0">ap/decrab-w</property>
   <property value="0">ap/tk-on</property>
@@ -67,6 +69,7 @@
   <property value="30">ap/ci-out-max</property>
   <property value="1">ap/ci-lead</property>
   <property value="0">ap/vt-on</property>
+  <property value="0">ap/vt-sp-end</property>
   <property value="0">ap/v-sp-i</property>
   <property value="0">ap/vt-ft</property>
   <property value="0">ap/vt-path</property>
@@ -779,7 +782,7 @@
     <fcs_function name="ap/theta-alt-i-next">
       <description>the small integral of the height error, deg: runs while the gate is open, held (not reset) while it is shut, zero while the altitude mode is not flying</description>
       <function>
-<ifthen><and><eq><property>ap/engaged</property><value>1</value></eq><eq><property>ap/pitch-mode</property><value>2</value></eq></and><max><value>-12</value><min><value>12</value><sum><property>ap/theta-alt-i-deg</property><ifthen><eq><property>ap/alt-i-enable</property><value>1</value></eq><product><value>0.0048</value><property>ap/alt-error-ft</property><property>simulation/dt</property></product><value>0</value></ifthen><product><property>ap/theta-alt-offset-deg</property><property>simulation/dt</property><value>0.166667</value></product></sum></min></max><value>0</value></ifthen>
+<ifthen><and><eq><property>ap/engaged</property><value>1</value></eq><eq><property>ap/pitch-mode</property><value>2</value></eq></and><max><value>-12</value><min><value>12</value><sum><property>ap/theta-alt-i-deg</property><ifthen><eq><property>ap/alt-i-enable</property><value>1</value></eq><product><value>0.0048</value><property>ap/alt-error-ft</property><property>simulation/dt</property></product><value>0</value></ifthen><ifthen><lt><property>ap/alt-dir</property><value>0</value></lt><product><property>ap/theta-alt-offset-deg</property><property>simulation/dt</property><value>0.166667</value></product><value>0</value></ifthen></sum></min></max><value>0</value></ifthen>
       </function>
       <output>ap/theta-alt-i-deg</output>
     </fcs_function>
@@ -797,7 +800,7 @@
     <fcs_function name="ap/theta-alt-deg">
       <description>pitch attitude for the climb rate asked for, and the small integral of the height error (the old law's clip of 12 deg held a climb of 17 deg to 12 at the handover: a 0.5 g unload)</description>
       <function>
-<sum><product><value>57.2958</value><quotient><property>ap/alt-vs-cmd-fps</property><max><value>100</value><property>velocities/vt-fps</property></max></quotient></product><product><value>0.06</value><difference><property>ap/alt-vs-cmd-fps</property><property>velocities/h-dot-fps</property></difference></product><property>ap/theta-alt-i-deg</property><property>ap/theta-alt-offset-deg</property><product><value>1</value><max><value>0</value><difference><quotient><value>1</value><max><value>0.5</value><cos><toradians><property>attitude/phi-deg</property></toradians></cos></max></quotient><value>1</value></difference></max><max><value>0</value><difference><property>aero/alpha-deg</property><value>-3</value></difference></max></product><product><value>5</value><difference><property>ctl/spoiler-norm</property><property>ap/bias-spoiler</property></difference></product></sum>
+<sum><product><value>57.2958</value><quotient><property>ap/alt-vs-cmd-fps</property><max><value>100</value><property>velocities/vt-fps</property></max></quotient></product><product><value>0.06</value><difference><property>ap/alt-vs-cmd-fps</property><property>velocities/h-dot-fps</property></difference></product><property>ap/theta-alt-i-deg</property><property>ap/theta-alt-offset-deg</property><product><value>1</value><max><value>0</value><difference><quotient><value>1</value><max><value>0.5</value><cos><toradians><sum><property>attitude/phi-deg</property><product><value>4</value><todegrees><property>velocities/phidot-rad_sec</property></todegrees></product></sum></toradians></cos></max></quotient><value>1</value></difference></max><quotient><property>ap/cl-now</property><value>0.117</value></quotient></product><product><value>5</value><difference><property>ctl/spoiler-norm</property><property>ap/bias-spoiler</property></difference></product></sum>
       </function>
       <clipto><min>-30</min><max>30</max></clipto>
     </fcs_function>
@@ -969,9 +972,22 @@
     <fcs_function name="ap/pitch-law-deg">
       <description>ruddervators together, trailing edge down positive</description>
       <function>
-        <sum><property>ap/bias-pitch-deg</property><property>ap/pitch-pi-deg</property><product><property>ap/k-q</property><value>57.2958</value><property>velocities/q-rad_sec</property></product></sum>
+        <sum><property>ap/bias-pitch-deg</property><property>ap/pitch-pi-deg</property><product><ifthen><eq><property>ap/pitch-mode</property><value>3</value></eq><product><property>ap/k-q</property><value>3</value></product><property>ap/k-q</property></ifthen><value>57.2958</value><property>velocities/q-rad_sec</property></product></sum>
       </function>
       <clipto><min>-20</min><max>20</max></clipto>
+    </fcs_function>
+    <fcs_function name="ap/rollout-w-next">
+      <description>the weight of the rollout's nose-down: 0 until the rollout, then up to 1 over ROLLOUT_NOSE_BLEND_S</description>
+      <function>
+        <ifthen><and><eq><property>ap/rollout</property><value>1</value></eq><eq><property>ap/manual</property><value>0</value></eq></and><min><value>1</value><sum><property>ap/rollout-w</property><product><property>simulation/dt</property><value>0.5</value></product></sum></min><value>0</value></ifthen>
+      </function>
+      <output>ap/rollout-w</output>
+    </fcs_function>
+    <fcs_function name="ap/rollout-nose-deg">
+      <description>the pitch law with 3 deg of nose-down blended in by the rollout's weight</description>
+      <function>
+        <sum><property>ap/pitch-law-deg</property><product><property>ap/rollout-w</property><difference><value>3</value><property>ap/pitch-law-deg</property></difference></product></sum>
+      </function>
     </fcs_function>
     <switch name="ap/latch-direct-pitch">
       <default value="ap/direct-pitch-deg"/>
@@ -989,7 +1005,7 @@
       <description>on the runway after landing: 3 deg nose-down</description>
       <default value="ap/pitch-law-deg"/>
       <test value="ap/pitch-direct-deg">ap/manual == 2</test>
-      <test logic="AND" value="3">
+      <test logic="AND" value="ap/rollout-nose-deg">
         ap/rollout == 1
         ap/manual == 0
       </test>
@@ -1492,6 +1508,13 @@
         <ifthen><and><eq><property>ap/ground-steer</property><value>1</value></eq><gt><property>ap/on-mains</property><value>0</value></gt><eq><property>ap/land-mode</property><value>0</value></eq></and><value>1</value><value>0</value></ifthen>
       </function>
     </fcs_function>
+    <fcs_function name="ap/yaw-air-w-next">
+      <description>the weight of the airborne yaw law: 0 on the takeoff roll, rising to 1 over 3 s from lift-off</description>
+      <function>
+        <ifthen><eq><property>ap/takeoff-roll</property><value>1</value></eq><value>0</value><min><value>1</value><sum><property>ap/yaw-air-w</property><product><property>simulation/dt</property><value>0.333333</value></product></sum></min></ifthen>
+      </function>
+      <output>ap/yaw-air-w</output>
+    </fcs_function>
     <switch name="ap/trig-beta">
       <default value="-1"/>
       <test logic="AND" value="0">
@@ -1509,7 +1532,7 @@
     <fcs_function name="ap/beta-gated-deg">
       <description>sideslip, faded out below 60 kt: it means nothing at a walk; off on the takeoff roll; faded out by the decrab's weight</description>
       <function>
-        <product><property>ap/beta-error-deg</property><max><value>0</value><min><value>1</value><quotient><difference><property>velocities/vc-kts</property><value>40</value></difference><value>20</value></quotient></min></max><difference><value>1</value><property>ap/takeoff-roll</property></difference><difference><value>1</value><property>ap/decrab-w</property></difference></product>
+        <product><property>ap/beta-error-deg</property><max><value>0</value><min><value>1</value><quotient><difference><property>velocities/vc-kts</property><value>40</value></difference><value>20</value></quotient></min></max><property>ap/yaw-air-w</property><difference><value>1</value><property>ap/decrab-w</property></difference></product>
       </function>
     </fcs_function>
     <pid name="ap/yaw-beta-deg">
@@ -1523,7 +1546,7 @@
     <fcs_function name="ap/yaw-ground-deg">
       <description>the ruddervators on the heading error to the course the line gives: help the nose wheel on the ground, and take the crab off in the air from the decrab's weight</description>
       <function>
-        <product><property>ap/ground-steer</property><max><min><value>1</value><property>ap/on-mains</property></min><property>ap/decrab-w</property></max><ifthen><gt><property>ap/on-mains</property><value>0</value></gt><value>0.5</value><value>1</value></ifthen><property>ap/ground-error-deg</property></product>
+        <product><property>ap/ground-steer</property><ifthen><gt><property>ap/on-mains</property><value>0</value></gt>        <product><max><min><value>1</value><property>ap/on-mains</property></min><property>ap/decrab-w</property></max><value>0.5</value></product><max>        <product><property>ap/decrab-w</property><value>1</value></product>        <product>        <difference><value>1</value><property>ap/yaw-air-w</property></difference><value>0.5</value></product></max></ifthen><property>ap/ground-error-deg</property></product>
       </function>
       <clipto><min>-10</min><max>10</max></clipto>
     </fcs_function>
@@ -2159,7 +2182,7 @@
     <fcs_function name="ap/v-sp-want">
       <description>the spoilers' command the task wants, before the slew</description>
       <function>
-<ifthen><eq><property>ap/v-mode-raw</property><value>3</value></eq><product><property>ap/v-sp0-eff</property><ifthen><eq><property>ap/v-from-eff</property><value>2</value></eq><min><value>1</value><quotient><max><value>0</value><product><value>-1</value><property>ap/v-err-ft</property></product></max><property>ap/v-span-eff</property></quotient></min><value>0</value></ifthen></product><ifthen><eq><property>ap/v-mode-raw</property><value>1</value></eq><value>0</value><property>ap/v-sp-descent</property></ifthen></ifthen>
+<ifthen><eq><property>ap/v-mode-raw</property><value>3</value></eq><ifthen><eq><property>ap/v-from-eff</property><value>2</value></eq><sum><property>ap/vt-sp-end</property><product><difference><property>ap/v-sp0-eff</property><property>ap/vt-sp-end</property></difference><ifthen><eq><property>ap/v-from-eff</property><value>2</value></eq><min><value>1</value><quotient><max><value>0</value><product><value>-1</value><property>ap/v-err-ft</property></product></max><property>ap/v-span-eff</property></quotient></min><value>0</value></ifthen></product></sum><product><property>ap/v-sp0-eff</property><ifthen><eq><property>ap/v-from-eff</property><value>2</value></eq><min><value>1</value><quotient><max><value>0</value><product><value>-1</value><property>ap/v-err-ft</property></product></max><property>ap/v-span-eff</property></quotient></min><value>0</value></ifthen></product></ifthen><ifthen><eq><property>ap/v-mode-raw</property><value>1</value></eq><value>0</value><property>ap/v-sp-descent</property></ifthen></ifthen>
       </function>
     </fcs_function>
     <fcs_function name="ap/spoiler-cmd-next">
