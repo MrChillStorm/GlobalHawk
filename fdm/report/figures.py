@@ -276,6 +276,38 @@ def flight():
     save(fig, 'flight')
 
 
+def record():
+    """The highest the model flies, tanks run dry (results/record.json, mkrecord.py from fdm/scenario_record.py)."""
+    g = json.load(open(os.path.join(R, 'record.json')))
+    t, alt, w = np.array(g['t_h']), np.array(g['alt_ft']) / 1000.0, np.array(g['weight_lb']) / 1000.0
+    r = g['record']
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(3.4, 3.3), sharex=True, gridspec_kw=dict(height_ratios=[2.2, 1.0], hspace=0.08))
+    a1.plot(t, alt, color=BLUE, label='height')
+    a1.axhline(65.0, color=GREY, lw=0.6, ls='--')
+    a1.text(1.0, 66.0, 'NASA\'s maximum, 65,000 ft', color=GREY, fontsize=6, va='bottom')
+    a1.plot(r['t_h'], r['alt_ft'] / 1000.0, 'o', color=RED, ms=4)
+    a1.annotate('%s ft at %.1f h, tanks empty' % (format(r['alt_ft'], ','), r['t_h']), xy=(r['t_h'], r['alt_ft'] / 1000.0), xytext=(r['t_h'] - 1.5, 74.0), fontsize=6.5, color=RED, ha='right', va='center',
+                arrowprops=dict(arrowstyle='-', color=RED, lw=0.5))
+    a1.axvline(g['engine_out_h'], color=RED, lw=0.5, ls=':')
+    a1.set_ylabel('height, 1000 ft')
+    a1.set_ylim(0, 78)
+    b = a1.twinx()
+    b.plot(t, w, color=GREEN, lw=0.8)
+    b.set_ylabel('weight, 1000 lb', color=GREEN)
+    b.set_ylim(10, 28)
+    b.grid(False)
+    a1.text(g['engine_out_h'] - 0.4, 26, 'engine out,\nglide, landing', color=RED, fontsize=6, ha='right', va='center')
+    a2.plot(g['margin_t_h'], g['margin_median_deg'], color=BLUE, lw=0.9, label='median')
+    a2.plot(g['margin_t_h'], g['margin_min_deg'], color=BLUE, lw=0.6, ls='--', label='least')
+    a2.legend(loc='upper right', fontsize=6)
+    a2.axhline(0, color=GREY, lw=0.6)
+    a2.set_ylabel('angle-of-attack\nmargin, deg')
+    a2.set_ylim(-0.1, 1.0)
+    a2.set_xlabel('hours after take-off')
+    a2.set_xlim(0, 41)
+    save(fig, 'record')
+
+
 def failures():
     fig, ax = plt.subplots(1, 3, figsize=(7.0, 2.3), gridspec_kw=dict(wspace=0.34))
     n = H['navigator']
@@ -325,6 +357,6 @@ def station():
 
 if __name__ == '__main__':
     os.makedirs(F, exist_ok=True)
-    for fn in (geometry, engine, section, calibration, landing, laws, flight, failures, station):
+    for fn in (geometry, engine, section, calibration, landing, laws, flight, record, failures, station):
         fn()
         print(fn.__name__, flush=True)

@@ -12,6 +12,7 @@
 \usepackage[hidelinks]{hyperref}
 \usepackage{tabularx}
 \usepackage{array}
+\usepackage{longtable}
 \setlist{nosep,leftmargin=*}
 \graphicspath{{fig/}}
 \input{tab/numbers.tex}
@@ -368,6 +369,20 @@ factor was allowed for and not used, and stays unused: a fan-speed factor of 1.0
 the climb, and a change of 10\,\% in fuel flow, well beyond the engine's stated uncertainty of 6\,\%, would be needed with the fit as it is, to match a
 figure that is not a measurement of this aircraft.
 
+\begin{figure}[t]
+\centering\includegraphics[width=\columnwidth]{record.pdf}
+\caption{The highest the model flies: full tanks to empty, cruise-climbing at Mach 0.6 with the 65\,000\,ft limit lifted, then the engine-out glide and landing. Below, the angle-of-attack margin, its median and its least value in each half hour (a turn of the racetrack uses 0.5$^\circ$ of it by design).}\label{fig:record}
+\end{figure}
+\emph{The highest the model flies, tanks run dry.} The same aircraft flown through its own laws and mission manager, offline, with nothing held at 65\,000\,ft: it takes off at 26\,750\,lb
+with all 15\,300\,lb of fuel that the model's tanks hold, cruise-climbs at maximum thrust on the schedule's Mach number (0.6 above FL550) round a racetrack with 150\,nmi sides, so that the field is always within glide
+range, and when the tanks are empty (under 2\,lb) the engine is failed, the way the fuel running out would stop it, and the aircraft's own engine-out logic glides it to the field and lands it. The
+laws' and the manager's 65\,000\,ft limits are lifted for this run only. \emph{The model reaches 72\,236\,ft, 38.5\,h after take-off, with the tanks empty (11\,452\,lb) at Mach 0.600; the flight is 39.3\,h in all} (figure~\ref{fig:record}).
+The height is 56\,988\,ft at 6\,h, 62\,374 at 18, 65\,043 at 24 (NASA's maximum passed), 67\,762 at 30 and 70\,707 at 36\,h; with 2\,000\,lb of fuel left 68\,260\,ft, with 1\,000\,lb 69\,912, with 500\,lb 71\,156 and with 100\,lb 72\,038.
+The climb rate is 8 to 15\,ft/min throughout and 25 near 36\,h. The angle-of-attack margin is 0.61$^\circ$ up to 35\,h, 0.25$^\circ$ at 38\,h and 0.19$^\circ$ in the last minutes: the aircraft is at the coffin corner when
+the fuel runs out, and a few hundred feet more are all that is left. The engine fails 98\,nmi from the field; the glide takes 51\,min and the landing is 4.5\,ft off the runway line, the rollout 4.5\,ft at most. Above 65\,000\,ft
+this is the model extrapolated, not the aircraft measured: the engine data go to 70\,000\,ft and Mach 0.7, the aerodynamic data are sampled at 60\,000\,ft for Mach 0.6 and the laws' tables go to 65\,000\,ft and are held at their last value above it.
+The quasi-steady mission above reached 71\,450\,ft with its tanks nearly dry, 790\,ft lower: it burns 14\,500\,lb, this flight 15\,300. Neither is a flight to set a number beside: NASA gives 65\,000\,ft as the maximum and no flight to more.
+
 \emph{Lift curve.} The records' angle of attack is pitch attitude less flight-path angle within 0.2$^\circ$ all flight. In the steady segments of three
 flights at Mach 0.59 to 0.62 the trimmed slope is 0.116 per degree; the model's, from trims over the same weights, is 0.123, 5.6\,\% over. One flight
 at Mach 0.50 to 0.54 gives 0.130 against the model's 0.134. The flights' levels differ by 0.09 in lift coefficient, which is 10\,\% of weight or
@@ -539,17 +554,7 @@ had no weight in it and now compares with the flight model alone at the same wei
 \end{enumerate}
 
 \section{Assessment}\label{sec:assess}
-\begin{table*}[t]
-\centering\footnotesize
-\caption{The \Nmiss{} misses and their causes.}\label{tab:misses}
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{5.2cm}>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}X@{}}
-\toprule
-Check & Group & Cause \\
-\midrule
-\input{tab/misses.tex}
-\end{tabularx}
-\end{table*}
-\Nmiss{} checks miss (table~\ref{tab:misses}). They fall into four kinds.
+\Nmiss{} checks miss (table~\ref{tab:misses}, on the last pages). They fall into four kinds.
 \begin{itemize}
 \item \textbf{A source that is not what it was taken for.} The 3-D model, which is not to scale (six misses), and the thesis table whose thrust was
 asked to 2\,\%.
@@ -621,6 +626,27 @@ Engineering~54, Springer, 1989; version 6.99, built here without its display.
 \bibitem{asb} P.\ Sharpe, \emph{AeroSandbox}, \url{https://github.com/peterdsharpe/AeroSandbox}.
 \bibitem{matt} J.\,D.\ Mattingly, \emph{Elements of Propulsion: Gas Turbines and Rockets}, AIAA, 2006.
 \bibitem{pyc} NASA Glenn, \emph{pyCycle}, \url{https://github.com/OpenMDAO/pyCycle}.
-\bibitem{pww} \emph{PyWopWop: Rotorcraft and Glider Sound for Flight Simulators from First Principles}, \url{https://github.com/MrChillStorm/PyWopWop}.
+\bibitem{pww} \emph{PyWopWop: Aircraft Sound for Flight Simulators from First Principles}, \url{https://github.com/MrChillStorm/PyWopWop}.
 \end{thebibliography}
+\clearpage
+\onecolumn
+\begingroup\footnotesize
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{4.9cm}>{\raggedright\arraybackslash}p{2.9cm}>{\raggedright\arraybackslash}p{9.2cm}@{}}
+\caption{The \Nmiss{} misses and their causes.}\label{tab:misses}\\
+\toprule
+Check & Group & Cause \\
+\midrule
+\endfirsthead
+\toprule
+Check & Group & Cause \\
+\midrule
+\endhead
+\midrule
+\multicolumn{3}{r}{\emph{continued on the next page}}\\
+\endfoot
+\bottomrule
+\endlastfoot
+\input{tab/misses.tex}
+\end{longtable}
+\endgroup
 \end{document}
