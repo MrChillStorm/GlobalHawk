@@ -149,7 +149,7 @@ def headless(weight=TAKEOFF_LB):
         ('the glide-path capture stays within 100 ft under the fix height', alt[land].min() >= fixh - 100, 'lowest %.0f ft against the fix at %.0f ft' % (alt[land].min(), fixh)),
         ('the glide-path capture stays under the angle-of-attack limit', margin[land].min() >= 0.0, 'least margin %.2f deg' % margin[land].min()),
     ] if land.any() else []
-    print('the manager: ' + '; '.join('%.1f h %s' % ((e[0] - t0) / 3600, e[1]) for e in ob.mgr.events if not e[1].startswith('leg ')))
+    print('the manager: ' + '; '.join(('%.3f h %s' if os.environ.get('ALLEVENTS') else '%.1f h %s') % ((e[0] - t0) / 3600, e[1]) for e in ob.mgr.events if os.environ.get('ALLEVENTS') or not e[1].startswith('leg ')))
     ok = True
     for name, good, detail in checks:
         print('%-70s %s  %s' % (name, 'pass' if good else 'FAIL', detail))
