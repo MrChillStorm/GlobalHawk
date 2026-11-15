@@ -158,14 +158,14 @@ assert.strictEqual(legs[6].alt_ft, good.field.elev_ft);
   assert.deepStrictEqual(about(plan(10, 20, 80)), [], 'long enough');
 }
 // a leg that has to lose more height than the aircraft's descent allows (F1 of docs/PLAN.md, "The station's local flight descended 9,300 ft too high"): the 15,000 ft box
-// the station used to make came to the landing fix 9,000 ft too high and the aircraft dived on the final and landed 6.6 nmi past the runway
+// the station used to make came to the landing fix 9,000 ft too high (the fix's height is the measured capture gap's: not pinned here) and the aircraft dived on the final and landed 6.6 nmi past the runway
 {
   const NM = geo.NM;
   const fcT = require('../js/predict.js').make(require('../js/perfdata.js'));
   const old = geo.localPlan([60.33, 24.96], 153.1, 174, 15000);
   const a = pc.assess(old, { weight_lb: 25500 });
   assert.deepStrictEqual(a.map((x) => x.kind), ['descent'], JSON.stringify(a));
-  assert.ok(/^The leg from point 3 \(15000 ft\) down to the landing fix \(1900 ft\) is 14\.8 nmi: the aircraft's descent takes about \d+\.\d nmi for 13100 ft, so it arrives about \d+ ft too high\. Lower point 3 to \d+ ft or less, or put the landing fix [\d.]+ nmi farther on\./.test(a[0].text), a[0].text);
+  assert.ok(/^The leg from point 3 \(15000 ft\) down to the landing fix \(\d+ ft\) is 14\.8 nmi: the aircraft's descent takes about \d+\.\d nmi for \d+ ft, so it arrives about \d+ ft too high\. Lower point 3 to \d+ ft or less, or put the landing fix [\d.]+ nmi farther on\./.test(a[0].text), a[0].text);
   assert.ok(a[0].need > 2 * a[0].have && Math.abs(a[0].have - 14.84) < 0.1);
   // taking the advice makes it quiet: the height it names, or the distance it names
   const lowerTo = Number(/Lower point 3 to (\d+) ft/.exec(a[0].text)[1]);

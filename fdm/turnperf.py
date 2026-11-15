@@ -4,8 +4,7 @@ fraction of the bank limit").
 
     python3 fdm/turnperf.py [--write]       --write: data/turn_performance.json, which fdm/laws.py and fdm/capability.py read
 
-Level turns of 200 deg in calm air through the bank law (roll mode 0, ap/bank-cmd-deg) with the speed and altitude held, at three weights, four heights and three speeds
-at each, banks commanded of 10 to 45 deg (the model built with the bank command limit lifted, so the command reaches them). Per cell:
+Level turns of 200 deg in calm air through the bank law (roll mode 0, ap/bank-cmd-deg) with the speed and altitude held, over the whole envelope (WEIGHTS x HEIGHTS x SPEEDS, 0 to 65,000 ft), banks commanded of 10 to 45 deg (the model built with the bank command limit lifted, so the command reaches them). Per cell:
   flown_per_cmd  the bank flown over the bank commanded, less 1 (the steady part from 60 deg of turn on): the laws' bank law settles above its command, more so heavy
                  and low (the 0.86 of the bank limit stood in for it, one number for every cell)
   cap_deg        the largest bank flown that holds the height within CAP_ALT_FT, the speed within CAP_KCAS and stays CAP_ALPHA_MARGIN under the angle-of-attack
@@ -38,12 +37,11 @@ sys.path.insert(0, HERE)
 import harness as H             # noqa: E402
 import laws                     # noqa: E402
 
-WEIGHTS = (12000.0, 20000.0, 26000.0)
-# height over the ground (terrain 174 ft) and the calibrated airspeeds flown there (the schedule's speed in the middle)
-HEIGHTS = (4000.0, 20000.0, 30000.0, 45000.0)          # over the ground (terrain 174 ft): the pressure altitude is 174 ft more
-SPEEDS = (110.0, 130.0, 150.0, 170.0)                  # KCAS; FAST_KCAS (175): above it the pitch governor takes the nose up and the height is not held
+WEIGHTS = (12000.0, 14000.0, 16000.0, 18000.0, 20000.0, 23000.0, 26750.0)       # lb: the empty aircraft with a little fuel to full tanks (26,750)
+HEIGHTS = tuple(5000.0 * i for i in range(14))          # pressure altitude, ft: 0 to 65,000 (the laws' limit), every 5,000
+SPEEDS = tuple(float(k) for k in range(80, 171, 10))    # KCAS: the approach speed of a light aircraft to FAST_KCAS (175): above it the pitch governor takes the nose up and the height is not held
 MAX_MACH = 0.62                                         # the governor's Mach 0.63 less a margin
-TERRAIN = 174.0
+TERRAIN = -5000.0                                       # ft: the ground well below at every height: no ground effect anywhere on the grid
 BANKS = (10.0, 20.0, 30.0, 35.0, 40.0, 45.0)
 CAP_ALT_FT, CAP_KCAS, CAP_ALPHA_MARGIN = 100.0, 5.0, 0.5
 STEADY_FROM_DEG = 60.0
@@ -53,7 +51,7 @@ ROLLOUT_S = 45.0
 
 
 def fly(f, w, h, k, b):
-    t = H.trim(f, alt=h + TERRAIN, kcas=k, weight=w, lat=60.0, lon=25.0, psi=90.0, terrain=TERRAIN)
+    t = H.trim(f, alt=h, kcas=k, weight=w, lat=60.0, lon=25.0, psi=90.0, terrain=TERRAIN)
     H.engage(f, t, pitch_mode=2, thrust_mode=3, speed_schedule=0)
     f['ap/speed-cmd-kcas'] = f['velocities/vc-kts']
     f['ap/roll-mode'] = 0
@@ -143,34 +141,52 @@ def cell(f, w, h, k):
 
 
 def mach_of(kcas, h_ft):
-    """Mach number at a calibrated airspeed and a pressure altitude (ISA)"""
-    p = (1 - 6.87559e-6 * h_ft) ** 5.25588
+    """Mach number at a calibrated airspeed and a pressure altitude (ISA: the troposphere to 36,089 ft, isothermal above: the first version had the troposphere's formula all the way
+    and was 13 % high at 65,000 ft)"""
+    if h_ft <= 36089.2:
+        p = (1 - 6.87559e-6 * h_ft) ** 5.25588
+    else:
+        p = 0.223360 * math.exp(-4.80634e-5 * (h_ft - 36089.2))
     qc = (1 + 0.2 * (kcas / 661.47) ** 2) ** 3.5 - 1
     return math.sqrt(5 * ((qc / p + 1) ** (1 / 3.5) - 1))
 
 
+VARIANT = {'laws.BANK_COMMAND': 2.0, 'laws.BANK_LIMIT': [(0.0, 25.0), (80000.0, 25.0)]}
+
+
+def plausible(c):
+    """What a turn of this aircraft can have: a run that went unstable (an aircraft that cannot fly that speed there) gives a bank flown 150 % over the command and a lag of
+    minus 1,000 s. The cells measured clean have the bank flown within 0.13 of the command over and lags of 0.9 to 4 s."""
+    return -0.02 <= c['flown_per_cmd'] <= 0.25 and 0.3 <= c['lag_in_s'] <= 8.0 and 0.3 <= c['lag_out_s'] <= 8.0
+
+
 def main():
-    f = H.load_variant({'laws.BANK_COMMAND': 2.0, 'laws.BANK_LIMIT': [(0.0, 25.0), (80000.0, 25.0)]})
+    f = H.load_variant(VARIANT)
     cells, holes = {}, []
     print('%8s %8s %6s %6s %10s %8s %7s %7s %7s %7s  %s' % ('lb', 'ft', 'KCAS', 'Mach', 'flown/cmd', 'cap deg', 'lag in', 'lag out', 'm in', 'm out', 'limited by'), flush=True)
     for w in WEIGHTS:
         for h in HEIGHTS:
             for k in SPEEDS:
-                m = mach_of(k, h + TERRAIN)
+                m = mach_of(k, h)
                 if m > MAX_MACH:
                     holes.append(dict(weight_lb=w, height_ft=h, kcas=k, why='Mach %.2f over %g' % (m, MAX_MACH)))
                     print('%8.0f %8.0f %6.1f %6.2f  hole: over Mach %g' % (w, h, k, m, MAX_MACH), flush=True)
                     continue
                 try:
                     c = cell(f, w, h, k)
+                    why = None if plausible(c) else 'implausible: bank flown/commanded %+.2f, lags %.1f and %.1f s (the run did not hold)' % (c['flown_per_cmd'], c['lag_in_s'], c['lag_out_s'])
                 except Exception as ex:                      # a trim that does not exist is a hole, not a guess
-                    holes.append(dict(weight_lb=w, height_ft=h, kcas=k, why='no trim: %s' % str(ex)[:60]))
-                    print('%8.0f %8.0f %6.1f %6.2f  hole: %s' % (w, h, k, m, str(ex)[:60]), flush=True)
+                    c, why = None, 'no trim: %s' % str(ex)[:60]
+                if why is not None:
+                    holes.append(dict(weight_lb=w, height_ft=h, kcas=k, why=why))
+                    print('%8.0f %8.0f %6.1f %6.2f  hole: %s' % (w, h, k, m, why), flush=True)
+                    f = H.load_variant(VARIANT)              # a run that failed or diverged can leave the model's state not finite, and every trim after it fails
                     continue
                 c['mach'] = round(m, 3)
                 cells[(w, h, k)] = c
                 print('%8.0f %8.0f %6.1f %6.2f %+9.2f%% %8.1f %7.2f %7.2f %7.2f %7.2f  %s (spread in %.2f out %.2f; m in %.2f out %.2f)' % (w, h, k, m, 100 * c['flown_per_cmd'], c['cap_deg'], c['lag_in_s'], c['lag_out_s'], c['moment_in_s2'], c['moment_out_s2'], c['limited_by'], c['lag_in_spread'], c['lag_out_spread'], c['moment_in_spread'], c['moment_out_spread']), flush=True)
-    # the grid the laws' 3D table reads: [speed][weight][height]; a hole takes the nearest measured speed at that weight and height (the speeds are ascending)
+    # the grid the laws' 3D table reads: [speed][weight][height]. A hole (a combination the aircraft does not fly, or a trim that does not exist) takes the nearest measured speed at that
+    # weight and height; at a weight and height where nothing is flown (a weight above its ceiling) the nearest weight's cell there. Never invented, and listed in "holes".
     grids = {k_: [] for k_ in ('flown_per_cmd', 'cap_deg', 'lag_in_s', 'lag_out_s', 'moment_in_s2', 'moment_out_s2')}
     for k in SPEEDS:
         rows_ = {k_: [] for k_ in grids}
@@ -178,7 +194,11 @@ def main():
             cols = {k_: [] for k_ in grids}
             for h in HEIGHTS:
                 near = sorted([kk for (ww, hh, kk) in cells if ww == w and hh == h], key=lambda kk: abs(kk - k))
-                c = cells[(w, h, near[0])]
+                if near:
+                    c = cells[(w, h, near[0])]
+                else:
+                    other = sorted([(abs(ww - w), abs(kk - k), ww, kk) for (ww, hh, kk) in cells if hh == h])
+                    c = cells[(other[0][2], h, other[0][3])]
                 for k_ in grids:
                     cols[k_].append(c[k_])
             for k_ in grids:
@@ -187,7 +207,7 @@ def main():
             grids[k_].append(rows_[k_])
     out = {'note': 'turnperf.py: level 200 deg turns in calm air, the bank law, the speed and height held; flown_per_cmd = bank flown over bank commanded less 1; cap_deg = the largest bank flown that '
                    'holds %g ft, %g kt and is %g deg under the angle-of-attack limit' % (CAP_ALT_FT, CAP_KCAS, CAP_ALPHA_MARGIN),
-           'axes': dict(speed_kcas=list(SPEEDS), weight_lb=list(WEIGHTS), pressure_alt_ft=[h + TERRAIN for h in HEIGHTS]),
+           'axes': dict(speed_kcas=list(SPEEDS), weight_lb=list(WEIGHTS), pressure_alt_ft=list(HEIGHTS)),
            'grid_flown_per_cmd': grids['flown_per_cmd'], 'grid_cap_deg': grids['cap_deg'], 'grid_lag_in_s': grids['lag_in_s'], 'grid_lag_out_s': grids['lag_out_s'], 'grid_moment_in_s2': grids['moment_in_s2'], 'grid_moment_out_s2': grids['moment_out_s2'], 'holes': holes, 'cells': list(cells.values())}
     if '--write' in sys.argv:
         json.dump(out, open(os.path.join(HERE, 'data', 'turn_performance.json'), 'w'), indent=1)

@@ -29,7 +29,7 @@ import missionmgr as MM         # noqa: E402
 DATA = os.path.join(HERE, 'data', 'capability_flown.json')
 OUT = os.path.join(HERE, '..', 'GlobalHawk', 'gcs', 'js', 'capability.js')
 NM = 6076.1
-ALT = [2500.0, 5000.0, 10000.0, 15000.0, 20000.0, 25000.0, 30000.0, 35000.0, 40000.0, 45000.0, 50000.0, 55000.0, 60000.0, 65000.0]
+ALT = [0.0, 5000.0, 10000.0, 15000.0, 20000.0, 25000.0, 30000.0, 35000.0, 40000.0, 45000.0, 50000.0, 55000.0, 60000.0, 65000.0]
 WEIGHT = [11500.0, 15000.0, 19000.0, 23000.0, 26700.0]
 WEIGHT_LAND = [12000.0, 15000.0, 19000.0, 23000.0, 26700.0]      # the landing weights: the trim at 150 KCAS in the landing configuration does not exist at 11,500 lb
 FAR = -20000.0                  # ft: the ground a long way down, so that a descent from 2,500 ft is not a landing
@@ -42,8 +42,8 @@ def approach_kcas(weight):
 
 
 def flown_descent(f, alt, weight, seconds=170.0, after=70.0):
-    """The descent the mission manager flies from a height: the rate (ft/min, negative) and the fuel flow (lb/h) after the first
-    `after` seconds, on the speed schedule, idle thrust and half spoilers, standard atmosphere, no wind. It starts from the descent's own
+    """The descent the mission manager flies from a height with no path to steer along (a hold's, a go-to's): the rate (ft/min, negative) and the fuel flow (lb/h) after the first
+    `after` seconds, on the speed schedule, idle thrust and the base spoilers (half; the route descent of the laws steers its slope with them, between none and all), standard atmosphere, no wind. It starts from the descent's own
     trim (the level trim does not exist above the weight's ceiling), so what is measured is the manager's descent with its laws and not
     the settling of the start. None where the aircraft does not settle (the engine at idle high up with a light weight)."""
     try:
@@ -53,6 +53,9 @@ def flown_descent(f, alt, weight, seconds=170.0, after=70.0):
     H.engage(f, t, pitch_mode=1, thrust_mode=2, speed_schedule=1, spoiler_mode=1, spoiler_cmd=0.5)
     fld = MM.Field(34.9, -117.9, FAR)
     mgr = MM.Manager(f, [dict(kind='route', points=[fld.ll(0, 400 * NM) + (alt - 8000.0,)])])
+    vertical = mgr.vertical
+    mgr.vertical = lambda a, path=False: vertical(a, path=False)      # the base spoilers: a route's descent now steers its slope with them (a 400 nmi leg down 8,000 ft asks for 0.2 deg
+                                                                      # and the spoilers go all the way in: the clean idle glide, the shallowest descent, not what this table is)
     f['ap/engaged'] = 1
     rows = []
     t0 = f['simulation/sim-time-sec']
@@ -113,22 +116,32 @@ def measure():
     out = dict(alt_ft=ALT, weight_lb=WEIGHT, descent_fpm=[], descent_pph=[], slowing=[])
     trim = {k: [] for k in ('fpm', 'pph')}
     for a in ALT:
-        rows = [flown_descent(f, a, w) for w in WEIGHT]
+        rows = []
+        for w in WEIGHT:
+            rows.append(flown_descent(f, a, w))
+            if rows[-1][0] is None:                      # a run that did not settle can leave the model in a state no trim will start from (found 2026-11-15: not finite): a fresh one
+                f = H.load_variant({})
         out['descent_fpm'].append([None if r[0] is None else round(r[0], 1) for r in rows])
         out['descent_pph'].append([None if r[1] is None else round(r[1], 1) for r in rows])
         print('%6.0f ft: descent %s ft/min' % (a, out['descent_fpm'][-1]), flush=True)
-    # where the descent does not settle (60,000 ft and up, light weights) the table's old idle trim is scaled by the ratio flown / trim at the
-    # highest height of that weight that did settle: noted in the file
+    # where the descent does not settle (60,000 ft and up, light weights; heavy ones near their ceiling) the idle trim at the height is scaled by the ratio flown / trim at the
+    # nearest height of that weight that did settle: noted in the file
     filled = []
+    f = H.load_variant({})
+    trim_fpm = lambda tt: tt['ktas'] * H.KT * math.sin(math.radians(tt['cond']['gamma'])) * 60.0
     for j, w in enumerate(WEIGHT):
-        last = max(i for i in range(len(ALT)) if out['descent_fpm'][i][j] is not None)
-        t_last = H.trim(f, alt=ALT[last], weight=w, throttle=0.0, spoiler=0.5, **M.schedule(ALT[last]))
-        trim_fpm = lambda tt: tt['ktas'] * H.KT * math.sin(math.radians(tt['cond']['gamma'])) * 60.0
-        ratio, ratio_pph = out['descent_fpm'][last][j] / trim_fpm(t_last), out['descent_pph'][last][j] / t_last['fuel_flow']
-        for i in range(last + 1, len(ALT)):
+        settled = [i for i in range(len(ALT)) if out['descent_fpm'][i][j] is not None]
+        ratios = {}
+        for i in range(len(ALT)):
+            if out['descent_fpm'][i][j] is not None:
+                continue
+            k = min(settled, key=lambda s: (abs(s - i), s))                  # the nearest height of this weight that settled (the lower on a tie)
+            if k not in ratios:
+                t_k = H.trim(f, alt=ALT[k], weight=w, throttle=0.0, spoiler=0.5, **M.schedule(ALT[k]))
+                ratios[k] = (out['descent_fpm'][k][j] / trim_fpm(t_k), out['descent_pph'][k][j] / t_k['fuel_flow'])
             tt = H.trim(f, alt=ALT[i], weight=w, throttle=0.0, spoiler=0.5, **M.schedule(ALT[i]))
-            out['descent_fpm'][i][j] = round(trim_fpm(tt) * ratio, 1)
-            out['descent_pph'][i][j] = round(tt['fuel_flow'] * ratio_pph, 1)
+            out['descent_fpm'][i][j] = round(trim_fpm(tt) * ratios[k][0], 1)
+            out['descent_pph'][i][j] = round(tt['fuel_flow'] * ratios[k][1], 1)
             filled.append([ALT[i], w])
     out['filled_from_trim'] = filled
     return slowing_part(out)
