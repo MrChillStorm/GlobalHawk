@@ -32,12 +32,13 @@ LEVEL_I_RATE_GATE = 1           # the integral's band is the near one whatever t
 LEVEL_I_HOLD = 1                # the integral keeps its value while the gate is off (JSBSim's trigger resets it to zero: with the climb rate crossing 3 ft/s every 8 s it was reset every 8 s, the pitch swung 3.5 to 5.8 deg and the aircraft held 95 ft low, docs/PLAN.md)
 LEVEL_OFFSET_TO_I = 2           # 1: always, 2: only where the height is below the aircraft (a capture from above), 0: never. In climbs it carried the pitch of the climb and the capture, whose lag and lead were tuned with the pitch let go, overshot 11 ft and rang (the user, 5,510 then 5,490); in descents it is what takes the dip from 20 to 13 ft. The pitch the previous mode was holding beyond its path angle, which the altitude mode lets go over LEVEL_OFFSET_TC, moves into the small integral instead of vanishing (offset + integral stay what they were): level flight needs the angle of attack (0.9 deg at 150 kt: 3.5 ft/s of sink) and the integral, winding 0.07 deg a second at 15 ft, took it back slowly: the descent's level-off went 20 ft under the height in the bench, 13 ft with this (docs/PLAN.md)
 THRUST_ENTRY_TABLE = 1          # the speed law's throttle starts, where the mode begins in flight, from the aircraft's own table: the level-flight throttle at this speed, weight and height plus the path angle's and the configuration's terms (the baseline is latched afresh): the speed law began every hold from zero, the integral took 40 s to find the level throttle and the aircraft bled 153 to 145 kt in the descent's level-off (docs/PLAN.md)
+LEVEL_ALPHA_FF = 1              # the altitude mode's pitch command carries the angle of attack of level flight at this Mach number, lift coefficient and height (pathperf.py's third grid) less the attitude latched at engagement: the command was anchored to that attitude (the runway's, about -0.3 deg), which is the right angle of attack at about 20,500 lb at 150 KCAS only: a 12,450 lb aircraft (level at -2.0 deg) flew its climb capture 1.7 deg nose high and overshot 8,000 ft by 34 ft, a 26,750 lb one (+1.1 deg) 1.4 deg nose low (docs/PLAN.md, "the level-flight angle of attack")
 LEVEL_SPOILER_PITCH = 5.0       # deg of pitch per unit of spoiler (its actual position less its position at engagement) in the altitude mode: the spoilers dump 0.53 of lift coefficient a unit (data/calibration.json) and the lift curve's slope at the approach is 0.09 to 0.12 a degree, so the wing needs about 5 deg more angle of attack; the altitude mode had nothing to give it but a slow climb-rate command (docs/PLAN.md)
 CFG_THRUST_FF = 1               # the speed law's throttle follows the drag of the spoilers and the gear (as a path angle, with the one feed-forward it has for the flight path angle): with the engine at idle
                                 # and the landing configuration going out the thrust law waited for the speed to fall 4 kt, then the throttle's rate limit and the spool: thrust began 14 s after the drag (docs/PLAN.md)
 CFG_GEAR_CD = 0.0148            # the gear's drag coefficient with the doors (fdm/genghawk.py GEAR_DRAG 0.0133 + GEAR_DOOR_DRAG 0.0015)
 CFG_INDUCED_X = 1.10            # the spoilers' drag grows by this for the induced drag of the lift the wing makes up for them (at the approach: 2,570 lbf against 1,000 lbf clean, 0.0387 of drag coefficient against 0.0351 of the parts)
-LEVEL_I_BAND_FT = 25.0          # the capture's small integral runs within this of the height only (over a long capture it wound up and the aircraft went through the height)
+LEVEL_I_BAND_FT = 10.0          # ft: the capture's small integral runs within this of the height only (over a long capture it wound up and the aircraft went through the height); it was 25 ft with the integral's gain at 4 times, which made up for the level-flight angle of attack the command did not have (LEVEL_ALPHA_FF): with it, the integral inside 25 ft only wound up on the way in: +8 to +9 ft over the height at every weight, 10 ft: +4 to +6 (docs/PLAN.md, "the level-flight angle of attack")
 LEVEL_THRUST_FF = 1            # the speed law's throttle follows the flight path angle: the throttle latched at engagement plus the table's slope (data/path_thrust.json) times the angle now less the angle at engagement
 LEVEL_THETA_MAX = 30.0          # deg: the altitude capture's pitch attitude clip (the pitch command governor and the protections still limit what the aircraft is given)
 CLIMB_MARGIN = 0.85             # of the climb rate the throttle table says the thrust holds: the manager flies a height change shorter than the capture of that rate wants entirely under the profile
@@ -56,6 +57,11 @@ PITCH_ENTRY = 0                 # in pitch mode 1 in the air (a climb or a desce
 PITCH_NZ_PER_S = 0.04          # g per second: the most the load factor is asked to change by the pitch rate's change (the contract is 0.03 g in half a second, 0.06 g/s; the airframe's response adds to what is asked)
 SPEED_BUMPLESS = 1             # the speed law takes over from the pitch command with its proportional term cancelled (see ap/theta-speed-entry-deg)
 GLIDE_SPOILER_RATE = 0            # per second: the most the spoilers' selection moves while the glide is flown, before the flare (0: no limit)
+GLIDE_ALPHA_LEAD_S = 3.5         # s: in the glide before the flare the angle-of-attack protection looks this far ahead on a rising angle of attack, as it does by hand (0: not)
+GA_SPEED_ADD_KT = 0.0            # the go-around task (ap/ga-on, set by the manager's missed approach) holds the approach speed plus this where it begins (swept: +10 kt put the nose down 7 deg and 149 ft under the 300 ft it was begun from: the speed law pitches for a speed it does not have; none loses 35 ft) ...
+GA_SPEED_RAMP = 0.06             # ... and asks for this much more per foot of height gained, up to the schedule's speed (the schedule's 150 KCAS asked of an aircraft at 105 pitched it down 20 deg)
+GA_THROTTLE_RATE = 3.0           # deg/s: the throttle goes up this fast in the go-around, in the climb's path-angle rate (THROTTLE_PATH_RATE is 0.9: 14 s to full thrust from the glide's)
+GA_SPOILER_SLEW = 0.3            # per second at SPOILER_SLEW_LB: the spoilers come in this fast in the go-around (0.06: 16 s from the glide's 0.97)
 THROTTLE_SLEW_LAND = 1          # the throttle's rate limit goes on in the landing until the flare (the landing law's idle was a step of 0.43 at the start of the glide: Nz 0.86)
 THRUST_PITCH_FF = 0             # in pitch mode 1 the pitch asked for by the speed law carries the flight path angle that the change of thrust since the mode took over makes (asin(change / weight)): the pitch follows the thrust, so the speed does not run off while the nose is brought up (or down) by the speed error alone
 THROTTLE_SLEW = 0.10            # per second: the throttle moves at most this fast while the aircraft is flying its vertical modes (pitch mode 1 or 2, not landing), so a change of thrust mode is not a step
@@ -74,6 +80,7 @@ LEVEL_SHORT = 1                 # that short rule
 LEVEL_ENERGY = 1                  # above LEVEL_ENERGY_ALT_FT a climb is not captured (the altitude mode is not begun) while the throttle for level flight at this speed, weight and height is LEVEL_ENERGY_THROTTLE or more: the thrust cannot hold the height, the altitude mode asks for a climb it cannot give and the aircraft goes to its angle-of-attack limit at Mach 0.57 for hours (the cruise-climb's last 1,000 ft, docs/PLAN.md, the 65,000 ft scenario); it goes on climbing at full thrust on the speed schedule and takes the height when it is light enough
 LEVEL_ENERGY_ALT_FT = 45000.0     # the throttle table (pathperf.py) is to 65,000 ft and 14,000 and 16,000 lb since 2026-11-15; below this the rule is not used (the flights it was tuned on)
 LEVEL_ENERGY_THROTTLE = 0.95
+THRUST_ANTIWINDUP = 1           # the speed law's integral stops while the throttle it asks for is over its limit (0 or 1) and the error would push it further: JSBSim's PID limits only its output, the integral kept going: the landing start's step of the speed target from 150 to 102 KCAS (48 kt) wound it to about -3.4 under an output pinned at -1, the throttle stayed at idle 85 s after the speed fell under the target and a 12,450 lb aircraft sank 806 ft at the alpha limit (docs/PLAN.md, "the light-weight landing start")
 LEVEL_STAY_FT = 8000.0          # once the altitude hold has the height it keeps it while the height stays the same, unless the aircraft is this far off it
 DESCENT_SPOILER = 0.5           # the spoilers' command in a descent that has no path to steer along (and the base of the one that has)
 DESCENT_ON_SPOILERS = 1         # a descent with a path (ap/vt-path) steers its slope with the spoilers: the sink the height over the target and the way to go ask for, DESCENT_SPOILER at the sink there is, DESCENT_SPOILER_K more for each ft/s lacking
@@ -109,6 +116,9 @@ ALPHA_ZERO_LIFT = -4.6           # deg, body axes: where the lift is nothing. Fr
                                  # coefficient of 0.292 and 0.632 (weight / q S), so 0.114 per deg and the lift is nothing at -4.6
 TURN_ALPHA_MARGIN = 0.5          # deg kept under the angle-of-attack limit by the bank of a turn
 TURN_MIN_BANK = 8.0              # deg: the least the angle-of-attack margin takes the bank down to (the pitch law's protection holds the rest)
+TURN_DESIGN_LAG_S = 10.0         # s: the design bank is also held to the instantaneous cap through this lag: the tables' cap near an angle-of-attack margin of nothing (the cruise-climb at 56,000 ft: 0.5 deg of margin) is 13 deg where the aircraft's own is 8, a 0.1 deg difference, and the arc was 3 nmi wide of the lead
+TURN_PRED_ON_HELD = 1            # the trim works once the bank is 90 % of the bank the turn is commanding (the design bank, or the one it holds), not of the instantaneous limit: a bank held below 90 % of a limit that had risen again never let it work
+TURN_END_CONFIG = 1             # the turn's lead is worked out for the bank the angle-of-attack margin allows in the configuration the leg ends in (level, the spoilers at ap/vt-sp-end: the landing's when a landing follows), from the tables, not for the instantaneous margin: in a descent with the spoilers out in turbulence that margin flickers between 8 and 60 deg, the lead for a 140 deg turn between 25,000 and 90,000 ft, and the turn began on a spike of it (docs/PLAN.md, "The join onto the final")
 TURN_FLY_BY_MAX = 150.0          # deg: past this the corner is led as if it were 150 deg (the waypoint is nearly flown over)
 TURN_LEG_I = 1                  # and its small integral (within +-30 ft of the line) runs on a leg too, taking out the offset a leg keeps in a wind that was changing
 TURN_LEG_LAW = 1                # a leg is followed (before its turn) with the landing task's damped lateral law (a velocity loop inside a position loop), not the cruise law's lookahead: the cruise law crosses the line once after a turn
@@ -180,7 +190,7 @@ def _cal_spoiler_cd():
 
 
 def path_thrust():
-    """the throttle per degree of flight path angle (fdm/pathperf.py writes data/path_thrust.json), by calibrated airspeed, weight and pressure altitude; none measured: None"""
+    """the throttle for level flight and per degree of flight path angle (fdm/pathperf.py writes data/path_thrust.json), by Mach number, lift coefficient and pressure altitude; none measured: None"""
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'path_thrust.json')
     if not os.path.exists(path):
         return None
@@ -198,18 +208,23 @@ def turn_performance():
     return d if 'grid_flown_per_cmd' in d else None
 
 
-def _table3(axes, grid, props, offset=0.0, ind='          '):
-    """a JSBSim 3D table: grid[speed][weight][height] over axes (speed_kcas, weight_lb, pressure_alt_ft), the lookups being props (speed, weight, height);
-    offset is added to every value"""
+def _table3g(table_axis, row_axis, column_axis, grid, props, offset=0.0, ind='          '):
+    """a JSBSim 3D table: grid[table][row][column] over the three axes (ascending), the lookups being props (table, row, column); trilinear, clamped at the edges; offset is added to every value"""
     rows = []
-    for k, kv in enumerate(axes['speed_kcas']):
+    for k, kv in enumerate(table_axis):
         rows.append('%s  <tableData breakPoint="%g">' % (ind, kv))
-        rows.append('%s       %s' % (ind, ' '.join('%g' % h for h in axes['pressure_alt_ft'])))
-        for w, wv in enumerate(axes['weight_lb']):
+        rows.append('%s       %s' % (ind, ' '.join('%g' % h for h in column_axis)))
+        for w, wv in enumerate(row_axis):
             rows.append('%s    %g  %s' % (ind, wv, ' '.join('%.5f' % (v + offset) for v in grid[k][w])))
         rows.append('%s  </tableData>' % ind)
     return ('%s<table>\n%s  <independentVar lookup="row">%s</independentVar>\n%s  <independentVar lookup="column">%s</independentVar>\n'
             '%s  <independentVar lookup="table">%s</independentVar>\n%s\n%s</table>' % (ind, ind, props[1], ind, props[2], ind, props[0], '\n'.join(rows), ind))
+
+
+def _table3(axes, grid, props, offset=0.0, ind='          '):
+    """a JSBSim 3D table: grid[speed][weight][height] over axes (speed_kcas, weight_lb, pressure_alt_ft), the lookups being props (speed, weight, height);
+    offset is added to every value"""
+    return _table3g(axes['speed_kcas'], axes['weight_lb'], axes['pressure_alt_ft'], grid, props, offset, ind)
 
 
 def _table(pts, prop, ind='          '):
@@ -433,7 +448,7 @@ def _mission_vertical():
     ch.append(_fn('ap/v-alt-ft', MIN(P('ap/vt-ft'), V(ALTITUDE_LIMIT)), 'the height the vertical task is asked for'))
     ch.append(_fn('ap/v-err-ft', D(alt, P('position/h-sl-ft')), 'the height to go, up positive'))
     ch.append(_fn('ap/v-toward-fps', MAX(V(0), M(IF(GT(err, V(0)), V(1), V(-1)), P('velocities/h-dot-fps'))), 'the climb rate towards the height'))
-    ch.append(_fn('ap/v-sp-rate', M(V(SPOILER_SLEW), MIN(V(1), Q(P('inertia/weight-lbs'), V(SPOILER_SLEW_LB)))), 'the spoilers\' slew rate, per second'))
+    ch.append(_fn('ap/v-sp-rate', M(IF(EQ(P('ap/ga-on'), V(1)), V(GA_SPOILER_SLEW), V(SPOILER_SLEW)), MIN(V(1), Q(P('inertia/weight-lbs'), V(SPOILER_SLEW_LB)))), 'the spoilers\' slew rate, per second (the go-around\'s faster)'))
     sp_in = IF(AND(LT(err, V(0)), V(1 if LEVEL_SPOILER_LEAD else 0)), Q(MAX(V(0), P('ap/spoiler-cmd')), P('ap/v-sp-rate')), V(0))      # a descent: the time the spoilers take to come in
     ch.append(_fn('ap/v-gate-ft', gate(P('ap/v-toward-fps'), LEVEL_GATE_FT, sp_in), 'the height to go at which the altitude mode takes over with no step in what it asks: where the profile asks for the climb rate there is'))
     short = V(0)
@@ -449,8 +464,9 @@ def _mission_vertical():
         ch.append(_fn('ap/v-energy-short', IF(AND(GT(err, V(5)), GT(P('engine/pressure-altitude-ft'), V(LEVEL_ENERGY_ALT_FT)), GE(P('ap/throttle-level'), V(LEVEL_ENERGY_THROTTLE))), V(1), V(0)),
                       'a climb the thrust cannot hold level at the end of (the throttle for level flight here is at least %g): the altitude capture is not begun yet' % LEVEL_ENERGY_THROTTLE))
         refuse = EQ(P('ap/v-energy-short'), V(1))
-    ch.append(_fn('ap/v-mode-raw', IF(OR(stay, AND(OR(LE(ABS(err), P('ap/v-gate-ft')), short), EQ(refuse, V(0)))), V(3), IF(GT(err, V(0)), V(1), V(2))),
-                  'this frame\'s mode: 3 level (within the gate or a short change, not begun while the thrust cannot hold the height; or the height held), else 1 climb or 2 descent'))
+    normal = IF(OR(stay, AND(OR(LE(ABS(err), P('ap/v-gate-ft')), short), EQ(refuse, V(0)))), V(3), IF(GT(err, V(0)), V(1), V(2)))
+    ch.append(_fn('ap/v-mode-raw', IF(AND(EQ(P('ap/ga-on'), V(1)), GT(err, P('ap/v-gate-ft'))), V(1), normal),
+                  'this frame\'s mode: 3 level (within the gate or a short change, not begun while the thrust cannot hold the height; or the height held), else 1 climb or 2 descent; the go-around climbs (full thrust) until the capture of its height'))
     mode = P('ap/v-mode-raw')
     # the capture's own states, latched on the frame the level begins (or its height changes)
     ch.append(_fn('ap/v-level-new', IF(AND(on, EQ(mode, V(3)), OR(NQ(P('ap/vmode'), V(3)), NQ(P('ap/v-level-alt'), alt))), V(1), V(0)), 'the frame the level (a new one) begins'))
@@ -577,7 +593,7 @@ def laws_file():
         ('next-lat-deg', 0), ('next-lon-deg', 0), ('next-valid', 0), ('turn-phase', 0), ('turn-done', 0), ('yaw-air-w', 1), ('rollout-w', 0), ('turn-ack', 0), ('decrab-w', 0),
         ('tk-on', 0), ('tk-done', 0), ('tx-on', 0), ('tx-fast', 15), ('tx-slow', 8), ('tx-bend-deg', 0), ('tx-last', 0), ('tx-stop', 1), ('ld-on', 0), ('ld-captured', 0),
         ('ci-on', 0), ('ci-lat', 0), ('ci-lon', 0), ('ci-radius-ft', 1000), ('ci-side', 1), ('ci-out-max', 30), ('ci-lead', 1),
-        ('vt-on', 0), ('vt-sp-end', 0), ('v-sp-i', 0), ('vt-ft', 0), ('vt-path', 0), ('sp-ext', -1), ('vmode', 0), ('v-level-alt', 0), ('v-level-from', 0), ('v-level-span', LEVEL_GATE_FT), ('v-level-sp0', 0)))
+        ('ga-on', 0), ('ga-h0-ft', 0), ('vt-on', 0), ('vt-sp-end', 0), ('v-sp-i', 0), ('vt-ft', 0), ('vt-path', 0), ('sp-ext', -1), ('vmode', 0), ('v-level-alt', 0), ('v-level-from', 0), ('v-level-span', LEVEL_GATE_FT), ('v-level-sp0', 0)))
     props += ''.join('  <property value="0">limits/%s</property>\n' % k for k in ('overstress', 'failed', 'reset'))
     ch = []
     # ---- part C: navigators and the link, ahead of everything that uses them
@@ -615,10 +631,14 @@ def laws_file():
     ch.append('''    <switch name="ap/speed-target-kcas">
       <description>the commanded speed: the schedule less the operator's offset, or a commanded speed</description>
       <default value="ap/speed-cmd-kcas"/>
+      <test value="ap/ga-speed-kcas">ap/ga-on == 1</test>
       <test value="ap/approach-keas">ap/land-mode == 1</test>
       <test value="ap/schedule-less-offset">ap/speed-schedule == 1</test>
     </switch>''')
     ch.insert(len(ch) - 1, _fn('ap/schedule-less-offset', _op('difference', _p('ap/schedule-kcas'), _p('ap/speed-offset-kcas'))))
+    ch.insert(len(ch) - 1, _fn('ap/ga-speed-kcas', '        <min>%s<sum>%s%s<product>%s<max>%s<difference>%s%s</difference></max></product></sum></min>' % (
+        _p('ap/schedule-less-offset'), _p('ap/approach-keas'), _v(GA_SPEED_ADD_KT), _v(GA_SPEED_RAMP), _v(0), _p('position/h-sl-ft'), _p('ap/ga-h0-ft')),
+        'the speed of the go-around: the approach speed plus GA_SPEED_ADD_KT where it began, more with the height gained, at the schedule\'s at the most'))
     ch.append(_fn('ap/alpha-limit-deg', _table(ALPHA_LIMIT, 'velocities/mach'), 'angle-of-attack limit: the lift break less a margin'))
     ch.append(_fn('ap/bank-limit-deg', _table(BANK_LIMIT, 'engine/pressure-altitude-ft'), 'bank limit'))
     # ---- part B: the leg, on a flat earth about its start
@@ -852,9 +872,18 @@ def laws_file():
         ff = X_('product', _v(57.29578 * LEVEL_FF), X_('quotient', _p('ap/alt-vs-cmd-fps'), X_('max', _v(100), _p('velocities/vt-fps'))))      # the flight path angle asked for, deg (small angles)
         # the attitude the aircraft holds beyond the path angle (its pitch less the pitch latched at engagement less the path angle): followed while another mode flies, then let go
         sp_ff = X_('product', _v(LEVEL_SPOILER_PITCH), X_('difference', _p('ctl/spoiler-norm'), _p('ap/bias-spoiler')))          # the pitch the spoilers' lift loss asks for beyond what they asked at engagement, deg (engaged in the approach trim with them out there is no step)
+        pt_ = path_thrust()
+        alpha_ff = X_('difference', _p('ap/alpha-level-deg'), _p('ap/theta-latched-deg')) if (LEVEL_ALPHA_FF and LEVEL_THRUST_FF and pt_ and 'grid_alpha_level_deg' in pt_) else None
+        if alpha_ff is not None:
+            # the table's angle is the clean aircraft's: the spoilers' share is the whole of it, not what it is beyond the position at engagement (that cancelled against the attitude latched there, which
+            # the approach trim's spoilers are in; with the angle in the command an engagement in the approach trim stepped the pitch by 1.4 deg: phase 7a A1)
+            sp_ff = _p('ap/alpha-spoiler-deg') if 'grid_alpha_spoiler_deg' in pt_ else X_('product', _v(LEVEL_SPOILER_PITCH), _p('ctl/spoiler-norm'))
+            # (with the table: the spoilers' effect on the level angle by their position, the lift coefficient and Mach number, not a constant per unit: 3.1 deg at 2/3 and CL 0.3, 3.7 at 0.65, 5.5 at 1.0)
+        alpha_ff_all = (alpha_ff,) if alpha_ff is not None else ()
+        # (the pitch the level flight needs beyond the path angle, from the latched attitude: alpha_ff; the offset the other mode holds is what it holds beyond that, so that the command does not step at the handover)
         ch.append(_fn('ap/theta-alt-offset-in-deg', X_('ifthen', X_('eq', _p('ap/pitch-mode'), _v(2)), _v(0),
                       X_('difference', _p('ap/theta-delta-deg'), X_('product', _v(57.29578), X_('quotient', _p('velocities/h-dot-fps'), X_('max', _v(100), _p('velocities/vt-fps')))),
-                         *((sp_ff,) if LEVEL_SPOILER_PITCH else ()))),
+                         *((sp_ff,) if LEVEL_SPOILER_PITCH else ()), *alpha_ff_all)),
                       'the pitch beyond the path angle that another mode is holding; 0 once the altitude mode has the pitch'))
         ch.append('''    <lag_filter name="ap/theta-alt-offset-deg">
       <description>that pitch, followed while another mode flies and let go over %g s from the frame the altitude mode takes the pitch</description>
@@ -873,7 +902,7 @@ def laws_file():
             bank_ff = X_('product', _v(LEVEL_BANK_FF), sec_less_1, X_('quotient', _p('ap/cl-now'), _v(LEVEL_BANK_CLALPHA))) if LEVEL_BANK_FF else _v(0)
         else:
             bank_ff = X_('product', _v(LEVEL_BANK_FF), sec_less_1, X_('max', _v(0), X_('difference', _p('aero/alpha-deg'), _v(ALPHA_ZERO_DEG)))) if LEVEL_BANK_FF else _v(0)
-        ch.append(_fn('ap/theta-alt-deg', X_('sum', ff, X_('product', _v(G['K_hd']), X_('difference', _p('ap/alt-vs-cmd-fps'), _p('velocities/h-dot-fps'))), _p('ap/theta-alt-i-deg'), _p('ap/theta-alt-offset-deg'), bank_ff, *((sp_ff,) if LEVEL_SPOILER_PITCH else ())),
+        ch.append(_fn('ap/theta-alt-deg', X_('sum', ff, X_('product', _v(G['K_hd']), X_('difference', _p('ap/alt-vs-cmd-fps'), _p('velocities/h-dot-fps'))), _p('ap/theta-alt-i-deg'), _p('ap/theta-alt-offset-deg'), bank_ff, *((sp_ff,) if LEVEL_SPOILER_PITCH else ()), *(((alpha_ff_all[0], *alpha_ff_all[1:]) if alpha_ff_all else ()))),
                       'pitch attitude for the climb rate asked for, and the small integral of the height error (the old law\'s clip of 12 deg held a climb of 17 deg to 12 at the handover: a 0.5 g unload)', clip=('-%g' % LEVEL_THETA_MAX, '%g' % LEVEL_THETA_MAX)))
     else:
         ch.append(_pid('ap/theta-alt-pi-deg', 'ap/alt-error-ft', G['K_h'], G['K_h_i'], 'alt', clip=('-12', '12')))
@@ -908,8 +937,11 @@ def laws_file():
     # under its floor. Being a rate, it has nothing to wind up and nothing to release with a jump.
     # by hand the stick can hold the nose where the speed runs away from it, so there the protections look ahead:
     # the angle of attack 2 s on at its present rate, the speed 8 s on at its present acceleration
-    ch.append(_fn('ap/alpha-ahead-deg', '        <sum>%s<product>%s%s%s%s</product></sum>' % (
-        _p('aero/alpha-deg'), _p('ap/protected'), _v(LEAD_ALPHA), _v(57.29578), _p('aero/alphadot-rad_sec')), 'angle of attack, looked ahead by hand'))
+    glide_lead = ''
+    if GLIDE_ALPHA_LEAD_S:
+        glide_lead = '<product>%s%s%s%s<max>%s%s</max></product>' % (_p('ap/land-mode'), '<difference>%s%s</difference>' % (_v(1), _p('ap/flare')), _v(GLIDE_ALPHA_LEAD_S * 57.29578), '', _v(0), _p('aero/alphadot-rad_sec'))
+    ch.append(_fn('ap/alpha-ahead-deg', '        <sum>%s<product>%s%s%s%s</product>%s</sum>' % (
+        _p('aero/alpha-deg'), _p('ap/protected'), _v(LEAD_ALPHA), _v(57.29578), _p('aero/alphadot-rad_sec'), glide_lead), 'angle of attack, looked ahead by hand, and on a rising angle in the glide'))
     ch.append(_fn('ap/speed-ahead', '        <sum>%s<product>%s%s<quotient>%s<max>%s%s</max></quotient></product></sum>' % (
         _v(1), _p('ap/protected'), _v(LEAD_SPEED), _p('accelerations/udot-ft_sec2'), _v(100), _p('velocities/vt-fps')),
         'the factor on speed and Mach number when looked ahead by hand', clip=('0.8', '1.5')))
@@ -1085,14 +1117,39 @@ def laws_file():
     else:
         ch.append(_fn('ap/turn-moment-out-s2', V(0), 'the roll out\'s sideways drift (none measured: 0)'))
     ch.append(_fn('ap/turn-bank-flown-deg', M(lim, P('ap/turn-bank-ratio')), 'the bank a turn is flown at: the bank commanded times what the aircraft flies for it'))
+    lead_bank = P('ap/turn-bank-flown-deg')
+    design = False
+    pt_ = path_thrust()
+    if TURN_END_CONFIG and LEVEL_THRUST_FF and pt_ and 'grid_alpha_level_deg' in pt_ and 'grid_alpha_spoiler_deg' in pt_:
+        sa_ = pt_['spoiler_axes']
+        ch.append(_fn('ap/alpha-end-deg', S(P('ap/alpha-level-deg'), _table3g(sa_['spoiler'], sa_['cl'], sa_['mach'], pt_['grid_alpha_spoiler_deg'], ('ap/vt-sp-end', 'ap/cl-level', 'velocities/mach'))),
+                      'the angle of attack level flight has at this speed and weight in the configuration the leg ends in: the spoilers at ap/vt-sp-end (pathperf.py)'))
+        ncap_end = S(V(1), Q(D(D(P('ap/alpha-limit-deg'), V(TURN_ALPHA_MARGIN)), P('ap/alpha-end-deg')), MAX(V(0.5), D(P('ap/alpha-end-deg'), V(ALPHA_ZERO_LIFT)))))
+        ch.append(_fn('ap/bank-alpha-cap-end-deg', DEG(X('acos', Q(V(1), MAX(V(1.0001), ncap_end)))),
+                      'the bank the angle-of-attack margin allows level in the configuration the leg ends in (as ap/bank-alpha-cap-deg, at 1 g and without the gusts): steady', clip=('%g' % TURN_MIN_BANK, '60')))
+        cap_lag = P('ap/bank-alpha-cap-lag-deg')
+        if TURN_DESIGN_LAG_S:
+            ch.append('''    <lag_filter name="ap/bank-alpha-cap-lag-deg">
+      <description>the angle-of-attack cap of the bank, lagged: what it is on the whole, not in a gust</description>
+      <input>ap/bank-alpha-cap-deg</input>
+      <c1>%g</c1>
+    </lag_filter>''' % (1.0 / TURN_DESIGN_LAG_S))
+            design_cap = MIN(P('ap/bank-alpha-cap-end-deg'), cap_lag)
+        else:
+            design_cap = P('ap/bank-alpha-cap-end-deg')
+        ch.append(_fn('ap/turn-bank-design-deg', MIN(P('ap/bank-command-limit-deg'), design_cap),
+                      'the bank a turn is designed for: the bank command limit, the steady cap of the configuration the leg ends in and the angle-of-attack cap lagged (the bank commanded)'))
+        ch.append(_fn('ap/turn-bank-end-deg', M(P('ap/turn-bank-design-deg'), P('ap/turn-bank-ratio')), 'the bank a turn will be flown at when the leg ends: the design bank times what the aircraft flies for it'))
+        lead_bank = P('ap/turn-bank-end-deg')
+        design = True
     # The turn's start, its radius and its lead are a prediction, not a protection: the bank limit they use goes through a lag (TURN_BANK_LAG_S), so that a gust that moves the angle of
     # attack (and with it the bank cap, 8 to 11 deg from frame to frame in 15 ft/s of turbulence at 143 KCAS with spoilers out) does not move the lead: a 152 deg turn's lead at 8 deg
     # is 88,000 ft, and one frame of it over the distance to go began the turn 14 nmi early and the route ended (docs/PLAN.md, phase 11 W2, 2026-11-14). The bank itself is not lagged.
     ch.append('''    <lag_filter name="ap/turn-bank-lead-deg">
       <description>the bank the turn's lead is worked out for: the bank flown, lagged</description>
-      <input>ap/turn-bank-flown-deg</input>
+      <input>%s</input>
       <c1>%g</c1>
-    </lag_filter>''' % (1.0 / TURN_BANK_LAG_S))
+    </lag_filter>''' % (lead_bank.replace('<property>', '').replace('</property>', ''), 1.0 / TURN_BANK_LAG_S))
     limf = MAX(V(2), P('ap/turn-bank-lead-deg')) if TURN_BANK_LAG_S else P('ap/turn-bank-flown-deg')
     vgt = MAX(P('velocities/vg-fps'), V(60))
     radius = Q(M(vgt, vgt), M(V(32.174), TAN(limf)))
@@ -1159,12 +1216,17 @@ def laws_file():
     ch.append(_fn('ap/turn-radius-star-ft', rstar, 'the radius of the arc from here that ends on the new line'))
     bank_hi = MAX(lim, MIN(Q(P('ap/bank-limit-deg'), P('ap/turn-bank-ratio')), P('ap/bank-alpha-cap-deg')))
     ch.append(_fn('ap/turn-bank-hi-deg', bank_hi, 'the most bank commanded in a turn: the sourced bank limit as flown, and the angle-of-attack cap'))
+    # The trim works on the bank the turn is designed for (the steady cap of the configuration the leg ends in), not on the instantaneous limit: in turbulence with the spoilers out the limit
+    # flickers between 8 and 60 deg, the trim took a dip of it at the turn's start for the bank it held to the end (it only works once the bank is 90 % of the limit, which a bank held at
+    # 8 deg never reaches again), and the arc was wider than the lead had been worked out for. The instantaneous limit still clips the command (below), as a protection does.
+    dlim = P('ap/turn-bank-design-deg') if design else lim
+    dhi = MAX(dlim, MIN(Q(P('ap/bank-limit-deg'), P('ap/turn-bank-ratio')), P('ap/bank-alpha-cap-end-deg'), P('ap/bank-alpha-cap-lag-deg') if TURN_DESIGN_LAG_S else P('ap/bank-alpha-cap-end-deg'))) if design else P('ap/turn-bank-hi-deg')
     star = IF(GT(P('ap/turn-radius-star-ft'), V(1)),
-              Q(DEG(X('atan', Q(M(vta, vta), M(V(32.174), P('ap/turn-radius-star-ft'))))), P('ap/turn-bank-ratio')), P('ap/turn-bank-hi-deg'))
+              Q(DEG(X('atan', Q(M(vta, vta), M(V(32.174), P('ap/turn-radius-star-ft'))))), P('ap/turn-bank-ratio')), dhi)
     pred_on = AND(V(TURN_PRED), EQ(P('ap/roll-mode'), V(2)), EQ(P('ap/turn-phase'), V(1)), use,
-                  GT(ABS(phi), M(V(0.9), lim)), GT(P('ap/turn-dpsi-rad'), V(math.radians(TURN_PRED_MIN_REM_DEG))), GT(ABS(P('ap/turn-pred-b')), V(TURN_PRED_MIN_B)))
+                  GT(ABS(phi), M(V(0.9), MIN(dlim, P('ap/turn-bank-pred-deg')) if TURN_PRED_ON_HELD else dlim)), GT(P('ap/turn-dpsi-rad'), V(math.radians(TURN_PRED_MIN_REM_DEG))), GT(ABS(P('ap/turn-pred-b')), V(TURN_PRED_MIN_B)))
     holding = AND(V(TURN_PRED_HOLD), V(TURN_PRED), EQ(P('ap/roll-mode'), V(2)), EQ(P('ap/turn-phase'), V(1)), use)
-    ch.append(_fn('ap/turn-bank-pred-raw-deg', IF(pred_on, MAX(M(V(TURN_PRED_LO), lim), MIN(P('ap/turn-bank-hi-deg'), star)), IF(holding, P('ap/turn-bank-pred-deg'), lim)), 'the bank that puts the arc\'s exit on the new line (the turn\'s own bank when it does not apply)'))
+    ch.append(_fn('ap/turn-bank-pred-raw-deg', IF(pred_on, MAX(M(V(TURN_PRED_LO), dlim), MIN(dhi, star)), IF(holding, P('ap/turn-bank-pred-deg'), dlim)), 'the bank that puts the arc\'s exit on the new line (the turn\'s own bank when it does not apply)'))
     ch.append('''    <lag_filter name="ap/turn-bank-pred-deg">
       <input>ap/turn-bank-pred-raw-deg</input>
       <c1>%g</c1>
@@ -1292,14 +1354,38 @@ def laws_file():
     # ---- thrust
     ch.append(_fn('ap/thrust-error-kt', _op('difference', _p('ap/speed-target-kcas'), _p('velocities/vc-kts')), 'slow is positive'))
     ch.append(_trigger('thrust', 'ap/thrust-mode == 3'))
-    ch.append(_pid('ap/thrust-pi', 'ap/thrust-error-kt', G['K_thr'], G['K_thr_i'], 'thrust', clip=('-1', '1')))
+    if THRUST_ANTIWINDUP:
+        # the integral is a state: it runs while the speed mode flies and the laws are on, is held while the throttle the speed law asks for (before its limits) is at a limit and the error
+        # would take it further, and is zero otherwise (the PID's trigger of -1 did the last)
+        X_ = lambda tag, *a: '<%s>%s</%s>' % (tag, ''.join(a), tag)
+        err_t, raw_t = _p('ap/thrust-error-kt'), _p('ap/thrust-speed-raw')
+        at_limit = X_('or', X_('and', X_('le', raw_t, _v(0)), X_('lt', err_t, _v(0))), X_('and', X_('ge', raw_t, _v(1)), X_('gt', err_t, _v(0))))
+        ch.append(_fn('ap/thrust-i-next', X_('ifthen', X_('and', X_('eq', _p('ap/thrust-mode'), _v(3)), X_('eq', _p('ap/engaged'), _v(1))),
+                                              X_('max', _v(-1), X_('min', _v(1), X_('sum', _p('ap/thrust-i'), X_('ifthen', at_limit, _v(0), X_('product', _v(G['K_thr_i']), err_t, _p('simulation/dt')))))),
+                                              _v(0)),
+                      'the speed law\'s integral: held while its throttle is at a limit and the error would take it further', out='ap/thrust-i'))
+        ch.append(_fn('ap/thrust-pi', X_('sum', X_('product', _v(G['K_thr']), err_t), _p('ap/thrust-i')), 'the speed error\'s proportional and integral terms', clip=('-1', '1')))
+    else:
+        ch.append(_pid('ap/thrust-pi', 'ap/thrust-error-kt', G['K_thr'], G['K_thr_i'], 'thrust', clip=('-1', '1')))
     pt = path_thrust()
     if LEVEL_THRUST_FF and pt:
-        ch.append(_fn('ap/thrust-per-deg', _table3(pt['axes'], pt['grid_throttle_per_deg'], ('velocities/vc-kts', 'inertia/weight-lbs', 'engine/pressure-altitude-ft')),
-                      'the throttle a degree of flight path angle takes at this speed, weight and height (pathperf.py)'))
+        # the tables are in the lift coefficient the aircraft flies at (weight over dynamic pressure and wing area), Mach number and pressure altitude (pathperf.py): the drag is a function of the first two
+        # and above the tropopause so is the throttle for level flight
+        ch.append(_fn('ap/cl-level', '        <quotient>%s<product><max>%s%s</max>%s</product></quotient>' % (_p('inertia/weight-lbs'), _p('aero/qbar-psf'), _v(1), _p('metrics/Sw-sqft')),
+                      'the lift coefficient the aircraft flies at: weight over dynamic pressure and wing area (not limited as ap/cl-now is: the throttle tables look it up)', clip=('0.05', '2.5')))
+        tprops = ('engine/pressure-altitude-ft', 'ap/cl-level', 'velocities/mach')            # table, row, column
+        if 'grid_alpha_spoiler_deg' in pt:
+            sa_ = pt['spoiler_axes']
+            ch.append(_fn('ap/alpha-spoiler-deg', _table3g(sa_['spoiler'], sa_['cl'], sa_['mach'], pt['grid_alpha_spoiler_deg'], ('ctl/spoiler-norm', 'ap/cl-level', 'velocities/mach')),
+                          'the spoilers\' effect on the level angle of attack, deg, by their position, the lift coefficient and Mach number (pathperf.py)'))
+        if 'grid_alpha_level_deg' in pt:
+            ch.append(_fn('ap/alpha-level-deg', _table3g(pt['axes']['pressure_alt_ft'], pt['axes']['cl'], pt['axes']['mach'], pt['grid_alpha_level_deg'], tprops),
+                          'the angle of attack of level flight at this Mach number, lift coefficient and height, deg, body axes (pathperf.py)'))
+        ch.append(_fn('ap/thrust-per-deg', _table3g(pt['axes']['pressure_alt_ft'], pt['axes']['cl'], pt['axes']['mach'], pt['grid_throttle_per_deg'], tprops),
+                      'the throttle a degree of flight path angle takes at this Mach number, lift coefficient and height (pathperf.py)'))
         # the climb rate the thrust can hold at this speed, weight and height: the path angle the throttle left over by level flight makes, (1 - level) / per degree, at CLIMB_MARGIN of it
-        ch.append(_fn('ap/throttle-level', _table3(pt['axes'], pt['grid_throttle_level'], ('velocities/vc-kts', 'inertia/weight-lbs', 'engine/pressure-altitude-ft')),
-                      'the throttle for level flight at this speed, weight and height (pathperf.py)'))
+        ch.append(_fn('ap/throttle-level', _table3g(pt['axes']['pressure_alt_ft'], pt['axes']['cl'], pt['axes']['mach'], pt['grid_throttle_level'], tprops),
+                      'the throttle for level flight at this Mach number, lift coefficient and height (pathperf.py)'))
         table_climb = '        <product>%s%s<quotient><max>%s<difference>%s%s</difference></max>%s</quotient><quotient>%s%s</quotient></product>' % (
             _v(CLIMB_MARGIN), _p('velocities/vt-fps'), _v(0), _v(1), _p('ap/throttle-level'), _p('ap/thrust-per-deg'), _v(1), _v(57.29578))
         ch.append(_fn('ap/climb-rate-max-fps', table_climb,
@@ -1328,9 +1414,14 @@ def laws_file():
         if CFG_THRUST_FF:
             ff = '<product>%s<sum><difference>%s%s</difference><difference>%s%s</difference></sum></product>' % (
                 _p('ap/thrust-per-deg'), _p('ap/gamma-deg'), _p('ap/bias-gamma-deg'), _p('ap/cfg-drag-deg'), _p('ap/bias-cfg-deg'))
-        ch.append(_fn('ap/thrust-speed', _op('sum', _p('ap/bias-throttle'), _p('ap/thrust-pi'), ff), 'the thrust that holds the speed: the throttle at engagement, the path angle\'s feed-forward and the speed error\'s integral', clip=('0', '1')))
+        thrust_sum, thrust_desc = _op('sum', _p('ap/bias-throttle'), _p('ap/thrust-pi'), ff), 'the thrust that holds the speed: the throttle at engagement, the path angle\'s feed-forward and the speed error\'s integral'
     else:
-        ch.append(_fn('ap/thrust-speed', _op('sum', _p('ap/bias-throttle'), _p('ap/thrust-pi')), clip=('0', '1')))
+        thrust_sum, thrust_desc = _op('sum', _p('ap/bias-throttle'), _p('ap/thrust-pi')), ''
+    if THRUST_ANTIWINDUP:
+        ch.append(_fn('ap/thrust-speed-raw', thrust_sum, 'the speed law\'s throttle before its limits (the integral looks at it)'))
+        ch.append(_fn('ap/thrust-speed', _p('ap/thrust-speed-raw'), thrust_desc, clip=('0', '1')))
+    else:
+        ch.append(_fn('ap/thrust-speed', thrust_sum, thrust_desc, clip=('0', '1')))
     ch.append(_fn('ap/taxi-error-kt', _op('difference', _p('ap/taxi-speed-kt'), _p('ap/ground-speed-kt'))))
     ch.append(_trigger('taxi', 'ap/thrust-mode == 4', 'ap/taxi-speed-kt gt 0.5'))
     ch.append(_pid('ap/taxi-throttle', 'ap/taxi-error-kt', 0.03, 0.003, 'taxi', clip=('0', '0.4')))
@@ -1356,7 +1447,7 @@ def laws_file():
           <sum>%s<max><product>%s%s%s</product><min><product>%s%s</product><difference>%s%s</difference></min></max></sum>
           %s
         </ifthen>''' % (_p('ap/engaged'), _v(1), _p('ap/pitch-mode'), _v(1), _p('ap/pitch-mode'), _v(2), *((_p('ap/flare'), _v(0)) if THROTTLE_SLEW_LAND else (_p('ap/land-mode'), _v(0))), _p('ap/on-mains'), _v(0), _p('ap/manual'), _v(0),
-                        _p('ap/throttle-slewed'), '<product>%s%s%s</product>' % (_v(-THROTTLE_PATH_RATE_DOWN), _p('ap/thrust-per-deg'), '') if THROTTLE_PATH_RATE else _v(-THROTTLE_SLEW), _p('simulation/dt'), '', '<product>%s%s<ifthen><and><eq>%s%s</eq><eq>%s%s</eq></and>%s%s</ifthen></product>' % (_v(THROTTLE_PATH_RATE), _p('ap/thrust-per-deg'), _p('ap/pitch-mode'), _v(2), _p('ap/thrust-mode'), _v(3), _v(THROTTLE_MODE2_X), _v(1)) if THROTTLE_PATH_RATE else _v(THROTTLE_SLEW_UP), _p('simulation/dt'), _p('ap/thrust-law'), _p('ap/throttle-slewed'),
+                        _p('ap/throttle-slewed'), '<product>%s%s%s</product>' % (_v(-THROTTLE_PATH_RATE_DOWN), _p('ap/thrust-per-deg'), '') if THROTTLE_PATH_RATE else _v(-THROTTLE_SLEW), _p('simulation/dt'), '', '<product>%s%s<ifthen><and><eq>%s%s</eq><eq>%s%s</eq></and>%s%s</ifthen></product>' % ('<ifthen><eq>%s%s</eq>%s%s</ifthen>' % (_p('ap/ga-on'), _v(1), _v(GA_THROTTLE_RATE), _v(THROTTLE_PATH_RATE)), _p('ap/thrust-per-deg'), _p('ap/pitch-mode'), _v(2), _p('ap/thrust-mode'), _v(3), _v(THROTTLE_MODE2_X), _v(1)) if THROTTLE_PATH_RATE else _v(THROTTLE_SLEW_UP), _p('simulation/dt'), _p('ap/thrust-law'), _p('ap/throttle-slewed'),
                         '<ifthen><eq>%s%s</eq>%s%s</ifthen>' % (_p('ap/engaged'), _v(0), _p('fcs/throttle-cmd-norm'), _p('ap/thrust-law'))),
                   'the laws\' throttle with its rate limited in the vertical modes in the air: THROTTLE_SLEW_UP per second going up, THROTTLE_SLEW going down', out='ap/throttle-slewed'))
     # ---- part B: the glide path on spoilers
