@@ -38,7 +38,9 @@ def crosswind_limit_kt(weight):
 
 
 FUEL_LOW_LB = 1500.0               # assumed: about an hour and a half at cruise
-AOA_NEAR_DEG, AOA_SEC = 0.3, 3.0
+AOA_NEAR_DEG, AOA_SEC = 0.15, 3.0              # the near-limit advisory: raised with the angle of attack within 0.15 deg of its limit for 3 s (the approach is flown 0.2 to 0.3 deg under it at light weights: the advisory is for closer than that) ...
+AOA_NEAR_OFF_DEG, AOA_CLEAR_SEC = 0.25, 2.0      # ... and cleared when it has been more than 0.25 deg under it for 2 s (hysteresis: with one threshold the caution came and went every few seconds)
+AOA_EXCEED_SEC, AOA_HOLD_SEC = 0.5, 3.0          # the exceeded caution: the angle over its limit for 0.5 s; once raised it stands at least 3 s (a 2 s excursion at the glide capture used to raise nothing)
 OFFER_SEC = 120.0                  # a handover offer lapses after this
 FREE = ('control.take', 'control.accept')      # commands a station that does not hold control may send
 LINK_TIMEOUT_MIN, LINK_TIMEOUT_MAX = 10.0, 300.0   # s, assumed: under 10 a satellite delay and a missed heartbeat could trigger it
@@ -155,7 +157,7 @@ class Onboard:
         self.events = []
         self.down = {'/gcs/down/ack': '', '/gcs/down/status': '', '/gcs/down/plan': ''}
         self.frame = 0
-        self.aoa_since = None
+        self.aoa = dict(over_since=None, over_on=None, near_since=None, near_on=False, clear_since=None)      # the angle-of-attack alerts' state
         self.stations = {}                       # name -> when last heard (sim seconds)
         self.holder, self.offer = None, None     # who has control; a handover offered: (to, when)
         self.status()
@@ -479,6 +481,38 @@ class Onboard:
         self.down['/gcs/down/status'] = json.dumps(s)
         return s
 
+    def aoa_step(self, margin, active, t):
+        """The angle-of-attack alerts for one look: (exceeded, near). margin: the limit less the angle, deg. Exceeded: the angle over the limit for AOA_EXCEED_SEC, then standing at least AOA_HOLD_SEC and
+        until it is back under. Near: within AOA_NEAR_DEG of the limit (or over) for AOA_SEC, then standing until more than AOA_NEAR_OFF_DEG under it for AOA_CLEAR_SEC (the margin hovers at the
+        threshold on final: with one threshold and no hold the caution came and went every few seconds while the indicator read a steady 0.3 deg under the limit)."""
+        a = self.aoa
+        if not active:
+            a.update(over_since=None, over_on=None, near_since=None, near_on=False, clear_since=None)
+            return False, False
+        if margin < 0:
+            a['over_since'] = t if a['over_since'] is None else a['over_since']
+            if a['over_on'] is None and t - a['over_since'] >= AOA_EXCEED_SEC:
+                a['over_on'] = t
+        else:
+            a['over_since'] = None
+            if a['over_on'] is not None and t - a['over_on'] >= AOA_HOLD_SEC:
+                a['over_on'] = None
+        if not a['near_on']:
+            if margin < AOA_NEAR_DEG:
+                a['near_since'] = t if a['near_since'] is None else a['near_since']
+                if t - a['near_since'] >= AOA_SEC:
+                    a['near_on'], a['clear_since'] = True, None
+            else:
+                a['near_since'] = None
+        else:
+            if margin > AOA_NEAR_OFF_DEG:
+                a['clear_since'] = t if a['clear_since'] is None else a['clear_since']
+                if t - a['clear_since'] >= AOA_CLEAR_SEC:
+                    a.update(near_on=False, near_since=None, clear_since=None)
+            else:
+                a['clear_since'] = None
+        return a['over_on'] is not None, a['near_on']
+
     def alerts(self, m):
         """What the crew must know, as the aircraft sees it. Only what the model computes."""
         f = self.f
@@ -495,6 +529,13 @@ class Onboard:
         if m and not m.done and m.plan[min(m.i, len(m.plan) - 1)]['kind'] == 'go_around':
             ga = m.plan[min(m.i, len(m.plan) - 1)]
             add('go-around', 'warning', 'LANDING NOT COMMITTED', 'The aircraft was %.0f ft %s at the landing fix. It is circling over the fix to lose height and will land when it can. Check the plan' % (ga['above'], ga['reason']))
+        if m and not m.done:
+            cur = m.plan[min(m.i, len(m.plan) - 1)]
+            if cur['kind'] == 'route' and cur.get('ga') and not cur['ga'].get('abandoned'):
+                add('missed-approach', 'warning', 'MISSED APPROACH', 'The approach was not stable (%s). The aircraft is climbing out and flying a circuit for another approach, attempt %d. Check the weather and the aircraft' % (cur['ga']['why'], cur['ga']['attempt']))
+            elif (cur['kind'] == 'route' and cur.get('ga')) or (cur['kind'] == 'hold' and cur.get('abandoned')):
+                why = cur['ga']['why'] if cur['kind'] == 'route' else cur['abandoned']
+                add('landing-abandoned', 'warning', 'LANDING ABANDONED', 'The approach was not stable again (%s). The aircraft is climbing out to hold over the landing fix and will not try again by itself. Decide: another approach, another runway or the engine-out site' % why)
         if m and not m.done and f['ap/engaged'] == 1 and f['ap/land-mode'] == 1 and f['ap/on-mains'] == 0:
             it = m.plan[min(m.i, len(m.plan) - 1)]
             lim = crosswind_limit_kt(f['inertia/weight-lbs'])
@@ -513,11 +554,11 @@ class Onboard:
             add('nav-one', 'caution', 'ONE NAVIGATOR LEFT' if f['nav/count'] == 1 else 'NO NAVIGATOR', 'No cross-check of attitude is left. Switch one on')
         if f['fuel/total-lbs'] < FUEL_LOW_LB and f['simulation/sim-time-sec'] > 1.0:
             add('fuel-low', 'caution', 'FUEL LOW', 'Return home')
-        near = f['ap/engaged'] == 1 and f['ap/on-mains'] == 0 and f['ap/alpha-limit-deg'] - f['aero/alpha-deg'] < AOA_NEAR_DEG
-        t = f['simulation/sim-time-sec']
-        self.aoa_since = (self.aoa_since if self.aoa_since is not None else t) if near else None
-        if near and t - self.aoa_since >= AOA_SEC:
-            add('aoa', 'caution', 'ANGLE OF ATTACK LIMIT', 'The aircraft is holding it')
+        exceeded, near = self.aoa_step(f['ap/alpha-limit-deg'] - f['aero/alpha-deg'], f['ap/engaged'] == 1 and f['ap/on-mains'] == 0, f['simulation/sim-time-sec'])
+        if exceeded:
+            add('aoa', 'caution', 'ANGLE OF ATTACK LIMIT EXCEEDED', 'The aircraft is bringing it back')
+        elif near:
+            add('aoa-near', 'advisory', 'NEAR THE ANGLE OF ATTACK LIMIT', 'The aircraft is holding it under the limit')
         if f['ap/manual'] > 0:
             add('manual', 'advisory', 'FLOWN BY HAND: ' + ('PROTECTED' if f['ap/manual'] == 1 else 'DIRECT, NO PROTECTIONS'))
         if self.off in ('goto', 'hold', 'home'):
@@ -541,9 +582,11 @@ class Onboard:
             n = len(it['_pts']) - 1
             v = getattr(m, 'vmode', 'level')
             head = {'climb': 'climb to', 'descent': 'descend to', 'level': 'level at'}[v]
-            return '%s %.0f ft, leg %d of %d, %.0f nmi to go' % (head, f['ap/alt-cmd-ft'], m.k + 1, n, f['ap/leg-togo-ft'] / MM.NM), \
+            return '%s%s %.0f ft, leg %d of %d, %.0f nmi to go' % (('LANDING ABANDONED: ' if it['ga'].get('abandoned') else 'MISSED APPROACH: ') if it.get('ga') else '', head, f['ap/alt-cmd-ft'], m.k + 1, n, f['ap/leg-togo-ft'] / MM.NM), \
                 ('then leg %d' % (m.k + 2) if m.k + 1 < n else nxt)
         if kind == 'hold':
+            if it.get('abandoned'):
+                return 'LANDING ABANDONED: hold at %.0f ft' % it['alt'], 'until commanded'
             return 'hold at %.0f ft' % it['alt'], 'until commanded'
         if kind == 'go_around':
             return 'GO-AROUND: circling over the fix to %.0f ft, %.0f ft above the glide path when it began' % (it['alt'], it['above']), 'then landing'

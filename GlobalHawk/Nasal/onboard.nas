@@ -23,8 +23,12 @@ var crosswind_limit_kt = func(w) {
     return XW_LIMIT[size(XW_LIMIT) - 1];
 };
 var FUEL_LOW_LB = 1500.0;              # assumed: about an hour and a half at cruise
-var AOA_NEAR_DEG = 0.3;
+var AOA_NEAR_DEG = 0.15;               # the near-limit advisory: raised with the angle of attack within 0.15 deg of its limit for 3 s (the approach is flown 0.2 to 0.3 deg under it at light weights) ...
 var AOA_SEC = 3.0;
+var AOA_NEAR_OFF_DEG = 0.25;          # ... and cleared when it has been more than 0.25 deg under it for 2 s (hysteresis: with one threshold the caution came and went every few seconds)
+var AOA_CLEAR_SEC = 2.0;
+var AOA_EXCEED_SEC = 0.5;             # the exceeded caution: the angle over its limit for 0.5 s; once raised it stands at least 3 s
+var AOA_HOLD_SEC = 3.0;
 var OFFER_SEC = 120.0;                 # a handover offer lapses after this
 var FREE = ["control.take", "control.accept"];      # commands a station that does not hold control may send
 var LINK_TIMEOUT_MIN = 10.0;                # s, assumed: under 10 a satellite delay and a missed heartbeat could trigger it
@@ -145,7 +149,7 @@ var Onboard = {
         m.answered = {};                         # station -> the last seq answered
         m.beat = nil;
         m.events = [];
-        m.aoa_since = nil;
+        m.aoa = { over_since: nil, over_on: nil, near_since: nil, near_on: 0, clear_since: nil };      # the angle-of-attack alerts' state
         m.stations = {};                         # name -> when last heard (sim seconds)
         m.holder = nil; m.offer = nil;           # who has control; a handover offered: [to, when]
         m.sender = "";
@@ -490,6 +494,39 @@ var Onboard = {
         return s;
     },
 
+    # the angle-of-attack alerts for one look: [exceeded, near]. margin: the limit less the angle, deg. Exceeded: the angle over the limit for AOA_EXCEED_SEC, then standing at least AOA_HOLD_SEC and until
+    # it is back under. Near: within AOA_NEAR_DEG of the limit (or over) for AOA_SEC, then standing until more than AOA_NEAR_OFF_DEG under it for AOA_CLEAR_SEC
+    aoa_step: func(margin, active, t) {
+        var a = me.aoa;
+        if (!active) {
+            a.over_since = nil; a.over_on = nil; a.near_since = nil; a.near_on = 0; a.clear_since = nil;
+            return [0, 0];
+        }
+        if (margin < 0) {
+            if (a.over_since == nil) a.over_since = t;
+            if (a.over_on == nil and t - a.over_since >= AOA_EXCEED_SEC) a.over_on = t;
+        } else {
+            a.over_since = nil;
+            if (a.over_on != nil and t - a.over_on >= AOA_HOLD_SEC) a.over_on = nil;
+        }
+        if (!a.near_on) {
+            if (margin < AOA_NEAR_DEG) {
+                if (a.near_since == nil) a.near_since = t;
+                if (t - a.near_since >= AOA_SEC) { a.near_on = 1; a.clear_since = nil; }
+            } else {
+                a.near_since = nil;
+            }
+        } else {
+            if (margin > AOA_NEAR_OFF_DEG) {
+                if (a.clear_since == nil) a.clear_since = t;
+                if (t - a.clear_since >= AOA_CLEAR_SEC) { a.near_on = 0; a.near_since = nil; a.clear_since = nil; }
+            } else {
+                a.clear_since = nil;
+            }
+        }
+        return [a.over_on != nil, a.near_on];
+    },
+
     # what the crew must know, as the aircraft sees it. Only what the model computes
     alerts: func(m) {
         var out = [];
@@ -504,6 +541,13 @@ var Onboard = {
         if (m != nil and !m.done and m.plan[minv(m.i, size(m.plan) - 1)].kind == "go_around") {
             var ga = m.plan[minv(m.i, size(m.plan) - 1)];
             add("go-around", "warning", "LANDING NOT COMMITTED", sprintf("The aircraft was %.0f ft %s at the landing fix. It is circling over the fix to lose height and will land when it can. Check the plan", ga.above, ga.reason));
+        }
+        if (m != nil and !m.done) {
+            var cur = m.plan[minv(m.i, size(m.plan) - 1)];
+            if (cur.kind == "route" and opt(cur, "ga", nil) != nil and !opt(cur.ga, "abandoned", 0))
+                add("missed-approach", "warning", "MISSED APPROACH", sprintf("The approach was not stable (%s). The aircraft is climbing out and flying a circuit for another approach, attempt %d. Check the weather and the aircraft", cur.ga.why, cur.ga.attempt));
+            elsif ((cur.kind == "route" and opt(cur, "ga", nil) != nil) or (cur.kind == "hold" and opt(cur, "abandoned", nil) != nil))
+                add("landing-abandoned", "warning", "LANDING ABANDONED", sprintf("The approach was not stable again (%s). The aircraft is climbing out to hold over the landing fix and will not try again by itself. Decide: another approach, another runway or the engine-out site", cur.kind == "route" ? cur.ga.why : cur.abandoned));
         }
         if (m != nil and !m.done and fget("ap/engaged") == 1 and fget("ap/land-mode") == 1 and fget("ap/on-mains") == 0) {
             var li = m.plan[minv(m.i, size(m.plan) - 1)];
@@ -521,9 +565,9 @@ var Onboard = {
         if (fget("nav/count") < 2 and t > 1.0)
             add("nav-one", "caution", fget("nav/count") == 1 ? "ONE NAVIGATOR LEFT" : "NO NAVIGATOR", "No cross-check of attitude is left. Switch one on");
         if (fget("fuel/total-lbs") < FUEL_LOW_LB and t > 1.0) add("fuel-low", "caution", "FUEL LOW", "Return home");
-        var near = fget("ap/engaged") == 1 and fget("ap/on-mains") == 0 and fget("ap/alpha-limit-deg") - fget("aero/alpha-deg") < AOA_NEAR_DEG;
-        me.aoa_since = near ? (me.aoa_since != nil ? me.aoa_since : t) : nil;
-        if (near and t - me.aoa_since >= AOA_SEC) add("aoa", "caution", "ANGLE OF ATTACK LIMIT", "The aircraft is holding it");
+        var aoa = me.aoa_step(fget("ap/alpha-limit-deg") - fget("aero/alpha-deg"), fget("ap/engaged") == 1 and fget("ap/on-mains") == 0, t);
+        if (aoa[0]) add("aoa", "caution", "ANGLE OF ATTACK LIMIT EXCEEDED", "The aircraft is bringing it back");
+        elsif (aoa[1]) add("aoa-near", "advisory", "NEAR THE ANGLE OF ATTACK LIMIT", "The aircraft is holding it under the limit");
         if (fget("ap/manual") > 0) add("manual", "advisory", "FLOWN BY HAND: " ~ (fget("ap/manual") == 1 ? "PROTECTED" : "DIRECT, NO PROTECTIONS"));
         if (me.off != nil and (me.off == "goto" or me.off == "hold" or me.off == "home")) add("off-plan", "advisory", "OFF THE PLAN: " ~ string.uc(me.off));
         return out;
@@ -543,10 +587,10 @@ var Onboard = {
             var v = m.vmode != nil ? m.vmode : "level";
             var heads = { climb: "climb to", descent: "descend to", level: "level at" };
             var head = heads[v];
-            return [sprintf("%s %.0f ft, leg %d of %d, %.0f nmi to go", head, fget("ap/alt-cmd-ft"), m.k + 1, n, fget("ap/leg-togo-ft") / NM),
+            return [sprintf("%s%s %.0f ft, leg %d of %d, %.0f nmi to go", opt(it, "ga", nil) != nil ? (opt(it.ga, "abandoned", 0) ? "LANDING ABANDONED: " : "MISSED APPROACH: ") : "", head, fget("ap/alt-cmd-ft"), m.k + 1, n, fget("ap/leg-togo-ft") / NM),
                     m.k + 1 < n ? sprintf("then leg %d", m.k + 2) : nxt];
         }
-        if (kind == "hold") return [sprintf("hold at %.0f ft", it.alt), "until commanded"];
+        if (kind == "hold") return [opt(it, "abandoned", nil) != nil ? sprintf("LANDING ABANDONED: hold at %.0f ft", it.alt) : sprintf("hold at %.0f ft", it.alt), "until commanded"];
         if (kind == "go_around") return [sprintf("GO-AROUND: circling over the fix to %.0f ft, %.0f ft above the glide path when it began", it.alt, it.above), "then landing"];
         if (kind == "land") {
             if (fget("ap/rollout")) return ["rollout", nxt];

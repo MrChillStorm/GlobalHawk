@@ -10,7 +10,7 @@
 (function (root) {
   'use strict';
   const RANK = { warning: 0, caution: 1, advisory: 2 };
-  const HELD_BY = { engine: ['aoa', 'off-plan'] };
+  const HELD_BY = { engine: ['aoa', 'aoa-near', 'off-plan'] };
   const SILENT_MS = 3000;
   const LINK_IDS = ['no-link', 'link']; // a lost link has a sound of its own, that no other alert uses
 

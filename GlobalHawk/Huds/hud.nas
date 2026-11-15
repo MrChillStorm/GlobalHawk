@@ -446,18 +446,28 @@ var HUD = {
         if (st != nil) {
             doing = string.uc(st["doing"] ~ "");
             then = string.uc(st["next"] ~ "");
+            # one line: the first warning, else the cautions in turn (3 s each), the angle-of-attack one holding the line while it is up (it is the one that is over in seconds; the first
+            # caution in the list used to be all that was shown, and FUEL LOW, up the whole flight at 1,000 lb, hid it)
+            var cautions = [];
             foreach (var a; st["alerts"]) {
-                if (a["level"] == "warning" or (a["level"] == "caution" and alert == "")) {
+                if (a["level"] == "warning") {
                     alert = a["text"];
-                    warning = a["level"] == "warning";
-                    if (warning) break;
+                    warning = 1;
+                    break;
                 }
+                if (a["level"] == "caution") append(cautions, a);
+            }
+            if (!warning and size(cautions)) {
+                var pick = cautions[math.mod(math.floor(fgget("/sim/time/elapsed-sec") / 3.0), size(cautions))];
+                foreach (var c; cautions) if (c["id"] == "aoa") pick = c;
+                alert = pick["text"];
             }
         } elsif (manual > 0) doing = manual == 1 ? "FLOWN BY HAND (PROTECTED)" : "FLOWN BY HAND (DIRECT)";
         if (st != nil and st["started"].json != "true" and manual > 0) doing = "ON THE GROUND: " ~ doing;
         me.doing.setText(doing);
         me.then.setText(then);
         me.alert.setText(alert);
+        setprop("/sim/globalhawk/hud/alert", alert);                       # what is shown, for the checks
         me.alert.setVisible(!warning or math.mod(fgget("/sim/time/elapsed-sec"), 1.0) < 0.65);      # a warning flashes
 
         # what is shown, for the checks

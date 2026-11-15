@@ -31,7 +31,7 @@ A.update([al('structure', 'warning'), al('fuel-low', 'caution')], now, true);
 assert.strictEqual(A.tone(), 'caution');
 assert.strictEqual(A.items.find((a) => a.id === 'fuel-low').since, now);
 // the engine holds back what is only a consequence of the glide
-A.update([al('engine', 'warning'), al('aoa', 'caution'), al('off-plan', 'advisory'), al('fuel-low', 'caution')], now, true);
+A.update([al('engine', 'warning'), al('aoa', 'caution'), al('aoa-near', 'advisory'), al('off-plan', 'advisory'), al('fuel-low', 'caution')], now, true);
 assert.deepStrictEqual(ids(), ['engine', 'fuel-low']);
 assert.strictEqual(A.items[0].action, 'do engine');
 // nothing heard for 3 s: one warning, the station's own; heard again: the aircraft's list is back

@@ -157,7 +157,7 @@ def main():
     at = dict(t=None)
 
     def reached():
-        if at['t'] is None and f['ap/alpha-limit-deg'] - f['aero/alpha-deg'] < 0.3:
+        if at['t'] is None and f['ap/alpha-limit-deg'] - f['aero/alpha-deg'] < 0.0:
             at['t'] = f['simulation/sim-time-sec']
         return 'aoa' in fl.alerts()
     pull()
@@ -165,11 +165,33 @@ def main():
     lag = f['simulation/sim-time-sec'] - at['t'] if at['t'] and up is not None else None
     a = fl.alerts().get('aoa', {})
     release()
-    down = fl.until(lambda: 'aoa' not in fl.alerts(), 60, hook=hold)
-    add('B2', 'aoa', lag is not None and 3.0 <= lag <= 4.0 + 0.6 and down is not None and down <= 30,
-        '%s: "%s" (%s); cleared %s after the stick was released' % (
-            'raised %.1f s after the angle of attack came within 0.3 deg of its limit' % lag if lag is not None else 'NOT RAISED', a.get('text', ''), a.get('action', ''),
+    down = fl.until(lambda: 'aoa' not in fl.alerts() and 'aoa-near' not in fl.alerts(), 60, hook=hold)
+    add('B2', 'aoa', lag is not None and 0.4 <= lag <= 1.6 and down is not None and down <= 32,
+        '%s: "%s" (%s); cleared %s after the stick was released (it stands at least 3 s, and until the angle is under the limit)' % (
+            'raised %.1f s after the angle of attack went over its limit (the pull by hand takes it over)' % lag if lag is not None else 'NOT RAISED', a.get('text', ''), a.get('action', ''),
             '%.1f s' % down if down is not None else 'NEVER'))
+    # the rules themselves, on scripted margins (the limit less the angle, deg), one sample a second tenth
+    def run_aoa(series):
+        o = OB.Onboard.__new__(OB.Onboard)
+        o.aoa = dict(over_since=None, over_on=None, near_since=None, near_on=False, clear_since=None)
+        return [(t, o.aoa_step(m, True, t)) for t, m in series]
+    ts = [i * 0.1 for i in range(0, 200)]
+    short = run_aoa([(t, -0.2 if t < 0.4 else 1.0) for t in ts])
+    longer = run_aoa([(t, -0.2 if t < 0.8 else 1.0) for t in ts])
+    raised = next((t for t, (e, n) in longer if e), None)
+    gone = next((t for t, (e, n) in longer if t > (raised or 0) and not e), None)
+    add('B2', 'aoa exceeded: 0.5 s to raise, 3 s to stand', not any(e for t, (e, n) in short) and raised is not None and 0.5 <= raised <= 0.6 and gone is not None and 3.5 <= gone <= 3.7,
+        '0.4 s over the limit raises nothing; 0.8 s raises at %s s and it goes at %s s' % ('%.1f' % raised if raised is not None else '-', '%.1f' % gone if gone is not None else '-'))
+    hover = run_aoa([(t, 0.10 if (int(t * 10) // 15) % 2 == 0 else 0.20) for t in ts])          # 1.5 s under 0.15, 1.5 s over, and so on: the interrupted timer of the single threshold
+    steady = run_aoa([(t, 0.10) for t in ts])
+    on = next((t for t, (e, n) in steady if n), None)
+    holds = run_aoa([(t, 0.10 if t < 3.1 else (0.20 if t < 8 else (0.30 if t < 9.9 else 0.20))) for t in ts])      # on at 3 s, 0.20 deg (between the thresholds) keeps it, 0.30 for under 2 s keeps it
+    clears = run_aoa([(t, 0.10 if t < 3.1 else 0.30) for t in ts])
+    off = next((t for t, (e, n) in clears if t > 3.1 and not n), None)
+    add('B2', 'aoa near: 3 s on, hysteresis, 2 s off',
+        not any(n for t, (e, n) in hover) and on is not None and 2.9 <= on <= 3.2 and all(n for t, (e, n) in holds if t >= 3.2) and off is not None and 5.1 <= off <= 5.4,
+        'a margin interrupted every 1.5 s never raises it; a steady one raises it at %s s; 0.20 deg keeps it, 0.30 deg for 1.8 s keeps it; 0.30 deg for 2 s clears it at %s s' % (
+            '%.1f' % on if on is not None else '-', '%.1f' % off if off is not None else '-'))
     fl.run(60)
     # the link: silence, then a resume
     t0 = f['simulation/sim-time-sec']
