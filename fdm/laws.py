@@ -41,7 +41,8 @@ LEVEL_I_BAND_FT = 25.0          # the capture's small integral runs within this 
 LEVEL_THRUST_FF = 1            # the speed law's throttle follows the flight path angle: the throttle latched at engagement plus the table's slope (data/path_thrust.json) times the angle now less the angle at engagement
 LEVEL_THETA_MAX = 30.0          # deg: the altitude capture's pitch attitude clip (the pitch command governor and the protections still limit what the aircraft is given)
 CLIMB_MARGIN = 0.85             # of the climb rate the throttle table says the thrust holds: the manager flies a height change shorter than the capture of that rate wants entirely under the profile
-LEVEL_OFFSET_TC = 6.0           # s: the pitch the aircraft was holding beyond what its path angle asks (a descent on spoilers and idle thrust holds 2.3 deg more than level flight does) is carried into the altitude mode and let go over this time, not stepped
+LEVEL_OFFSET_SETTLED = 1        # also where the altitude mode takes the pitch settled at the height (LEVEL_OFFSET_TO_I 2 moves the offset into the integral for a capture from above only): the cruise-climb's capture of its ceiling, 95 ft of dip (docs/PLAN.md, "the ceiling ride")
+LEVEL_OFFSET_TC = 6.0          # s: the pitch the aircraft was holding beyond what its path angle asks (a descent on spoilers and idle thrust holds 2.3 deg more than level flight does) is carried into the altitude mode and let go over this time, not stepped
 LEVEL_SOFTMIN = 1              # the capture's climb rate is the soft minimum of the linear law's and the constant deceleration's
 LEVEL_LAG_S = 2.0               # s: the capture's climb rate is also lagged, so that its acceleration begins as a ramp (a deceleration begun at once is a step of the load factor); the manager's gate is earlier by it
 LEVEL_DIR_BAND_FT = 30.0        # ft: within this of the height the capture's direction (up or down to it) is held, not taken from the sign of the error
@@ -448,8 +449,8 @@ def _mission_vertical():
         ch.append(_fn('ap/v-energy-short', IF(AND(GT(err, V(5)), GT(P('engine/pressure-altitude-ft'), V(LEVEL_ENERGY_ALT_FT)), GE(P('ap/throttle-level'), V(LEVEL_ENERGY_THROTTLE))), V(1), V(0)),
                       'a climb the thrust cannot hold level at the end of (the throttle for level flight here is at least %g): the altitude capture is not begun yet' % LEVEL_ENERGY_THROTTLE))
         refuse = EQ(P('ap/v-energy-short'), V(1))
-    ch.append(_fn('ap/v-mode-raw', IF(AND(OR(LE(ABS(err), P('ap/v-gate-ft')), stay, short), EQ(refuse, V(0))), V(3), IF(GT(err, V(0)), V(1), V(2))),
-                  'this frame\'s mode: 3 level (within the gate, or the height held, or a short change), else 1 climb or 2 descent'))
+    ch.append(_fn('ap/v-mode-raw', IF(OR(stay, AND(OR(LE(ABS(err), P('ap/v-gate-ft')), short), EQ(refuse, V(0)))), V(3), IF(GT(err, V(0)), V(1), V(2))),
+                  'this frame\'s mode: 3 level (within the gate or a short change, not begun while the thrust cannot hold the height; or the height held), else 1 climb or 2 descent'))
     mode = P('ap/v-mode-raw')
     # the capture's own states, latched on the frame the level begins (or its height changes)
     ch.append(_fn('ap/v-level-new', IF(AND(on, EQ(mode, V(3)), OR(NQ(P('ap/vmode'), V(3)), NQ(P('ap/v-level-alt'), alt))), V(1), V(0)), 'the frame the level (a new one) begins'))
@@ -828,12 +829,21 @@ def laws_file():
                           out='ap/alt-vs-cmd-fps'))
         else:
             ch.append(_fn('ap/alt-vs-cmd-fps', _p('ap/alt-vs-target-fps')))
+        offset_to_i = X_('lt', _p('ap/alt-dir'), _v(0)) if LEVEL_OFFSET_TO_I == 2 else X_('gt', _v(1), _v(0))
+        if LEVEL_OFFSET_TO_I == 2 and LEVEL_OFFSET_SETTLED:
+            # a state: whether the aircraft was settled at the height (within LEVEL_I_BAND_FT of it, climbing or sinking less than LEVEL_I_RATE_FPS) in the last frame before the altitude mode took
+            # the pitch, held from then on. A mode that arrives at the height settled is a hold: the pitch the aircraft holds beyond its path angle is the level flight's angle of attack, and
+            # letting it go (it is for a climb capture, which was tuned with it let go) cost the height: 95 ft and 8 ft/s of sink at the 65,000 ft capture, where the thrust cannot win the energy back
+            ch.append(_fn('ap/alt-settled-next', X_('ifthen', X_('and', X_('eq', _p('ap/pitch-mode'), _v(2)), X_('eq', _p('ap/engaged'), _v(1))), _p('ap/alt-settled'),
+                                                   X_('ifthen', X_('and', X_('lt', X_('abs', err), _v(LEVEL_I_BAND_FT)), X_('lt', X_('abs', _p('velocities/h-dot-fps')), _v(LEVEL_I_RATE_FPS))), _v(1), _v(0))),
+                          'the aircraft was settled at the height when the altitude mode took the pitch', out='ap/alt-settled'))
+            offset_to_i = X_('or', offset_to_i, X_('eq', _p('ap/alt-settled'), _v(1)))
         if LEVEL_I_HOLD and LEVEL_I_RATE_GATE:
             # a state: the integral of the height error runs while the gate is open, is held while it is shut, and is zero while the altitude mode is not flying
             ch.append(_fn('ap/theta-alt-i-next', X_('ifthen', X_('and', X_('eq', _p('ap/engaged'), _v(1)), X_('eq', _p('ap/pitch-mode'), _v(2))),
                                                    X_('max', _v(-12), X_('min', _v(12), X_('sum', _p('ap/theta-alt-i-deg'),
                                                       X_('ifthen', X_('eq', _p('ap/alt-i-enable'), _v(1)), X_('product', _v(G['K_h_i'] * LEVEL_I_GAIN_X), err, _p('simulation/dt')), _v(0)),
-                                                      *((X_('ifthen', X_('lt', _p('ap/alt-dir'), _v(0)) if LEVEL_OFFSET_TO_I == 2 else X_('gt', _v(1), _v(0)),
+                                                      *((X_('ifthen', offset_to_i,
                                                             X_('product', _p('ap/theta-alt-offset-deg'), _p('simulation/dt'), _v(1.0 / LEVEL_OFFSET_TC)), _v(0)),) if LEVEL_OFFSET_TO_I else ())))),
                                                    _v(0)),
                           'the small integral of the height error, deg: runs while the gate is open, held (not reset) while it is shut, zero while the altitude mode is not flying', out='ap/theta-alt-i-deg'))
@@ -1300,14 +1310,16 @@ def laws_file():
         if THRUST_ENTRY_TABLE:
             # The baseline of the speed law's throttle: the throttle command while the laws are off (the latch at engagement); where the speed mode (3) begins in flight it is the table's level
             # throttle plus the path angle's and the configuration's terms at engagement, so that the throttle (baseline + integral + the terms for the change since engagement) is the table's
-            # for the path and the configuration there are now; held otherwise.
+            # for the path and the configuration there are now; held otherwise. The baseline is NOT limited to 0..1: the terms after it are relative to the path and configuration latched at engagement
+            # (the takeoff's, with the gear down), so a limit on the baseline alone breaks the sum: at the ceiling, where the table's level throttle is over 1, the clipped baseline less the
+            # gear's term was 0.23 of throttle at the first capture (docs/PLAN.md, "the ceiling ride"); the throttle the laws send on is limited at the end (ap/thrust-speed).
             bias_xml = ('        <ifthen>\n          <eq>%s%s</eq>\n          %s\n          <ifthen>\n'
                         '            <and><eq>%s%s</eq><nq>%s%s</nq><eq>%s%s</eq><eq>%s%s</eq></and>\n'
-                        '            <max>%s<min>%s<sum>%s<product>%s<sum>%s%s</sum></product></sum></min></max>\n'
+                        '            <sum>%s<product>%s<sum>%s%s</sum></product></sum>\n'
                         '            %s\n          </ifthen>\n        </ifthen>') % (
                 _p('ap/engaged'), _v(0), _p('fcs/throttle-cmd-norm'),
                 _p('ap/thrust-mode'), _v(3), _p('ap/thrust-mode-prev'), _v(3), _p('ap/engaged-prev'), _v(1), _p('ap/engaged'), _v(1),
-                _v(0), _v(1), _p('ap/throttle-level'), _p('ap/thrust-per-deg'), _p('ap/bias-gamma-deg'), _p('ap/bias-cfg-deg'),
+                _p('ap/throttle-level'), _p('ap/thrust-per-deg'), _p('ap/bias-gamma-deg'), _p('ap/bias-cfg-deg'),
                 _p('ap/bias-throttle'))
             ch.append(_fn('ap/bias-throttle-next', bias_xml, 'the throttle baseline of the speed law: the throttle command while the laws are off, the table\'s at the start of the speed mode in flight, else held', out='ap/bias-throttle'))
             ch.append(_fn('ap/thrust-mode-prev-next', _p('ap/thrust-mode'), 'the thrust mode of the frame before', out='ap/thrust-mode-prev'))
