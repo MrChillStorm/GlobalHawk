@@ -1546,7 +1546,7 @@
     <fcs_function name="ap/yaw-ground-deg">
       <description>the ruddervators on the heading error to the course the line gives: help the nose wheel on the ground, and take the crab off in the air from the decrab's weight</description>
       <function>
-        <product><property>ap/ground-steer</property><ifthen><gt><property>ap/on-mains</property><value>0</value></gt>        <product><max><min><value>1</value><property>ap/on-mains</property></min><property>ap/decrab-w</property></max><value>0.5</value></product><max>        <product><property>ap/decrab-w</property><value>1</value></product>        <product>        <difference><value>1</value><property>ap/yaw-air-w</property></difference><value>0.5</value></product></max></ifthen><property>ap/ground-error-deg</property></product>
+        <product><property>ap/ground-steer</property><ifthen><gt><property>ap/on-mains</property><value>0</value></gt>        <product><max><min><value>1</value><property>ap/on-mains</property></min><property>ap/decrab-w</property></max><ifthen><eq><property>ap/takeoff-roll</property><value>1</value></eq><value>3</value><value>2</value></ifthen></product><max>        <product><property>ap/decrab-w</property><value>2</value></product>        <product>        <difference><value>1</value><property>ap/yaw-air-w</property></difference><value>3</value></product></max></ifthen><property>ap/ground-error-deg</property></product>
       </function>
       <clipto><min>-10</min><max>10</max></clipto>
     </fcs_function>
@@ -1592,29 +1592,53 @@
             <independentVar lookup="row">inertia/weight-lbs</independentVar>
             <independentVar lookup="column">engine/pressure-altitude-ft</independentVar>
             <independentVar lookup="table">velocities/vc-kts</independentVar>
+            <tableData breakPoint="90">
+                 4174 20174 30174 45174 55174 60174 65174
+              12000  0.04258 0.05609 0.07838 0.16371 0.26468 0.33721 0.42554
+              14000  0.04863 0.06549 0.09151 0.16371 0.30935 0.39421 0.49782
+              16000  0.05468 0.07488 0.10464 0.16371 0.35463 0.45571 0.57052
+              20000  0.06679 0.09368 0.13091 0.16371 0.44614 0.64039 0.57052
+              26000  0.08722 0.12231 0.17088 0.16371 0.58090 0.64039 0.57052
+            </tableData>
+            <tableData breakPoint="100">
+                 4174 20174 30174 45174 55174 60174 65174
+              12000  0.04258 0.05609 0.07838 0.16371 0.26523 0.33474 0.42581
+              14000  0.04863 0.06549 0.09151 0.16371 0.30944 0.39068 0.49764
+              16000  0.05468 0.07488 0.10464 0.16371 0.35410 0.44716 0.57052
+              20000  0.06679 0.09368 0.13091 0.16371 0.44795 0.64039 0.57052
+              26000  0.08722 0.12231 0.17088 0.16371 0.58090 0.64039 0.57052
+            </tableData>
             <tableData breakPoint="110">
-                 4174 20174 30174 45174
-              12000  0.04258 0.05609 0.07838 0.16371
-              20000  0.06679 0.09368 0.13091 0.16371
-              26000  0.08722 0.12231 0.17088 0.16371
+                 4174 20174 30174 45174 55174 60174 65174
+              12000  0.04258 0.05609 0.07838 0.16371 0.26384 0.33098 0.42581
+              14000  0.04863 0.06549 0.09151 0.16371 0.30806 0.38987 0.49764
+              16000  0.05468 0.07488 0.10464 0.16371 0.35215 0.44753 0.57052
+              20000  0.06679 0.09368 0.13091 0.16371 0.44169 0.56029 0.57052
+              26000  0.08722 0.12231 0.17088 0.16371 0.58090 0.56029 0.57052
             </tableData>
             <tableData breakPoint="130">
-                 4174 20174 30174 45174
-              12000  0.04258 0.05804 0.07939 0.16416
-              20000  0.06887 0.09681 0.13243 0.16416
-              26000  0.08976 0.12609 0.17234 0.16416
+                 4174 20174 30174 45174 55174 60174 65174
+              12000  0.04258 0.05804 0.07939 0.16416 0.26338 0.33098 0.42581
+              14000  0.04915 0.06773 0.09265 0.16416 0.30914 0.38987 0.49764
+              16000  0.05572 0.07742 0.10591 0.16416 0.35291 0.44753 0.57052
+              20000  0.06887 0.09681 0.13243 0.16416 0.44229 0.56029 0.57052
+              26000  0.08976 0.12609 0.17234 0.16416 0.58090 0.56029 0.57052
             </tableData>
             <tableData breakPoint="150">
-                 4174 20174 30174 45174
-              12000  0.04258 0.05979 0.08015 0.16088
-              20000  0.07100 0.09989 0.13393 0.16088
-              26000  0.09234 0.12993 0.17422 0.16088
+                 4174 20174 30174 45174 55174 60174 65174
+              12000  0.04258 0.05979 0.08015 0.16088 0.26338 0.33098 0.42581
+              14000  0.04968 0.06982 0.09360 0.16088 0.30914 0.38987 0.49764
+              16000  0.05679 0.07984 0.10704 0.16088 0.35291 0.44753 0.57052
+              20000  0.07100 0.09989 0.13393 0.16088 0.44229 0.56029 0.57052
+              26000  0.09234 0.12993 0.17422 0.16088 0.58090 0.56029 0.57052
             </tableData>
             <tableData breakPoint="170">
-                 4174 20174 30174 45174
-              12000  0.04387 0.06170 0.08042 0.16088
-              20000  0.07323 0.10298 0.13427 0.16088
-              26000  0.09525 0.13397 0.17422 0.16088
+                 4174 20174 30174 45174 55174 60174 65174
+              12000  0.04387 0.06170 0.08042 0.16088 0.26338 0.33098 0.42581
+              14000  0.05121 0.07202 0.09388 0.16088 0.30914 0.38987 0.49764
+              16000  0.05855 0.08234 0.10734 0.16088 0.35291 0.44753 0.57052
+              20000  0.07323 0.10298 0.13427 0.16088 0.44229 0.56029 0.57052
+              26000  0.09525 0.13397 0.17422 0.16088 0.58090 0.56029 0.57052
             </tableData>
           </table>
       </function>
@@ -1626,29 +1650,53 @@
             <independentVar lookup="row">inertia/weight-lbs</independentVar>
             <independentVar lookup="column">engine/pressure-altitude-ft</independentVar>
             <independentVar lookup="table">velocities/vc-kts</independentVar>
+            <tableData breakPoint="90">
+                 4174 20174 30174 45174 55174 60174 65174
+              12000  0.05530 0.05050 0.10290 0.28070 0.39200 0.52580 0.69910
+              14000  0.04665 0.06100 0.11802 0.28070 0.46380 0.61890 0.82960
+              16000  0.03800 0.07150 0.13315 0.28070 0.57800 0.78510 1.26540
+              20000  0.02070 0.09250 0.16340 0.28070 0.92500 1.09240 1.26540
+              26000  0.08260 0.17420 0.27260 0.28070 1.56870 1.09240 1.26540
+            </tableData>
+            <tableData breakPoint="100">
+                 4174 20174 30174 45174 55174 60174 65174
+              12000  0.05530 0.05050 0.10290 0.28070 0.44750 0.59280 0.89750
+              14000  0.04665 0.06100 0.11802 0.28070 0.48710 0.64540 1.02450
+              16000  0.03800 0.07150 0.13315 0.28070 0.54290 0.71830 1.26540
+              20000  0.02070 0.09250 0.16340 0.28070 0.80190 1.09240 1.26540
+              26000  0.08260 0.17420 0.27260 0.28070 1.56870 1.09240 1.26540
+            </tableData>
             <tableData breakPoint="110">
-                 4174 20174 30174 45174
-              12000  0.05530 0.05050 0.10290 0.28070
-              20000  0.02070 0.09250 0.16340 0.28070
-              26000  0.08260 0.17420 0.27260 0.28070
+                 4174 20174 30174 45174 55174 60174 65174
+              12000  0.05530 0.05050 0.10290 0.28070 0.50630 0.73500 0.89750
+              14000  0.04665 0.06100 0.11802 0.28070 0.54980 0.78300 1.02450
+              16000  0.03800 0.07150 0.13315 0.28070 0.59180 0.83630 1.26540
+              20000  0.02070 0.09250 0.16340 0.28070 0.70350 1.00190 1.26540
+              26000  0.08260 0.17420 0.27260 0.28070 1.56870 1.00190 1.26540
             </tableData>
             <tableData breakPoint="130">
-                 4174 20174 30174 45174
-              12000  0.05530 0.08660 0.15320 0.39560
-              20000  0.03770 0.11470 0.19160 0.39560
-              26000  0.05760 0.14480 0.23230 0.39560
+                 4174 20174 30174 45174 55174 60174 65174
+              12000  0.05530 0.08660 0.15320 0.39560 0.87570 0.73500 0.89750
+              14000  0.05090 0.09362 0.16280 0.39560 0.85590 0.78300 1.02450
+              16000  0.04650 0.10065 0.17240 0.39560 0.88770 0.83630 1.26540
+              20000  0.03770 0.11470 0.19160 0.39560 1.00730 1.00190 1.26540
+              26000  0.05760 0.14480 0.23230 0.39560 1.56870 1.00190 1.26540
             </tableData>
             <tableData breakPoint="150">
-                 4174 20174 30174 45174
-              12000  0.05530 0.14010 0.22500 0.63480
-              20000  0.06490 0.15400 0.24170 0.63480
-              26000  0.08280 0.17950 0.27600 0.63480
+                 4174 20174 30174 45174 55174 60174 65174
+              12000  0.05530 0.14010 0.22500 0.63480 0.87570 0.73500 0.89750
+              14000  0.05770 0.14358 0.22918 0.63480 0.85590 0.78300 1.02450
+              16000  0.06010 0.14705 0.23335 0.63480 0.88770 0.83630 1.26540
+              20000  0.06490 0.15400 0.24170 0.63480 1.00730 1.00190 1.26540
+              26000  0.08280 0.17950 0.27600 0.63480 1.56870 1.00190 1.26540
             </tableData>
             <tableData breakPoint="170">
-                 4174 20174 30174 45174
-              12000  0.10980 0.22180 0.33200 0.63480
-              20000  0.10450 0.21320 0.31590 0.63480
-              26000  0.11500 0.22770 0.27600 0.63480
+                 4174 20174 30174 45174 55174 60174 65174
+              12000  0.10980 0.22180 0.33200 0.63480 0.87570 0.73500 0.89750
+              14000  0.10847 0.21965 0.32798 0.63480 0.85590 0.78300 1.02450
+              16000  0.10715 0.21750 0.32395 0.63480 0.88770 0.83630 1.26540
+              20000  0.10450 0.21320 0.31590 0.63480 1.00730 1.00190 1.26540
+              26000  0.11500 0.22770 0.27600 0.63480 1.56870 1.00190 1.26540
             </tableData>
           </table>
       </function>
@@ -2099,10 +2147,16 @@
 <ifthen><le><abs><property>ap/v-err-ft</property></abs><product><value>1.6</value><max><value>0</value><sum><quotient><sum><product><property>ap/v-rup-fps</property><property>ap/v-rup-fps</property><value>0.2</value></product><product><property>ap/v-rup-fps</property><sqrt><sum><product><property>ap/v-rup-fps</property><property>ap/v-rup-fps</property><value>0.04</value></product><value>108.16</value></sum></sqrt></product></sum><value>2.08</value></quotient><product><property>ap/v-rup-fps</property><sum><value>4.5</value><value>0</value></sum></product></sum></max></product></le><value>1</value><value>0</value></ifthen>
       </function>
     </fcs_function>
+    <fcs_function name="ap/v-energy-short">
+      <description>a climb the thrust cannot hold level at the end of (the throttle for level flight here is at least 0.95): the altitude capture is not begun yet</description>
+      <function>
+<ifthen><and><gt><property>ap/v-err-ft</property><value>5</value></gt><gt><property>engine/pressure-altitude-ft</property><value>45000</value></gt><ge><property>ap/throttle-level</property><value>0.95</value></ge></and><value>1</value><value>0</value></ifthen>
+      </function>
+    </fcs_function>
     <fcs_function name="ap/v-mode-raw">
       <description>this frame's mode: 3 level (within the gate, or the height held, or a short change), else 1 climb or 2 descent</description>
       <function>
-<ifthen><or><le><abs><property>ap/v-err-ft</property></abs><property>ap/v-gate-ft</property></le><and><eq><property>ap/vmode</property><value>3</value></eq><eq><property>ap/v-level-alt</property><property>ap/v-alt-ft</property></eq><le><abs><property>ap/v-err-ft</property></abs><value>8000</value></le></and><eq><property>ap/v-short</property><value>1</value></eq></or><value>3</value><ifthen><gt><property>ap/v-err-ft</property><value>0</value></gt><value>1</value><value>2</value></ifthen></ifthen>
+<ifthen><and><or><le><abs><property>ap/v-err-ft</property></abs><property>ap/v-gate-ft</property></le><and><eq><property>ap/vmode</property><value>3</value></eq><eq><property>ap/v-level-alt</property><property>ap/v-alt-ft</property></eq><le><abs><property>ap/v-err-ft</property></abs><value>8000</value></le></and><eq><property>ap/v-short</property><value>1</value></eq></or><eq><eq><property>ap/v-energy-short</property><value>1</value></eq><value>0</value></eq></and><value>3</value><ifthen><gt><property>ap/v-err-ft</property><value>0</value></gt><value>1</value><value>2</value></ifthen></ifthen>
       </function>
     </fcs_function>
     <fcs_function name="ap/v-level-new">

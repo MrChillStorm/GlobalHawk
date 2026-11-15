@@ -70,6 +70,9 @@ ROLLOUT_OVER_KT = 15.0          # kt: the landing's rollout is over below this g
 LEVEL_GATE_FT = 150.0           # ft: the altitude hold takes over from the climb or descent within this of the height ... (the manager's, moved here)
 LEVEL_SHORT_FACTOR = 1.6        # ... and up to this many times the capture of the climb rate the aircraft can hold: a height change that short is flown entirely under the profile, from no climb rate
 LEVEL_SHORT = 1                 # that short rule
+LEVEL_ENERGY = 1                  # above LEVEL_ENERGY_ALT_FT a climb is not captured (the altitude mode is not begun) while the throttle for level flight at this speed, weight and height is LEVEL_ENERGY_THROTTLE or more: the thrust cannot hold the height, the altitude mode asks for a climb it cannot give and the aircraft goes to its angle-of-attack limit at Mach 0.57 for hours (the cruise-climb's last 1,000 ft, docs/PLAN.md, the 65,000 ft scenario); it goes on climbing at full thrust on the speed schedule and takes the height when it is light enough
+LEVEL_ENERGY_ALT_FT = 45000.0     # the throttle table (pathperf.py) is to 65,000 ft and 14,000 and 16,000 lb since 2026-11-15; below this the rule is not used (the flights it was tuned on)
+LEVEL_ENERGY_THROTTLE = 0.95
 LEVEL_STAY_FT = 8000.0          # once the altitude hold has the height it keeps it while the height stays the same, unless the aircraft is this far off it
 DESCENT_SPOILER = 0.5           # the spoilers' command in a descent that has no path to steer along (and the base of the one that has)
 DESCENT_ON_SPOILERS = 1         # a descent with a path (ap/vt-path) steers its slope with the spoilers: the sink the height over the target and the way to go ask for, DESCENT_SPOILER at the sink there is, DESCENT_SPOILER_K more for each ft/s lacking
@@ -141,7 +144,10 @@ FLARE_TTG = 2.6                  # s: the flare starts at this many seconds to t
 FLARE_SLACK = 4.0                # ft/s of sink that is not a downdraft: the approach's own is 17.2 and gusts of light turbulence reach 21, so only more
 DECRAB_H_START = 8.0             # ft of wheel height: the nose starts to come round to the runway's course (the MV-22B's engine-out landing does it from 3 s to 0.5 s before the wheels, by wheel height over the sink; the flare slows the descent as it goes, which holds that time at its own time constant from the flare's start: the decrab began 6 s out and the aircraft drifted off the line meanwhile; counted in height, it is in the last 3 s)
 DECRAB_H_END = 1.0               # ft of wheel height: the decrab has gone as far as it goes in the air
-DECRAB_K = 1.0                   # deg of rudder per deg of heading error in the air, from the decrab's weight (on the ground the ruddervators' own 0.5). Headless, 20 kt across: 8 to 1 ft, gain 1 leaves 3.8 deg of the 8.5 deg crab to the wheels (the rest taken on the runway, as the MV-22B does), 6 to 1.5 ft with gain 2 takes it nearly all off (1.2 deg left) and touches down with 7.8 deg of sideslip instead of 5.8
+DECRAB_K = 2.0                   # deg of rudder per deg of heading error in the air, from the decrab's weight (on the ground the ruddervators' own 0.5). Headless, 20 kt across: 8 to 1 ft, gain 1 leaves 3.8 deg of the 8.5 deg crab to the wheels (the rest taken on the runway, as the MV-22B does), 6 to 1.5 ft with gain 2 takes it nearly all off (1.2 deg left) and touches down with 7.8 deg of sideslip instead of 5.8
+LANDING_YAW_K = 2.0              # deg of ruddervator per deg of heading error on the mains when it is not the takeoff roll (the landing's rollout, the taxi)
+TAKEOFF_YAW_K = 3.0              # deg of ruddervator per deg of heading error on the takeoff roll (it is LANDING_YAW_K on the landing's rollout: gain 3 there doubled the yaw rate at touchdown and did not hold the line closer)
+TAKEOFF_BLEND_K = 3.0             # the same gain for the ground term's fade-out over YAW_AIR_BLEND_S after the wheels leave (until the nose wheel's steering goes off at AIRBORNE_FT)
 DECRAB = 1                       # 1: the landing task owns the yaw axis in its last seconds and on the runway (the sideslip law is faded out by the weight)
 FINAL_T_OUTER_S = 25.0           # s: the landing task's lateral law (roll mode 3): the cross-track rate the line asks for is the cross-track over this ...
 FINAL_T_INNER_S = 6.0            # s: ... and the lateral acceleration is the difference from the rate there is, over this (four times faster: no overshoot)
@@ -437,7 +443,12 @@ def _mission_vertical():
                       'a height change shorter than the capture of the rate the aircraft can hold is flown entirely under the profile, from no climb rate'))
         short = EQ(P('ap/v-short'), V(1))
     stay = AND(EQ(P('ap/vmode'), V(3)), EQ(P('ap/v-level-alt'), alt), LE(ABS(err), V(LEVEL_STAY_FT)))
-    ch.append(_fn('ap/v-mode-raw', IF(OR(LE(ABS(err), P('ap/v-gate-ft')), stay, short), V(3), IF(GT(err, V(0)), V(1), V(2))),
+    refuse = V(0)
+    if LEVEL_ENERGY and path_thrust() is not None:
+        ch.append(_fn('ap/v-energy-short', IF(AND(GT(err, V(5)), GT(P('engine/pressure-altitude-ft'), V(LEVEL_ENERGY_ALT_FT)), GE(P('ap/throttle-level'), V(LEVEL_ENERGY_THROTTLE))), V(1), V(0)),
+                      'a climb the thrust cannot hold level at the end of (the throttle for level flight here is at least %g): the altitude capture is not begun yet' % LEVEL_ENERGY_THROTTLE))
+        refuse = EQ(P('ap/v-energy-short'), V(1))
+    ch.append(_fn('ap/v-mode-raw', IF(AND(OR(LE(ABS(err), P('ap/v-gate-ft')), stay, short), EQ(refuse, V(0))), V(3), IF(GT(err, V(0)), V(1), V(2))),
                   'this frame\'s mode: 3 level (within the gate, or the height held, or a short change), else 1 climb or 2 descent'))
     mode = P('ap/v-mode-raw')
     # the capture's own states, latched on the frame the level begins (or its height changes)
@@ -1250,8 +1261,8 @@ def laws_file():
     ch.append(_pid('ap/yaw-beta-deg', 'ap/beta-gated-deg', 'ap/k-beta', 'ap/k-beta-i', 'beta', clip=('-12', '12')))
     if YAW_AIR_BLEND_S:
         # on the mains as before; in the air the crab's decrab weight at its gain, and for the blend after lift-off the ground term fades out with the weight at the gain it had on the ground
-        ground_w = IF(GT(P('ap/on-mains'), V(0)), _op('product', MAX(MIN(V(1), P('ap/on-mains')), P('ap/decrab-w')), V(0.5)),
-                      MAX(_op('product', P('ap/decrab-w'), V(DECRAB_K)), _op('product', _op('difference', V(1), P('ap/yaw-air-w')), V(0.5))))
+        ground_w = IF(GT(P('ap/on-mains'), V(0)), _op('product', MAX(MIN(V(1), P('ap/on-mains')), P('ap/decrab-w')), IF(EQ(P('ap/takeoff-roll'), V(1)), V(TAKEOFF_YAW_K), V(LANDING_YAW_K))),
+                      MAX(_op('product', P('ap/decrab-w'), V(DECRAB_K)), _op('product', _op('difference', V(1), P('ap/yaw-air-w')), V(TAKEOFF_BLEND_K))))
         yaw_ground = _op('product', _p('ap/ground-steer'), ground_w, _p('ap/ground-error-deg'))
     else:
         yaw_ground = _op('product', _p('ap/ground-steer'), MAX(MIN(V(1), P('ap/on-mains')), P('ap/decrab-w')),
@@ -1279,8 +1290,9 @@ def laws_file():
         # the climb rate the thrust can hold at this speed, weight and height: the path angle the throttle left over by level flight makes, (1 - level) / per degree, at CLIMB_MARGIN of it
         ch.append(_fn('ap/throttle-level', _table3(pt['axes'], pt['grid_throttle_level'], ('velocities/vc-kts', 'inertia/weight-lbs', 'engine/pressure-altitude-ft')),
                       'the throttle for level flight at this speed, weight and height (pathperf.py)'))
-        ch.append(_fn('ap/climb-rate-max-fps', '        <product>%s%s<quotient><max>%s<difference>%s%s</difference></max>%s</quotient><quotient>%s%s</quotient></product>' % (
-            _v(CLIMB_MARGIN), _p('velocities/vt-fps'), _v(0), _v(1), _p('ap/throttle-level'), _p('ap/thrust-per-deg'), _v(1), _v(57.29578)),
+        table_climb = '        <product>%s%s<quotient><max>%s<difference>%s%s</difference></max>%s</quotient><quotient>%s%s</quotient></product>' % (
+            _v(CLIMB_MARGIN), _p('velocities/vt-fps'), _v(0), _v(1), _p('ap/throttle-level'), _p('ap/thrust-per-deg'), _v(1), _v(57.29578))
+        ch.append(_fn('ap/climb-rate-max-fps', table_climb,
             'the climb rate the thrust holds at this speed: the path angle the throttle above level flight makes (pathperf.py), at %g of it' % CLIMB_MARGIN))
         ch.append(_fn('ap/descent-rate-idle-fps', '        <product>%s%s<quotient>%s%s</quotient><quotient>%s%s</quotient></product>' % (
             _v(CLIMB_MARGIN), _p('velocities/vt-fps'), _p('ap/throttle-level'), _p('ap/thrust-per-deg'), _v(1), _v(57.29578)),
