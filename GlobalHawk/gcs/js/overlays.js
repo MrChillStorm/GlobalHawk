@@ -86,6 +86,8 @@
       this.fileStatus = '';
       this.drawnFields = [];
       this.ground = null; // the ground network the aircraft sent (js/ground.js Net), or null
+      this.groundTo = null; // the destination airport's, when the flight goes to another (or the same, then it is this.ground)
+      this.standTo = null; // the stand picked there: { at, heading }
       this.groundStatus = '';
       this.stand = null; // the plan's stand: { at: [lat, lon], heading }
       this.airports = new AP.Airports({ fetch: (u) => this.net(u), store: o.store || null, base: o.sourcesBase });
@@ -109,6 +111,11 @@
       this.install();
       if (this.dom) this.buildPanel();
       if (this.store) this.restore();
+    }
+
+    /** The destination airport's ground network (null: none): drawn by the same layers as the departure's. */
+    setGroundTo(net) {
+      this.groundTo = net;
     }
 
     /** The airport's ground network, from the aircraft (null: none); drawn by the Taxiways and Stands layers. */
@@ -470,9 +477,12 @@
       if (L.shown('areas')) this.paintAreas(m, x);
       if (L.shown('link')) this.paintLink(m, x, ctx);
       if (L.shown('wind')) this.paintWind(m, x, ctx, vb);
-      if (this.ground && vb) {
-        if (L.shown('taxiways')) this.paintTaxiways(m, x, vb);
-        if (L.shown('parking')) this.paintParking(m, x, vb);
+      // the departure's map and, when the flight goes elsewhere, the destination's, each with its stand ringed (the same airport: one map, both stands)
+      const sameNet = this.groundTo && this.groundTo === this.ground;
+      const nets = [this.ground ? [this.ground, sameNet ? [this.stand, this.standTo] : [this.stand]] : null, this.groundTo && !sameNet ? [this.groundTo, [this.standTo]] : null].filter(Boolean);
+      if (nets.length && vb) {
+        for (const [net] of nets) if (L.shown('taxiways')) this.paintTaxiways(m, x, vb, net);
+        for (const [net, stands] of nets) if (L.shown('parking')) this.paintParking(m, x, vb, net, stands);
       }
       this.drawnFields = [];
       if (L.shown('airports')) this.paintAirports(m, x, ctx, vb);
@@ -480,8 +490,7 @@
     }
 
     /** The taxiways of the airport the aircraft sent: a band as wide as a taxiway (75 ft, at least 2 px), the runway's own arcs as a thin dotted line, names and runway ends when close. */
-    paintTaxiways(m, x, vb) {
-      const net = this.ground;
+    paintTaxiways(m, x, vb, net) {
       const col = PAL.LAYERS.taxiways;
       const pad = 0.004;
       const seen = (p) => p[0] >= vb[0] - pad && p[0] <= vb[2] + pad && p[1] >= vb[1] - pad && p[1] <= vb[3] + pad;
@@ -540,8 +549,7 @@
     }
 
     /** The stands: a ring of the stand's radius with a tick for the way it faces; dashed and marked when the aircraft does not fit (under 20 m); the plan's stand ringed in white. */
-    paintParking(m, x, vb) {
-      const net = this.ground;
+    paintParking(m, x, vb, net, stands) {
       const col = PAL.LAYERS.parking;
       const pad = 0.002;
       const near = m.ftPerPx < 14;
@@ -575,8 +583,7 @@
         }
         if (near || m.ftPerPx < 30) this.text(x, `${s.n}${s.fits ? '' : ' (too small)'}`, q[0] + r + 3, q[1] + 4, col, true);
       }
-      const st = this.stand;
-      if (st && st.at) {
+      for (const st of stands || []) if (st && st.at) {
         const q = m.project(st.at);
         const tip = m.project(geo.along(st.at, st.heading || 0, 90));
         x.strokeStyle = '#ffffff';
@@ -961,8 +968,8 @@
       if (L.shown('wind') && this.windNote) out.push(sw(PAL.LAYERS.wind, false, this.windNote));
       if (L.shown('airports')) out.push(sw(PAL.LAYERS.airports, false, 'field: usable now') + sw(PAL.LAYERS.airports, true, 'only lighter'));
       if (L.shown('areas')) out.push(sw(PAL.LAYERS.areas, false, 'loaded areas'));
-      if (this.ground && L.shown('taxiways')) out.push(sw(PAL.LAYERS.taxiways, false, 'taxiway'));
-      if (this.ground && L.shown('parking')) out.push(sw(PAL.LAYERS.parking, false, 'stand') + sw(PAL.LAYERS.parking, true, 'too small (< 20 m)'));
+      if ((this.ground || this.groundTo) && L.shown('taxiways')) out.push(sw(PAL.LAYERS.taxiways, false, 'taxiway'));
+      if ((this.ground || this.groundTo) && L.shown('parking')) out.push(sw(PAL.LAYERS.parking, false, 'stand') + sw(PAL.LAYERS.parking, true, 'too small (< 20 m)'));
       return out.join('');
     }
   }

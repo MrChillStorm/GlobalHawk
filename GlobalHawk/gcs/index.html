@@ -178,6 +178,23 @@
             <button id="gd-rwy-go" title="lay the flight on that runway end in place of the plan being edited (a takeoff, a box, the landing on the same runway) and, if a stand is chosen, the taxi routes from it">Plan a flight on it</button>
             <button id="gd-rwy-undo" title="give back the plan as it was before the last runway, taxi route or hold change made here" disabled>Undo</button>
           </div>
+          <div class="small"><b>Fly to another airport</b>: the takeoff is from the runway chosen above, from the stand chosen above if there is one.</div>
+          <div class="row">
+            <label class="small" title="the four-letter code of the airport to land at, which may be the same one: FlightGear must have its scenery">Destination <input type="text" id="gd-dest-icao" maxlength="4" size="5" autocomplete="off" placeholder="EFTP" style="width:5em;text-transform:uppercase"></label>
+            <button id="gd-dest-load" title="the aircraft reads that airport's ground network and runway ends from FlightGear's scenery and sends them here (the same airport as the departure needs no second one)">Load its ground map</button>
+          </div>
+          <div id="gd-dest-state" class="small"></div>
+          <div class="row">
+            <label class="small" title="the runway end to land on there: the degrees say how far the course from the departure to it is from the runway's own (fewer is straighter in)">Land on <select id="gd-dest-rwy"></select></label>
+            <label class="small" title="the destination's height above the sea: from the airports the page knows, else yours to type; the landing law needs it">field <input type="number" id="gd-dest-elev" min="-1000" max="15000" step="10" style="width:5.5em"> ft</label>
+          </div>
+          <div class="row">
+            <button id="gd-dest-pick" title="then click a stand on the destination's map (a click elsewhere makes a stand of your own there)">Pick the stand there…</button>
+            <label class="small" title="the highest the cruise may be: lowered to what the climb and the descent between the two allow">cruise up to <input type="number" id="gd-dest-alt" value="20000" min="3000" max="65000" step="500" style="width:5.5em"> ft</label>
+          </div>
+          <div class="row">
+            <button id="gd-dest-go" title="lay the flight in place of the plan being edited: the takeoff there, a route, the landing; and, if the stands are chosen, the taxi routes at both ends">Plan the flight there</button>
+          </div>
           <div class="row">
             <label class="small" title="the exit the taxi route in follows">Leave the runway by <select id="gd-exit"></select></label>
           </div>
@@ -236,6 +253,7 @@
   <script src="js/linkinfo.js"></script>
   <script src="js/demoplan.js"></script>
   <script src="js/demoground.js"></script>
+  <script src="js/demoground2.js"></script>
   <script src="js/ground.js"></script>
   <script src="js/demo.js"></script>
   <script src="js/palette.js"></script>

@@ -338,4 +338,121 @@ function r6(x) {
   assert.deepStrictEqual(G.planOnRunway(net, '04', 2300, 6500).plan, G.planOnRunway(net, '04', 2300, 6500).plan);
 }
 
+// the destination picker (docs/PLAN.md, "Destination picker, stage 4": D2 to D6 and D11), on the made-up fields XDM1 and XDM2 (about 48 nmi apart, 2,300 and 3,100 ft)
+{
+  const D2 = require('../js/demoground2.js');
+  const netB = new G.Net(D2);
+  const standB = netB.parking.find((x) => x.n === 'S2');
+  const maxAlt = (plan) => plan.items.find((i) => i.kind === 'route').points.reduce((m, q) => Math.max(m, q[2]), 0);
+  assert.strictEqual(netB.icao, 'XDM2');
+  // D2: the list with how straight in the arrival is from the departure runway's end
+  const from = [net.end('04').lat, net.end('04').lon];
+  const list = netB.runwayList(from);
+  assert.deepStrictEqual(list.map((r) => r.n), ['09', '27']);
+  assert.ok(list.every((r) => Number.isFinite(r.off_deg) && r.off_deg >= 0 && r.off_deg <= 180), JSON.stringify(list));
+  assert.ok(list[0].off_deg < list[1].off_deg, 'from the south-west of XDM2 runway 09 (heading east) is straighter in (fewer degrees off) than 27');
+  assert.strictEqual(net.runwayList()[0].off_deg, undefined, 'without a position no angle');
+  // D3: every pair of ends of the two fields: the aircraft takes it, the takeoff is on the first end of the first map, the landing on the second end of the second
+  for (const ea of net.runways) {
+    for (const eb of netB.runways) {
+      const r = G.planBetween(net, ea.n, netB, eb.n, { elevA: 2300, elevB: 3100 });
+      assert.ok(!r.error, r.error);
+      assert.deepStrictEqual(r.plan.items.map((i) => i.kind), ['takeoff', 'route', 'land'], `${ea.n} to ${eb.n}`);
+      assert.strictEqual(plancheck.checkPlan(r.plan), null, `the aircraft takes ${ea.n} to ${eb.n}`);
+      const t = r.plan.items[0];
+      const l = r.plan.items[2];
+      assert.strictEqual(net.runwayFor(t.start, geo.course(t.start, t.end).deg, -300, 12000).n, ea.n, `takeoff on ${ea.n} of XDM1`);
+      assert.strictEqual(netB.runwayFor(l.aim, geo.course(l.fix, l.aim).deg, -300, 4000).n, eb.n, `landing on ${eb.n} of XDM2`);
+      assert.strictEqual(net.runwayFor(l.aim, geo.course(l.fix, l.aim).deg, -300, 4000), null, 'the landing is not on a runway of the first map');
+      assert.strictEqual(l.elev_ft, 3100, 'the landing has its own height');
+      assert.strictEqual(r.plan.field.elev_ft, 2300);
+      assert.strictEqual(r.plan.field.name, `XDM1 ${ea.n}`);
+      near(eb.frame.to(l.aim)[0], 800, 1, 'the aiming point is 800 ft past the threshold');
+      near(eb.frame.to(l.fix)[0], -10 * geo.NM, 5, 'the fix is 10 nmi back on the centreline');
+      assert.strictEqual(r.plan.sites.length, 2);
+      assert.deepStrictEqual(r.plan.sites[0].aim, l.aim, 'the first site is the plan\'s own landing');
+      assert.strictEqual(r.plan.sites[0].elev_ft, 3100);
+      assert.strictEqual(r.plan.sites[1].elev_ft, 2300, 'the second is the departure');
+      assert.deepStrictEqual(r.plan.lost_link.find((i) => i.kind === 'land').aim, l.aim);
+      const pts = r.plan.items[1].points;
+      assert.strictEqual(pts[pts.length - 1][2], l.fix.length === 2 ? pts[pts.length - 1][2] : 0);
+      assert.deepStrictEqual([pts[pts.length - 1][0], pts[pts.length - 1][1]], l.fix, 'the route ends at the fix');
+      near(geo.course(t.start, [pts[0][0], pts[0][1]]).ft, 12 * geo.NM, 5, 'the first point is 12 nmi out');
+      near(((geo.course(t.start, [pts[0][0], pts[0][1]]).deg - ea.h + 540) % 360) - 180, 0, 0.1, 'straight out along the takeoff');
+    }
+  }
+  // D4: the cruise height by the forecast: the highest that fits, in 500 ft steps
+  const low = G.planBetween(net, '04', netB, '09', { elevA: 2300, elevB: 3100, fits: (p) => maxAlt(p) <= 8000 });
+  assert.strictEqual(low.cruise_ft, 8000);
+  assert.ok(/lower than the 20,000 ft asked for/.test(low.notes.join(' ')), low.notes.join(' | '));
+  const none = G.planBetween(net, '04', netB, '09', { elevA: 2300, elevB: 3100, fits: () => false });
+  assert.ok(!none.error && /No cruise height fits/.test(none.notes.join(' ')), 'none fits: made at the lowest, said so');
+  assert.ok(none.cruise_ft < 9000);
+  assert.strictEqual(G.planBetween(net, '04', netB, '09', { elevA: 2300, elevB: 3100, cruise_ft: 12000 }).cruise_ft, 12000, 'the height asked for');
+  // D5: the destination's height is asked for
+  assert.ok(/height of XDM2 is not known: type it/.test(G.planBetween(net, '04', netB, '09', { elevA: 2300, elevB: NaN }).error));
+  assert.ok(/height of XDM1 is not known/.test(G.planBetween(net, '04', netB, '09', { elevA: undefined, elevB: 3100 }).error));
+  assert.ok(/no runway end 99/.test(G.planBetween(net, '04', netB, '99', { elevA: 2300, elevB: 3100 }).error));
+  assert.ok(/XDM1 has no runway end 99/.test(G.planBetween(net, '99', netB, '09', { elevA: 2300, elevB: 3100 }).error));
+  // D6: the taxi at both ends, the way in on XDM2's map to its stand
+  const both = G.planBetween(net, '04', netB, '09', { elevA: 2300, elevB: 3100, stand, heading: S1.h, dest: { stand: [standB.lat, standB.lon], heading: standB.h } });
+  assert.ok(!both.error, both.error);
+  assert.deepStrictEqual(both.plan.items.map((i) => i.kind), ['taxi', 'takeoff', 'route', 'land', 'taxi']);
+  assert.strictEqual(both.out.rw, '04');
+  assert.strictEqual(both.in.rw, '09');
+  assert.strictEqual(both.in.icao, 'XDM2');
+  assert.strictEqual(plancheck.checkPlan(both.plan), null, 'the aircraft takes the plan with both taxi routes and their holds');
+  const last = both.plan.items[4].points;
+  assert.deepStrictEqual(last[last.length - 1], [standB.lat, standB.lon].map((v) => Math.round(v * 1e6) / 1e6), 'the way in ends at the stand of XDM2');
+  assert.deepStrictEqual(both.plan.field.stand, [S1.lat, S1.lon].map((v) => Math.round(v * 1e6) / 1e6), 'the plan\'s stand is the departure\'s');
+  // a departure stand and none at the destination: the way out only, said so
+  const out = G.planBetween(net, '04', netB, '09', { elevA: 2300, elevB: 3100, stand, heading: S1.h });
+  assert.ok(!out.error, out.error);
+  assert.deepStrictEqual(out.plan.items.map((i) => i.kind), ['taxi', 'takeoff', 'route', 'land']);
+  assert.ok(/No stand is chosen at XDM2/.test(out.notes.join(' ')));
+  assert.strictEqual(plancheck.checkPlan(out.plan), null);
+  // a way in that cannot be laid refuses the whole thing: runway 27's exits do not reach the stand of XDM2? (they do: the same shape) so a stand that is on no taxiway of its own map is still routed;
+  // a landing that is on no map of the two is refused in words
+  const off2 = G.addTaxi(net, G.planBetween(net, '04', netB, '09', { elevA: 2300, elevB: 3100 }).plan, { stand, heading: S1.h, to: { net: new G.Net(D), stand } });
+  assert.ok(/the landing is not on a runway of XDM1 or XDM1|not on a runway of XDM1/.test(off2.error), off2.error);
+  assert.ok(/no stand chosen at XDM2/.test(G.addTaxi(net, G.planBetween(net, '04', netB, '09', { elevA: 2300, elevB: 3100 }).plan, { stand, heading: S1.h, to: { net: netB } }).error));
+  // D11: the same airport. The same end is the runway picker's flight, the same plan
+  const same = G.planBetween(net, '04', net, '04', { elevA: 2300, elevB: 2300, cruise_ft: 15000 });
+  const boxH = same.plan.items[1].points[0][2];
+  assert.ok(boxH <= 15000 && boxH >= 4000, `the box at ${boxH} ft: the highest that comes down gently`);
+  assert.deepStrictEqual(same.plan, G.planOnRunway(net, '04', 2300, boxH).plan, 'the same runway end is the local flight, its box at that height');
+  assert.ok(boxH + 500 > 15000 || !(function () { const t = G.planOnRunway(net, '04', 2300, boxH + 500).plan.items[1].points; return t.every((q, i) => i === 0 || t[i - 1][2] - q[2] <= geo.course(t[i - 1], q).ft * Math.tan(5 * Math.PI / 180)); })(), 'and no 500 ft higher comes down gently too');
+  // a different end: a circuit with a box corner 15 nmi to the side of the arrival's fix, at the first point's side
+  for (const [a, b] of [['04', '22'], ['22', '04']]) {
+    const r = G.planBetween(net, a, net, b, { elevA: 2300, elevB: 2300 });
+    assert.ok(!r.error, r.error);
+    assert.deepStrictEqual(r.plan.items.map((i) => i.kind), ['takeoff', 'route', 'land']);
+    assert.strictEqual(plancheck.checkPlan(r.plan), null, `the aircraft takes the circuit ${a} to ${b}`);
+    const ea = net.end(a);
+    const eb = net.end(b);
+    const t = r.plan.items[0];
+    const l = r.plan.items[2];
+    assert.strictEqual(net.runwayFor(t.start, geo.course(t.start, t.end).deg, -300, 12000).n, a);
+    assert.strictEqual(net.runwayFor(l.aim, geo.course(l.fix, l.aim).deg, -300, 4000).n, b);
+    const pts = r.plan.items[1].points;
+    assert.strictEqual(pts.length, 3, 'out, the box corner, the fix');
+    near(eb.frame.to([pts[1][0], pts[1][1]])[0], -10 * geo.NM, 5, 'the corner is abreast of the fix');
+    near(Math.abs(eb.frame.to([pts[1][0], pts[1][1]])[1]), 15 * geo.NM, 5, 'the corner is 15 nmi to the side');
+    assert.ok(/A circuit from runway/.test(r.notes.join(' ')));
+    assert.strictEqual(r.plan.items[2].elev_ft, 2300);
+    assert.ok(ea && eb);
+  }
+  // the same airport and a stand each: the way in ends at the other stand; the departure's stand when none is given
+  const other = net.parking.find((x) => x.n === 'S2');
+  const circ = G.planBetween(net, '04', net, '22', { elevA: 2300, elevB: 2300, stand, heading: S1.h, dest: { stand: [other.lat, other.lon], heading: other.h } });
+  assert.ok(!circ.error, circ.error);
+  const cl = circ.plan.items[circ.plan.items.length - 1].points;
+  assert.deepStrictEqual(cl[cl.length - 1], [other.lat, other.lon].map((v) => Math.round(v * 1e6) / 1e6), 'the other stand of the same airport');
+  assert.strictEqual(circ.in.rw, '22');
+  const back = G.planBetween(net, '04', net, '22', { elevA: 2300, elevB: 2300, stand, heading: S1.h });
+  const bl = back.plan.items[back.plan.items.length - 1].points;
+  assert.deepStrictEqual(bl[bl.length - 1], [S1.lat, S1.lon].map((v) => Math.round(v * 1e6) / 1e6), 'the departure\'s stand when no other is given');
+  assert.ok(!/No stand is chosen/.test(back.notes.join(' ')), 'the same airport needs none said');
+}
+
 console.log('ground: ok');

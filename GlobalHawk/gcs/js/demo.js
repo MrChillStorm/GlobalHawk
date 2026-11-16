@@ -19,6 +19,7 @@
   const predictApi = node ? require('./predict.js') : root.GCS.predict;
   const perfdata = node ? require('./perfdata.js') : root.GCS.perfdata;
   const demoground = node ? require('./demoground.js') : root.GCS.demoground;
+  const demoground2 = node ? require('./demoground2.js') : root.GCS.demoground2;
   const NM = geo.NM;
   const KT = NM / 3600; // ft/s per kt
   const J = '/fdm/jsbsim/';
@@ -220,12 +221,13 @@
       return null;
     }
 
-    /** The ground network of the demo field (js/demoground.js) is the only one the demo has; the aircraft's own reads FlightGear's scenery. */
+    /** The ground networks of the demo's two made-up fields (js/demoground.js, demoground2.js) are the only ones it has; the aircraft's own reads FlightGear's scenery. */
     cmd_airport(a) {
       const icao = typeof a.icao === 'string' ? a.icao.trim().toUpperCase() : null;
       if (!icao || !/^[A-Z0-9]{4}$/.test(icao)) return 'an airport is four letters or digits, like EFHK';
-      if (icao !== demoground.icao) return `no ground network for ${icao} in the scenery`;
-      this.down['/gcs/down/airport'] = JSON.stringify(demoground);
+      const field = [demoground, demoground2].find((f) => f.icao === icao);
+      if (!field) return `no ground network for ${icao} in the scenery`;
+      this.down['/gcs/down/airport'] = JSON.stringify(field);
       return null;
     }
 

@@ -208,6 +208,14 @@ and a runway are all it needs. The field's height is the ground's under the airc
 the taxiways do not reach from that stand is refused with the reason, and the plan stays as it was (at EFHK from stand 121: 04R, 22L, 04L and 33 are laid, 22R and 15 refused). **Undo** gives the old plan back
 (it also takes back the last taxi route or hold made in the editor). Nothing is sent until Send.
 
+**Flying to another airport.** Under the runway row, **Destination** takes the code of the airport to land at (it may be the departure's own); **Load its ground map** asks the aircraft for it as for the departure, and
+both maps are drawn by the Taxiways and Stands layers. **Land on** lists the destination's runway ends with how many degrees the arrival is off each one's course (the straightest is marked), the field's height is filled in from the
+airports the page knows (else type it: it is never made up), **Pick the stand there…** takes a stand on the destination's map, and **Plan the flight there** lays, in place of the plan being edited, the takeoff from the runway
+chosen above, a route (12 nmi straight out, a cruise point, a 45 deg intercept when the arrival is more than 60 deg off the runway's course, the landing fix), the landing with its own height and the lost-link route to it, and,
+if the stands are chosen, the taxi routes at both ends. The cruise is the highest up to the height asked for at which the forecast reaches every point and the descent is gentle (5 deg at most; the aircraft's check refuses 6), and is
+said when it has been lowered. At the same airport the same runway is the local flight and another one a circuit: out, a box corner 15 nmi to the side, the fix. The route does not look at terrain, airspace or wind: **Find routes**
+does, from the route's start to the landing. Flown at EFHK to EFTP in FlightGear (04R to 24, 70 nmi) and between the demo's two made-up fields, XDM1 and XDM2.
+
 **Holds and clearances.** With **hold points** ticked (the default) the taxi routes stop short of every runway they enter or cross and at the line-up point, and the aircraft waits at each until
 you clear it. The holds are drawn on the map (a bar across the route and the name, the one the aircraft waits at ringed), listed in the editor with an × each, and one can be added by a click on a
 taxi route (**Add a hold…**). Once the plan is flying, a **Clearances** panel lists the holds (✓ cleared, ● waiting, ○ ahead) and its **Clear…** button, for the hold the aircraft is waiting at

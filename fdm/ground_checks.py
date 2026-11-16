@@ -238,6 +238,89 @@ def r_runways():
             not bad and done >= 1 and (stand is not None or done == n), '; '.join(bad) if bad else '%d of %d laid and taken by the aircraft; %s' % (done, n, '; '.join(said)))
 
 
+NODE_BETWEEN = r"""
+const root = process.argv[2];
+const G = require(root + '/js/ground.js'), geo = require(root + '/js/geo.js');
+const fs = require('fs');
+const [pa, pb, elevA, elevB, sa, sb] = process.argv.slice(3);
+const A = new G.Net(JSON.parse(fs.readFileSync(pa)));
+const B = pa === pb ? A : new G.Net(JSON.parse(fs.readFileSync(pb)));
+const st = (v) => (v === 'none' ? null : v.split(',').map(Number));
+const sA = st(sa), sB = st(sb);
+const out = [];
+for (const ea of A.runways) for (const eb of B.runways) {
+  const opts = { elevA: Number(elevA), elevB: Number(elevB) };
+  if (sA) { opts.stand = [sA[0], sA[1]]; opts.heading = sA[2]; }
+  if (sB) opts.dest = { stand: [sB[0], sB[1]], heading: sB[2] };
+  const r = G.planBetween(A, ea.n, B, eb.n, opts);
+  if (r.error) { out.push({ a: ea.n, b: eb.n, error: r.error }); continue; }
+  const t = r.plan.items.find((i) => i.kind === 'takeoff'), l = r.plan.items.find((i) => i.kind === 'land');
+  const ta = A.runwayFor(t.start, geo.course(t.start, t.end).deg, -300, 12000), la = B.runwayFor(l.aim, geo.course(l.fix, l.aim).deg, -300, 4000);
+  out.push({ a: ea.n, b: eb.n, plan: r.plan, takeoffOn: ta && ta.n, landOn: la && la.n, cruise: r.cruise_ft, notes: r.notes, out: r.out && { ft: r.out.length_ft }, in: r.in && { ft: r.in.length_ft, icao: r.in.icao } });
+}
+console.log(JSON.stringify(out));
+"""
+
+
+def between_plans(msg_a, msg_b, elev_a, elev_b, stand_a=None, stand_b=None):
+    """What the station's module (js/ground.js planBetween) makes for each pair of runway ends of two airports (one map twice for the same airport), run in node."""
+    with tempfile.TemporaryDirectory() as d:
+        pa, pb, sp = (os.path.join(d, n) for n in ('a.json', 'b.json', 'run.js'))
+        json.dump(msg_a, open(pa, 'w'))
+        if msg_b is msg_a:
+            pb = pa
+        else:
+            json.dump(msg_b, open(pb, 'w'))
+        open(sp, 'w').write(NODE_BETWEEN)
+        fmt = lambda v: 'none' if v is None else ','.join(str(x) for x in v)
+        out = subprocess.run(['node', sp, os.path.abspath(GCS), pa, pb, str(elev_a), str(elev_b), fmt(stand_a), fmt(stand_b)], capture_output=True, text=True)
+    if out.returncode:
+        raise RuntimeError(out.stderr[-300:])
+    return json.loads(out.stdout)
+
+
+def r_between():
+    """D3, D6, D11 (docs/PLAN.md, "Destination picker, stage 4"): a plan for every pair of runway ends, two airports and one, with and without stands: the aircraft takes it, the takeoff is on the
+    first end of the first map and the landing on the second end of the second; with stands each is a plan or a refusal in words (never half a plan)."""
+    xdm = AD.load('XDM1', [os.path.join(GCS, 'tests', 'fixtures', 'scenery')])
+    xdm2 = AD.load('XDM2', [os.path.join(GCS, 'tests', 'fixtures', 'scenery')])
+    s1, t1 = xdm['parking'][0], xdm2['parking'][0]
+    cases = [('D3.1', 'XDM1 to XDM2, no stands', xdm, xdm2, 2300, 3100, None, None),
+             ('D6.1', 'XDM1 to XDM2, a stand at each', xdm, xdm2, 2300, 3100, (s1['lat'], s1['lon'], s1['h']), (t1['lat'], t1['lon'], t1['h'])),
+             ('D11.1', 'XDM1 to XDM1 (the same airport), a stand', xdm, xdm, 2300, 2300, (s1['lat'], s1['lon'], s1['h']), None)]
+    if have_efhk():
+        sp = GP.Net('EFHK').park[SPOT]
+        efhk = AD.load('EFHK')
+        try:
+            eftp = AD.load('EFTP')
+        except ValueError:
+            eftp = None                  # no ground network for it in this scenery: that pair is not made
+        fit = next((p for p in eftp['parking'] if p['r'] >= 20), None) if eftp else None
+        if eftp and fit:
+            cases.append(('D3.2', 'EFHK stand 121 to EFTP, a stand at each', efhk, eftp, 167, 390, (sp['lat'], sp['lon'], sp['heading']), (fit['lat'], fit['lon'], fit['h'])))
+        cases.append(('D11.2', 'EFHK to EFHK (the same airport), stand 121', efhk, efhk, 167, 167, (sp['lat'], sp['lon'], sp['heading']), None))
+    for tag, name, ma, mb, ea, eb, sa, sb in cases:
+        res = between_plans(ma, mb, ea, eb, sa, sb)
+        sim = G.Sim()
+        bad, said, done = [], [], 0
+        for r in res:
+            if 'error' in r:
+                if (sa is None) or not r['error'].strip():
+                    bad.append('%s to %s refused (%s)' % (r['a'], r['b'], r['error']))
+                said.append('%s>%s refused' % (r['a'], r['b']))
+                continue
+            done += 1
+            a = say(sim, done, 'plan', r['plan'])
+            if a['status'] != 'accepted':
+                bad.append('%s to %s: the aircraft says %s %s' % (r['a'], r['b'], a['status'], a.get('reason', '')))
+            if r['takeoffOn'] != r['a'] or r['landOn'] != r['b']:
+                bad.append('%s to %s: takeoff on %s, landing on %s' % (r['a'], r['b'], r['takeoffOn'], r['landOn']))
+            if sa is not None and sb is not None and r['plan']['items'][-1]['kind'] != 'taxi':
+                bad.append('%s to %s: no way in' % (r['a'], r['b']))
+        n = len(res)
+        add(tag, '%s: %d pairs of runway ends' % (name, n), not bad and done >= 1 and (sa is None or done >= 1), '; '.join(bad) if bad else '%d of %d laid and taken by the aircraft%s' % (done, n, ('; refused: ' + ', '.join(x for x in said)) if said else ''))
+
+
 def s4_plans():
     """S4: the plans the station lays pass the aircraft's own check, Python's here (Nasal's in FlightGear: python3 ground_checks.py fg)."""
     demo = json.load(open(os.path.join(HERE, '..', 'GlobalHawk', 'Missions', 'demo-local.json')))
@@ -409,6 +492,7 @@ def main():
         s3()
         s4_plans()
         r_runways()
+        r_between()
         node_tests()
     out = os.path.join(HERE, 'out', 'ground_checks%s.txt' % ('_fg' if 'fg' in sys.argv[1:] else ''))
     os.makedirs(os.path.dirname(out), exist_ok=True)

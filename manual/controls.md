@@ -104,6 +104,13 @@ label in a menu or dialog; the second is what the operator sees.
 | gd-rwy | Runway | The runway ends of the airport whose ground map is loaded, with heading and length: the end the flight takes off from and lands on. |
 | gd-rwy-go | Plan a flight on it | Lays a flight on the chosen runway end in place of the plan being edited: a takeoff, a box, the landing on the same runway; and, if a stand is chosen, the taxi routes from it. Refused, with the reason, when the taxiways do not reach that runway from the stand or the field's height is not known; the plan then stays as it was. |
 | gd-rwy-undo | Undo | Gives back the plan as it was before the last runway, taxi route or hold change made in the editor. |
+| gd-dest-icao | Destination | The four-letter code of the airport to land at (EFTP); it may be the departure's own. FlightGear must have its scenery. |
+| gd-dest-load | Load its ground map | Asks the aircraft for the destination airport's ground network and runway ends, as for the departure; the same airport as the departure needs no second request. Both maps are drawn by the Taxiways and Stands layers. |
+| gd-dest-rwy | Land on | The destination's runway ends, each with how far the course from the departure runway to it is from the runway's own: fewer degrees is straighter in. |
+| gd-dest-elev | field (ft) | The destination's height above the sea: filled in from the airports the page knows, else yours to type. The landing needs it. |
+| gd-dest-pick | Pick the stand there… | Then click a stand on the destination's map (a click elsewhere makes a stand of your own there). The taxi in ends there. |
+| gd-dest-alt | cruise up to | The highest the cruise may be; it is lowered to what the climb and the descent between the two allow. |
+| gd-dest-go | Plan the flight there | Lays a flight from the runway chosen above to the destination in place of the plan being edited: the takeoff, a route, the landing with its own height; and, with the stands chosen, the taxi routes at both ends. The same airport: the same runway is the local flight, another one a circuit. Undo gives the old plan back. |
 | gd-exit | Leave the runway by | The exit the taxi route in follows: by default the first past where the rollout ends. |
 | gd-taxi | Taxi routes from the stand | Lays a taxi route out from the stand to the runway's start (the takeoff then begins at the line-up point) and one in from the runway's exit to the stand, over the airport's taxiways. Replaces the plan's taxi items. |
 | gd-untaxi | Remove them | Takes the taxi routes out of the plan again; the takeoff begins where the runway does. |

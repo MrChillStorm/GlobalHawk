@@ -32,6 +32,12 @@
   const HOLD_NEAR_FT = 150; // a hold placed by hand takes the route's nearest point within this of the click
   const COURSE_TOL = 10; // degrees: a runway end is the plan's when its heading is this near the plan's course
   const M_FT = 3.28084;
+  const ARRIVE_FIX_NM = 10; // the landing fix: 10 nmi out on the runway's extended centreline (geo.localPlan)
+  const DEPART_NM = 12; // the first route point of a flight to another airport: straight out from the takeoff
+  const DEPART_AGL_FT = 3000; // ... 3,000 ft over the field
+  const INTERCEPT_DEG = 60; // an arrival more than this off the runway's course joins it on an intercept
+  const DESCENT_MAX_DEG = 5; // the aircraft's own plan check refuses a leg that comes down more steeply than 6 deg: the plans laid here keep to 5
+  const CRUISE_MAX_FT = 20000; // the cruise height asked for unless the page says otherwise
   const TAKEOFF_REACH_FT = 12000; // a takeoff begins anywhere along its runway (an intersection takeoff at EFHK 33 begins 4,400 ft down it): the runway is found within this reach
   const AIM_PAST_FT = 800; // the landing's aiming point past the (displaced) threshold: as geo.localPlan lays it
 
@@ -202,9 +208,16 @@
       return o ? dist([rw.lat, rw.lon], [o.lat, o.lon]) : null;
     }
 
-    /** The runway ends for a list, in the message's order: [{ n, h, length_ft (null if the other end is not known), displ_ft }]. */
-    runwayList() {
-      return this.runways.map((r) => ({ n: r.n, h: r.h, length_ft: this.runwayLength(r), displ_ft: Math.round((Number(r.displ) || 0) * M_FT) }));
+    /**
+     * The runway ends for a list, in the message's order: [{ n, h, length_ft (null if the other end is not known), displ_ft }]. With `from` (a position the flight comes from)
+     * each also has off_deg: how far the course from there to the end's final-approach fix is from the runway's own (0 is straight in, 180 comes from the wrong side).
+     */
+    runwayList(from) {
+      return this.runways.map((r) => {
+        const o = { n: r.n, h: r.h, length_ft: this.runwayLength(r), displ_ft: Math.round((Number(r.displ) || 0) * M_FT) };
+        if (Array.isArray(from)) o.off_deg = Math.round(angle(geo.course(from, geo.along([r.lat, r.lon], r.h + 180, ARRIVE_FIX_NM * geo.NM)).deg, r.h));
+        return o;
+      });
     }
 
     /** The runway end a point lies on the centreline of, flown along `course`: within `reach` feet along it (from `from` before the threshold). */
@@ -464,18 +477,31 @@
       const rl = net.runwayLength(rw);
       if (rl !== null && out.lineup_ft + len > rl) notes.push(`the takeoff run from the line-up point (${Math.round(len).toLocaleString('en-US')} ft) is longer than runway ${rw.n} (${Math.round(rl).toLocaleString('en-US')} ft)`);
     }
-    if (land) {
+    if (land && !opts.skipIn) {
       const l = land;
       const c = geo.course(l.fix, l.aim);
-      const rw = net.runwayFor(l.aim, c.deg, -300, 4000);
-      if (!rw) return { error: `the landing is not on a runway of ${net.icao}: no runway end lies along its ${Math.round(c.deg)} deg course to its aiming point` };
-      into = taxiIn(net, rw, stand, rw.frame.to(l.aim)[0], opts.exit);
+      // the landing is on this airport's runway, or, when the flight goes to another (opts.to: { net, stand, heading }), on that one's: its map and its stand
+      let lnet = net;
+      let lstand = stand;
+      if (opts.to && opts.to.net && opts.to.net.icao === net.icao && Array.isArray(opts.to.stand) && Number.isFinite(opts.to.stand[0]) && Number.isFinite(opts.to.stand[1])) lstand = opts.to.stand; // the same airport: its other stand
+      let rw = net.runwayFor(l.aim, c.deg, -300, 4000);
+      if (!rw && opts.to && opts.to.net && opts.to.net.icao !== net.icao) {
+        rw = opts.to.net.runwayFor(l.aim, c.deg, -300, 4000);
+        if (rw) {
+          if (!Array.isArray(opts.to.stand) || !Number.isFinite(opts.to.stand[0]) || !Number.isFinite(opts.to.stand[1])) return { error: `no stand chosen at ${opts.to.net.icao}` };
+          lnet = opts.to.net;
+          lstand = opts.to.stand;
+        }
+      }
+      if (!rw) return { error: `the landing is not on a runway of ${net.icao}${opts.to && opts.to.net && opts.to.net.icao !== net.icao ? ` or ${opts.to.net.icao}` : ''}: no runway end lies along its ${Math.round(c.deg)} deg course to its aiming point` };
+      into = taxiIn(lnet, rw, lstand, rw.frame.to(l.aim)[0], opts.exit);
       if (into.error) return { error: into.error };
       into.rw = rw.n;
+      into.icao = lnet.icao;
       into.length_ft = routeFt(into.points);
       const item = taxiItem(into.points);
       if (opts.holds !== false) {
-        const rh = runwayHolds(net, into.points, null);
+        const rh = runwayHolds(lnet, into.points, null);
         item.points = rh.points;
         if (rh.holds.length) item.holds = rh.holds;
         into.points = item.points;
@@ -519,6 +545,142 @@
     const r = addTaxi(net, plan, opts);
     if (r.error) return { error: r.error };
     return Object.assign(r, { rw });
+  }
+
+  /** A route whose legs come down no more steeply than DESCENT_MAX_DEG: true when all do (the climb is the forecast's to judge, the plan check's limit on the descent is hard). */
+  function gentle(route) {
+    const pts = route.points;
+    for (let i = 1; i < pts.length; i++) {
+      const drop = pts[i - 1][2] - pts[i][2];
+      if (drop > 0 && drop > geo.course(pts[i - 1], pts[i]).ft * Math.tan(rad(DESCENT_MAX_DEG))) return false;
+    }
+    return true;
+  }
+
+  /**
+   * A flight from one airport to another (docs/PLAN.md, "Destination picker, stage 4"): the takeoff on runway end `nameA` of the airport of `netA` as planOnRunway lays it, a
+   * route to the landing fix of end `nameB` of `netB`, and the landing there with its own height and aiming point (800 ft past the displaced threshold). The route: a point 12 nmi
+   * straight out and 3,000 ft over the field, a cruise point, an intercept point when the arrival is more than 60 deg off the runway's course (joined at 45 deg on the side it
+   * comes from), and the fix at the height the capability asks. The same airport (netA is netB): the same end is planOnRunway's local flight, another end a circuit: out, a box
+   * corner 15 nmi to the side of the arrival's fix (as the local flight's), the fix. opts: { elevA, elevB (ft), cruise_ft (the highest asked for, 20,000), fits(plan) -> bool (does
+   * the forecast reach every height and the descent fit: the highest cruise height that does is taken, in 500 ft steps; none: the lowest), stand: [lat, lon], heading, exit, holds
+   * (the departure's stand, as addTaxi), dest: { stand, heading } (the destination's) }. A departure stand without a destination one lays the way out only (at the same airport
+   * the way in then ends at the departure's stand). Returns { plan, endA, endB, out, in, notes, cruise_ft } or { error }, whole.
+   */
+  function planBetween(netA, nameA, netB, nameB, opts) {
+    opts = opts || {};
+    const endA = netA.end(nameA);
+    const endB = netB.end(nameB);
+    if (!endA) return { error: `${netA.icao} has no runway end ${nameA}` };
+    if (!endB) return { error: `${netB.icao} has no runway end ${nameB}` };
+    if (!Number.isFinite(opts.elevA)) return { error: `the height of ${netA.icao} is not known: place the aircraft at the stand first` };
+    if (!Number.isFinite(opts.elevB)) return { error: `the height of ${netB.icao} is not known: type it` };
+    const NM = geo.NM;
+    const same = netA === netB || netA.icao === netB.icao; // the same airport, whichever copy of its map
+    const hereA = [endA.lat, endA.lon];
+    const hereB = [endB.lat, endB.lon];
+    const cruiseTop = Math.max(500, Math.round((Number(opts.cruise_ft) || CRUISE_MAX_FT) / 500) * 500);
+    const fits = typeof opts.fits === 'function' ? opts.fits : null;
+    const notes = [];
+    let plan;
+    let cruise;
+    if (same && endA.n === endB.n) {
+      // the same runway end: the local flight of the runway picker, its box at the highest height the forecast reaches
+      const lowestBox = geo.localPlan(hereA, endA.h, opts.elevA).items[1].points[0][2];
+      let r = null;
+      for (let h = Math.max(lowestBox, Math.min(cruiseTop, 15000)); h >= lowestBox; h -= 500) {
+        const t = planOnRunway(netA, nameA, opts.elevA, h);
+        if (t.error) return t;
+        if (gentle(t.plan.items[1]) && (!fits || fits(t.plan))) {
+          r = t;
+          break;
+        }
+      }
+      if (!r) {
+        r = planOnRunway(netA, nameA, opts.elevA, lowestBox);
+        if (r.error) return r;
+        notes.push(`No height fits the climb and the descent: the box is at the lowest, ${r.plan.items[1].points[0][2].toLocaleString('en-US')} ft; see the notes below.`);
+      }
+      plan = r.plan;
+      cruise = plan.items[1].points[0][2];
+    } else {
+      // the destination's landing, the fix and the height over it, as the local flight lays them for that runway
+      const lb = geo.localPlan(hereB, endB.h, opts.elevB);
+      const fix = lb.items[1].points[lb.items[1].points.length - 1];
+      const aimB = pt(geo.along(hereB, endB.h, (Number(endB.displ) || 0) * M_FT + AIM_PAST_FT));
+      const land = { kind: 'land', fix: [fix[0], fix[1]], aim: aimB, elev_ft: Math.round(opts.elevB) };
+      const fixAlt = fix[2];
+      const take = { kind: 'takeoff', start: pt(hereA), end: pt(geo.along(hereA, endA.h, 9000)) };
+      const p1 = pt(geo.along(hereA, endA.h, DEPART_NM * NM));
+      const p1alt = Math.round((opts.elevA + DEPART_AGL_FT) / 100) * 100;
+      const F = [fix[0], fix[1]];
+      const off = angle(geo.course(p1, F).deg, endB.h);
+      const side = endB.frame.to(p1)[1] < 0 ? -1 : 1;
+      let join = null; // the arrival's corner: a 45 deg intercept for another airport, the local flight's 90 deg box corner (15 nmi to the side) at the same one
+      // (a fix that is where the first point is, the reciprocal runway of the same airport, has no course to go by: it is joined too)
+      if (off > INTERCEPT_DEG || geo.course(p1, F).ft < 8 * NM) {
+        join = pt(same ? endB.frame.ll(-ARRIVE_FIX_NM * NM, side * 15 * NM) : endB.frame.ll(-(ARRIVE_FIX_NM + 8) * NM, side * 8 * NM));
+        const alt = netB.end(reciprocal(endB.n));
+        const altOff = alt ? angle(geo.course(p1, geo.along([alt.lat, alt.lon], alt.h + 180, ARRIVE_FIX_NM * NM)).deg, alt.h) : 360;
+        notes.push(same ? `A circuit from runway ${endA.n} to runway ${endB.n}: out, a box corner 15 nmi to the side, the fix.`
+          : `The arrival from ${netA.icao} is ${Math.round(off)} deg off runway ${endB.n}'s course: it joins on a 45 deg intercept${altOff < off ? `; runway ${alt.n} would be straighter in` : ''}.`);
+      }
+      if (!same) {
+        const away = angle(geo.course(hereA, hereB).deg, endA.h);
+        if (away > 100) {
+          const alt = netA.end(reciprocal(endA.n));
+          notes.push(`The takeoff heads ${Math.round(away)} deg away from ${netB.icao}${alt ? `: runway ${alt.n} would take off towards it` : ''}.`);
+        }
+      }
+      const next = join || F;
+      const lowest = Math.ceil((Math.max(fixAlt, p1alt) + 1500) / 500) * 500;
+      const build = (h) => {
+        const pts = [[p1[0], p1[1], Math.min(h, p1alt)]];
+        const run = geo.course(p1, next).ft;
+        if (join && same) pts.push([join[0], join[1], h]);
+        else {
+          if (run > 25 * NM) {
+            const m = geo.along(p1, geo.course(p1, next).deg, 0.35 * run);
+            pts.push([r6(m[0]), r6(m[1]), h]);
+          }
+          if (join) pts.push([join[0], join[1], fixAlt + 1000]);
+        }
+        pts.push([F[0], F[1], fixAlt]);
+        return { kind: 'route', points: pts };
+      };
+      const site = (n, rw, elev) => ({ name: `${n.icao} ${rw.n}`, aim: pt(geo.along([rw.lat, rw.lon], rw.h, (Number(rw.displ) || 0) * M_FT + AIM_PAST_FT)), course: Math.round((((rw.h % 360) + 360) % 360) * 10) / 10, elev_ft: Math.round(elev) });
+      const assemble = (route) => ({
+        id: `${netA.icao}-${endA.n}-${netB.icao}-${endB.n}`,
+        note: `A flight from runway ${endA.n} of ${netA.icao} to runway ${endB.n} of ${netB.icao}: takeoff, a route, landing.`,
+        field: { name: `${netA.icao} ${endA.n}`, lat: r6(hereA[0]), lon: r6(hereA[1]), elev_ft: Math.round(opts.elevA) },
+        items: [take, route, land],
+        lost_link: [{ kind: 'route', points: [[F[0], F[1], fixAlt]] }, land],
+        sites: [site(netB, endB, opts.elevB), site(netA, endA, opts.elevA)],
+      });
+      const top = same ? Math.min(cruiseTop, 15000) : cruiseTop;
+      let h;
+      let found = false;
+      for (h = Math.max(top, lowest); h >= lowest; h -= 500) {
+        plan = assemble(build(h));
+        if (gentle(plan.items[1]) && (!fits || fits(plan))) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        h = lowest;
+        plan = assemble(build(h));
+        notes.push(`No cruise height fits the climb and the descent between the two: the plan is at the lowest, ${h.toLocaleString('en-US')} ft; see the notes below.`);
+      }
+      cruise = plan.items[1].points.reduce((m, q) => Math.max(m, q[2]), 0);
+      if (cruise < top && !notes.some((n) => /No cruise height/.test(n))) notes.push(`The cruise is at ${cruise.toLocaleString('en-US')} ft, lower than the ${top.toLocaleString('en-US')} ft asked for: the climb or the descent does not fit higher.`);
+    }
+    const dest = opts.dest && Array.isArray(opts.dest.stand) ? opts.dest : null;
+    if (!opts.stand) return { plan, endA, endB, out: null, in: null, notes, cruise_ft: cruise };
+    const r = addTaxi(netA, plan, { stand: opts.stand, heading: opts.heading, exit: opts.exit === undefined ? null : opts.exit, holds: opts.holds, to: dest ? { net: netB, stand: dest.stand, heading: dest.heading } : null, skipIn: !same && !dest });
+    if (r.error) return { error: r.error };
+    if (!same && !dest) r.notes.push(`No stand is chosen at ${netB.icao}: the aircraft stops on the runway after landing.`);
+    return Object.assign(r, { endA, endB, notes: notes.concat(r.notes), cruise_ft: cruise });
   }
 
   /**
@@ -608,7 +770,7 @@
   }
 
   const api = {
-    Net, Frame, check, reciprocal, dist, taxiOut, taxiIn, addTaxi, planOnRunway, removeTaxi, routeFt, runwayHolds, addHold, removeHold, taxiwayNear, HOLD_SHORT_FT,
+    Net, Frame, check, reciprocal, dist, taxiOut, taxiIn, addTaxi, planOnRunway, planBetween, removeTaxi, routeFt, runwayHolds, addHold, removeHold, taxiwayNear, HOLD_SHORT_FT,
     MIN_SPOT_RADIUS_M, STAND_PICK_FT, FILLET_FT, LINEUP_FT, ROLLOUT_FT, TAXI_KT, TURN_KT, RUNWAY_ARC,
   };
   if (node) module.exports = api;
