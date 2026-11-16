@@ -654,7 +654,10 @@
         warn.push(`<span class="small">With the winds aloft (${demo ? 'made up' : 'Open-Meteo'}, ${ov.prefs.windHours ? '+' + ov.prefs.windHours + ' h' : 'now'}): ${hms(wf.total.t_s)}, ${fmtAlt(wf.total.fuel_used_lb)} lb of fuel.</span>`);
       }
     }
-    if ($('ed-table').dataset.html !== rowsHtml && !$('ed-table').contains(document.activeElement)) {
+    // not while a height is being typed (the field would lose its text); a clicked × keeps the focus too, and the row it
+    // deleted would stay in the table: the point was gone from the route and the list never said so
+    const typing = document.activeElement && document.activeElement.tagName === 'INPUT' && $('ed-table').contains(document.activeElement);
+    if ($('ed-table').dataset.html !== rowsHtml && !typing) {
       $('ed-table').innerHTML = rowsHtml;
       $('ed-table').dataset.html = rowsHtml;
     }
