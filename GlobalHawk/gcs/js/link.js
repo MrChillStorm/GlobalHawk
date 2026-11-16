@@ -11,6 +11,7 @@
  *   /gcs/up/cmd         {"seq","station","name","args"} as a JSON string
  *   /gcs/down/ack       {"seq","status":"accepted"|"rejected","reason"} : a command counts only when this comes back
  *   /gcs/down/status    what the aircraft is doing; /gcs/down/plan the plan it holds
+ *   /gcs/down/airport   the ground network and runway ends of the airport the `airport` command asked for (fdm/airportdata.py)
  *
  * Link takes a transport { send(path, value), listen(paths), onValue, onState } so that the same code runs in the
  * browser (WsTransport) and in the node tests (a fake). `latency` (ms) delays everything going up and coming
@@ -19,6 +20,7 @@
 (function (root) {
   'use strict';
   const ANSWER_MS = 5000;
+  const ANSWER_LONG = { reposition: 60000 }; // FlightGear answers after it has loaded the scenery at the new place: 20 s and more (found 2026-11-16)
   const BEAT_MS = 1000;
   const CAMERA = '/sim/globalhawk/camera/';
   const CHAT = '/gcs/chat/line';  // the stations' messages to each other: one property all of them listen to
@@ -67,7 +69,7 @@
 
     /** Start listening to properties and beating. */
     start(paths) {
-      this.t.listen(['/gcs/down/ack', '/gcs/down/status', '/gcs/down/plan', CHAT].concat(paths || []));
+      this.t.listen(['/gcs/down/ack', '/gcs/down/status', '/gcs/down/plan', '/gcs/down/airport', CHAT].concat(paths || []));
       this.beating = true;
       const tick = () => {
         if (!this.beating) return;
@@ -102,9 +104,14 @@
       if (this.commands.length > 50) this.commands.shift();
       const msg = JSON.stringify({ seq: c.seq, station: this.station, name, args: c.args });
       this.later(() => this.t.send('/gcs/up/cmd', msg));
-      this.timer(() => this.expire(), ANSWER_MS + 2 * this.latency + 50);
+      this.timer(() => this.expire(), this.waitMs(c) + 50);
       this.emit('command', c);
       return c;
+    }
+
+    /** How long a command may go unanswered, ms. */
+    waitMs(c) {
+      return (ANSWER_LONG[c.name] || ANSWER_MS) + 2 * this.latency;
     }
 
     /** Say something to the other stations. Returns the message, or null if it is empty or over 200 characters. */
@@ -175,7 +182,7 @@
     expire() {
       const t = this.now();
       for (const c of this.commands) {
-        if (c.state === 'sent' && t - c.sentAt >= ANSWER_MS + 2 * this.latency) {
+        if (c.state === 'sent' && t - c.sentAt >= this.waitMs(c)) {
           c.state = 'no answer';
           this.emit('command', c);
         }
@@ -199,6 +206,15 @@
           c.answeredAt = this.now();
           this.emit('command', c);
         }
+      } else if (path === '/gcs/down/airport') {
+        let j = null;
+        try {
+          j = value ? JSON.parse(value) : null;
+        } catch (e) {
+          return;
+        }
+        this.airport = j && typeof j.icao === 'string' && Array.isArray(j.parking) && Array.isArray(j.nodes) && Array.isArray(j.arcs) ? j : null;
+        this.emit('airport', this.airport);
       } else if (path === '/gcs/down/status' || path === '/gcs/down/plan') {
         let j = null;
         try {

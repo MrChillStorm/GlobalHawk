@@ -23,12 +23,12 @@ const status = (kind, extra) => Object.assign({ started: true, kind, contingency
 const ctxOf = (S, o) => S.update(Object.assign({ now: T, plan, station: 'LRE', latency: 0, traffic: [], alertIds: [] }, o));
 const on = (L, ctx, id) => { const r = L.def(id).auto && L.def(id).auto(ctx); return !!(r && r.on); };
 const why = (L, ctx, id) => { const r = L.def(id).auto && L.def(id).auto(ctx); return r ? r.reason : null; };
-const set = (L, ctx) => ['link', 'traffic', 'reach', 'airspace', 'wx-hazard', 'airports', 'terrain', 'wx-radar', 'wx-sat', 'wind', 'areas', 'camera'].filter((id) => L.def(id).auto && on(L, ctx, id));
+const set = (L, ctx) => ['link', 'traffic', 'reach', 'airspace', 'wx-hazard', 'airports', 'taxiways', 'parking', 'terrain', 'wx-radar', 'wx-sat', 'wind', 'areas', 'camera'].filter((id) => L.def(id).auto && on(L, ctx, id));
 
 // the layers and their groups, as the plan lists them
 {
   const { L } = mk();
-  assert.deepStrictEqual(L.defs.map((d) => d.id), ['link', 'traffic', 'reach', 'airspace', 'wx-hazard', 'airports', 'terrain', 'wx-radar', 'wx-sat', 'wind', 'metar', 'areas', 'camera', 'trail']);
+  assert.deepStrictEqual(L.defs.map((d) => d.id), ['link', 'traffic', 'reach', 'airspace', 'wx-hazard', 'airports', 'taxiways', 'parking', 'terrain', 'wx-radar', 'wx-sat', 'wind', 'metar', 'areas', 'camera', 'trail']);
   assert.strictEqual(L.mode('trail'), 'on');
   assert.ok(L.defs.filter((d) => d.id !== 'trail').every((d) => d.mode === 'auto'), 'everything but the trail starts on Auto');
   assert.ok(L.defs.every((d) => d.tip.length > 20), 'each has a tip');
@@ -221,6 +221,29 @@ const set = (L, ctx) => ['link', 'traffic', 'reach', 'airspace', 'wx-hazard', 'a
   T += 2100;
   q.L.update(ctxOf(q.S, { own: here(2300), status: { started: false, kind: 'idle' } }));
   assert.deepStrictEqual(q.L.defs.filter((d) => q.L.shown(d.id)).map((d) => d.id), ['trail']);
+}
+
+// 13. the airport's ground map (stage 1 of starting at a stand): the taxiways and the stands come up while planning at that airport, the taxiways also while taxiing,
+// both while the aircraft stands with the plan not begun; never without a map, never in flight
+{
+  const { L, S } = mk();
+  const ground = { icao: 'XDM1', stands: 3 };
+  const stood = { own: Object.assign(here(2305), { agl_ft: 5, gs_kt: 0 }), status: { started: false, kind: 'idle' } };
+  let c = ctxOf(S, Object.assign({ ground: null }, stood));
+  assert.deepStrictEqual(set(L, c), [], 'no map from the aircraft: nothing to show');
+  c = ctxOf(S, Object.assign({ ground }, stood));
+  assert.deepStrictEqual(set(L, c), ['taxiways', 'parking']);
+  assert.strictEqual(why(L, c, 'parking'), 'on the ground at XDM1: the stands');
+  c = ctxOf(S, { ground, own: Object.assign(here(2305), { agl_ft: 5, gs_kt: 0 }), status: status('taxi'), editing: false });
+  assert.deepStrictEqual(set(L, c), ['airports', 'taxiways'], 'taxiing: the taxiways, not the stands');
+  assert.strictEqual(why(L, c, 'taxiways'), 'taxiing at XDM1');
+  c = ctxOf(S, { ground, own: here(15000, 8), status: status('route') });
+  assert.ok(!set(L, c).includes('taxiways') && !set(L, c).includes('parking'), 'in flight neither');
+  c = ctxOf(S, { ground, own: here(15000, 8), status: { started: false, kind: 'idle' }, editing: true });
+  assert.deepStrictEqual(set(L, c).filter((x) => x === 'taxiways' || x === 'parking'), ['taxiways', 'parking'], 'planning: both');
+  assert.strictEqual(why(L, c, 'taxiways'), 'planning at XDM1: the taxiways');
+  assert.ok(L.def('taxiways').budget === false && L.def('parking').budget === false, 'they do not take a place from the safety layers');
+  assert.ok(L.def('taxiways').group === 'Ground' && L.def('parking').group === 'Ground');
 }
 
 // pathAhead: along the plan from the active leg's end, or straight on

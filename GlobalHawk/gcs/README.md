@@ -191,6 +191,17 @@ does not read it, and lands where it is told.
 
 Every command is shown or described first and goes only on **Send**. It counts only when the aircraft answers.
 
+## Starting at a stand, and taxiing
+
+In the editor, **Stand and taxiways** puts the aircraft's start on the plan. Give the airport's code (it is filled in from the nearest field) and **Load the ground map**: the aircraft reads
+the airport's ground network and runway ends from FlightGear's own scenery and sends them; no helper program and no file is needed, on any system FlightGear runs on. The **Stands** and **Taxiways**
+layers (group Ground) then draw them, and come up by themselves while you plan at that airport; a stand of less than 20 m radius is dashed and marked "too small" (the wings are 116 ft across).
+
+**Pick the stand…**, then click a stand (a click elsewhere makes a stand of your own, and you give the way it faces). **Place the aircraft here…** moves the aircraft, stopped on the ground, to
+it (on Send, before the plan begins; FlightGear loads the scenery there first, about half a minute). **Taxi routes from the stand** lays a route out to the runway's start and one back from the
+runway's exit (choose the exit, or leave "the first past the rollout") over the airport's taxiways, in the plan: the takeoff then begins at the line-up point. The method is that of
+`fdm/groundplan.py`, which flew a taxi, a box and a taxi back at EFHK. In the demo the airport is the made-up `XDM1`.
+
 ## The route planner
 
 In the plan editor (route being edited) **Plan a route** works out a route from where the route begins (the takeoff's end, or the aircraft when it is flying) to the plan's

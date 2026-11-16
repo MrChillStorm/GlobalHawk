@@ -90,6 +90,14 @@ label in a menu or dialog; the second is what the operator sees.
 | ed-route | Route | Edits the plan's route. |
 | ed-lost | Lost-link route | Edits the route flown when the link is lost. |
 | ed-runway | Runway past the aiming point, ft | How much runway there is from the aiming point to the far end. The landing's forecast is held against it; the aircraft does not read it. |
+| gd-icao | Airport | The four-letter code of the airport whose scenery FlightGear has (EFHK). Filled in from the nearest field when the editor opens. |
+| gd-load | Load the ground map | Asks the aircraft for the airport's stands, taxiways and runway ends, which it reads from FlightGear's scenery; they are drawn as the Stands and Taxiways layers. Any station may ask: it moves nothing. |
+| gd-pick | Pick the stand… | Then click a stand on the map; a click anywhere else makes a stand of your own there. The stand is kept in the plan (field.stand, field.stand_heading). |
+| gd-hdg | facing | The way the aircraft faces on the stand, in degrees: the airport's own for one of its stands, yours to give for any other. |
+| gd-place | Place the aircraft here… | Moves the aircraft, stopped on the ground, to the stand (FlightGear's own reposition), on Send. Only before the plan begins. FlightGear loads the scenery at the new place first: half a minute. |
+| gd-exit | Leave the runway by | The exit the taxi route in follows: by default the first past where the rollout ends. |
+| gd-taxi | Taxi routes from the stand | Lays a taxi route out from the stand to the runway's start (the takeoff then begins at the line-up point) and one in from the runway's exit to the stand, over the airport's taxiways. Replaces the plan's taxi items. |
+| gd-untaxi | Remove them | Takes the taxi routes out of the plan again; the takeoff begins where the runway does. |
 | ed-send | Send plan… | Prepares the edited plan for sending; it then goes on Send, as any command. |
 | ed-save | Save as file | Keeps the edited plan as a file. |
 | ed-close | Close | Leaves the editor; what was not sent is dropped. |

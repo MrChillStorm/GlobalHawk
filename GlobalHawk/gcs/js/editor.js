@@ -98,6 +98,36 @@
       return true;
     }
 
+    /** The stand the aircraft starts from and the way it faces: the plan's field.stand and field.stand_heading. */
+    setStand(latlon, heading) {
+      const f = this.plan.field || (this.plan.field = {});
+      f.stand = [round6(latlon[0]), round6(latlon[1])];
+      f.stand_heading = Math.round((((heading % 360) + 360) % 360) * 10) / 10;
+      this.touch();
+    }
+
+    stand() {
+      const f = this.plan.field;
+      return f && Array.isArray(f.stand) ? { at: f.stand, heading: f.stand_heading || 0 } : null;
+    }
+
+    /** Take a plan with taxi routes laid (js/ground.js) in place of this one; the plan as it was is kept for one undo. */
+    setGround(plan) {
+      this.undoGroundPlan = clone(this.plan);
+      this.plan = clone(plan);
+      if (this.selected !== null && this.selected >= this.points().length) this.selected = this.points().length - 1;
+      this.touch();
+    }
+
+    /** Give back the plan as it was before the last setGround. */
+    undoGround() {
+      if (!this.undoGroundPlan) return false;
+      this.plan = this.undoGroundPlan;
+      this.undoGroundPlan = null;
+      if (this.selected !== null && this.selected >= this.points().length) this.selected = this.points().length - 1;
+      return true;
+    }
+
     touch() {
       if (!/ \(edited\)$/.test(this.plan.id)) this.plan.id += ' (edited)';
     }

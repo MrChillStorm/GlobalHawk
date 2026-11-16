@@ -86,6 +86,7 @@
       const ctx = {
         now, own, plan, phase, started, kind, enroute, airborne, field, contingency, engineOut, editing: !!input.editing, alertIds, trafficNear, nearLandingNm, cameraLocked: !!input.cameraLocked, areas: input.areas || 0, hours: input.hours || 0,
         station: input.station || '', latency: input.latency || 0,
+        ground: input.ground || null,
       };
       // the heavy parts are redone once a second, or at once when the situation they depend on changes (who is asking, what is being done, where the aircraft is)
       const key = [ctx.station, ctx.latency, ctx.editing, kind, started, plan && plan.id, engineOut, contingency, own ? Math.round(own.lat * 100) + '/' + Math.round(own.lon * 100) + '/' + Math.round(own.alt_ft / 100) : '', s && s.leg ? s.leg[1][0] : ''].join('|');
@@ -143,6 +144,16 @@
             : c.airborne && c.nearLandingNm !== null && c.nearLandingNm <= NEAR_LANDING_NM ? rule(true, `landing site ${Math.round(c.nearLandingNm)} nmi away`) : null;
   }
 
+  /** Why the airport's ground map is wanted, or null: there is one (the aircraft sent it) and the station is planning on it, the aircraft is taxiing, or it stands with the plan not begun. */
+  function groundRule(c, what, taxi) {
+    if (!c.ground) return null;
+    const at = c.ground.icao;
+    if (c.editing) return { on: true, reason: `planning at ${at}: ${what}`, force: false };
+    if (taxi && c.started && c.kind === 'taxi') return { on: true, reason: `taxiing at ${at}`, force: false };
+    if (!c.started && c.own && c.own.gs_kt < 2 && aglOf(c) < 30) return { on: true, reason: `on the ground at ${at}: ${what}`, force: false };
+    return null;
+  }
+
   /** Put the layers into a registry. `L` is a Layers; the rules read the ctx that Situation.update gives. */
   function defineLayers(L) {
     const rule = (on, reason, force) => (on ? { on: true, reason, force: !!force } : null);
@@ -175,6 +186,16 @@
       id: 'airports', group: 'Ground', label: 'Airports', rank: 24, colour: P.LAYERS.airports, mode: 'auto',
       tip: 'Fields with a long runway, marked by whether the aircraft could land there at its present weight (from the station\'s landing forecast, plus 800 ft for the aiming point) or only lighter. On shows all of them. Auto: on the field, in a contingency, when planning, below 18,000 ft or near the landing.',
       auto: airportsRule,
+    });
+    L.define({
+      id: 'taxiways', group: 'Ground', label: 'Taxiways', rank: 27, colour: P.LAYERS.taxiways, budget: false,
+      tip: 'The taxiways of the airport whose ground map the aircraft has sent (FlightGear\'s own, from its scenery), each named, with the runway ends. Auto: while planning at that airport, while taxiing, and while the aircraft stands on the ground with the plan not begun.',
+      auto: (c) => groundRule(c, 'the taxiways', true),
+    });
+    L.define({
+      id: 'parking', group: 'Ground', label: 'Stands', rank: 28, colour: P.LAYERS.parking, budget: false,
+      tip: 'The parking spots of that airport, by name and the way they face. A spot with a radius under 20 m is marked as too small for the aircraft (its wings are 116 ft across). Auto: while planning at that airport, and while the aircraft stands on the ground with the plan not begun.',
+      auto: (c) => groundRule(c, 'the stands', false),
     });
     L.define({
       id: 'terrain', group: 'Ground', label: 'Terrain', rank: 26, colour: P.LAYERS.terrain,

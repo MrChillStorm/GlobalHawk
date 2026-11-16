@@ -18,6 +18,7 @@
   const reach = node ? require('./reach.js') : root.GCS.reach;
   const predictApi = node ? require('./predict.js') : root.GCS.predict;
   const perfdata = node ? require('./perfdata.js') : root.GCS.perfdata;
+  const demoground = node ? require('./demoground.js') : root.GCS.demoground;
   const NM = geo.NM;
   const KT = NM / 3600; // ft/s per kt
   const J = '/fdm/jsbsim/';
@@ -27,6 +28,8 @@
   const LINK_TIMEOUT_MIN = 10; // as the aircraft's (fdm/onboard.py)
   const LINK_TIMEOUT_MAX = 300;
   const NAVS = ['kna', 'knb', 'lna', 'lnb'];
+  const FREE = ['control.take', 'control.accept', 'airport']; // commands a station that does not hold control may send, as the aircraft's (fdm/onboard.py)
+  const REPOSITION_MAX_KT = 2; // as the aircraft's
   const rad = (d) => (d * Math.PI) / 180;
   const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
   const wrap = (d) => ((((d + 180) % 360) + 360) % 360) - 180;
@@ -59,7 +62,7 @@
       this.events = [];
       this.paths = [];
       this.last = {};
-      this.down = { '/gcs/down/ack': '', '/gcs/down/status': '', '/gcs/down/plan': '' };
+      this.down = { '/gcs/down/ack': '', '/gcs/down/status': '', '/gcs/down/plan': '', '/gcs/down/airport': '' };
       this.onValue = () => {};
       this.onState = () => {};
       this.timer = null;
@@ -178,7 +181,7 @@
       this.answered[station] = seq;
       this.heard(station);
       let reason;
-      if (station !== this.holder) reason = `${this.holder} has control`;
+      if (station !== this.holder && !FREE.includes(c.name)) reason = `${this.holder} has control`;
       else {
         const fn = this['cmd_' + c.name.replace('.', '_')];
         try {
@@ -213,6 +216,31 @@
         this.next();
       }
       this.down['/gcs/down/plan'] = JSON.stringify(a);
+      return null;
+    }
+
+    /** The ground network of the demo field (js/demoground.js) is the only one the demo has; the aircraft's own reads FlightGear's scenery. */
+    cmd_airport(a) {
+      const icao = typeof a.icao === 'string' ? a.icao.trim().toUpperCase() : null;
+      if (!icao || !/^[A-Z0-9]{4}$/.test(icao)) return 'an airport is four letters or digits, like EFHK';
+      if (icao !== demoground.icao) return `no ground network for ${icao} in the scenery`;
+      this.down['/gcs/down/airport'] = JSON.stringify(demoground);
+      return null;
+    }
+
+    /** The aircraft moves itself to a stand, stopped on the ground, before the plan begins. */
+    cmd_reposition(a) {
+      const p = [a.lat, a.lon];
+      if (!p.every((v) => typeof v === 'number' && Number.isFinite(v))) return 'reposition: a point needs 2 numbers';
+      if (Math.abs(p[0]) > 90) return `reposition: latitude ${p[0]} is not on the earth`;
+      if (Math.abs(p[1]) > 180) return `reposition: longitude ${p[1]} is not on the earth`;
+      if (typeof a.heading !== 'number' || !Number.isFinite(a.heading)) return 'reposition: the heading is not a number';
+      if (this.started) return 'the plan has begun';
+      if (!this.s.ground) return 'only on the ground';
+      if (this.s.tas / KT > REPOSITION_MAX_KT) return `only when the aircraft stands (${Math.round(this.s.tas / KT)} kt)`;
+      this.s.lat = p[0];
+      this.s.lon = p[1];
+      this.s.hdg = ((a.heading % 360) + 360) % 360;
       return null;
     }
 

@@ -15,6 +15,8 @@
     wind: '#a528eb',
     terrain: '#5a2828',
     areas: '#00bfa5',
+    taxiways: '#aaee22',
+    parking: '#cc0088',
   };
   const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
   const distance = (a, b) => Math.hypot(...rgb(a).map((v, i) => v - rgb(b)[i]));

@@ -142,4 +142,28 @@ function rig() {
   assert.ok(n >= 14 && n <= 17, 'lost after ' + n + ' s of silence');
   assert.strictEqual(r.cmd('linktimeout', { sec: 30 }).status, 'accepted');
 }
+// the ground map and the move to a stand (stage 1 of starting at a stand from the planner)
+{
+  const demoground = require('../js/demoground.js');
+  const r = rig();
+  assert.strictEqual(r.d.down['/gcs/down/airport'], '', 'nothing until asked');
+  assert.ok(/four letters or digits/.test(r.cmd('airport', {}).reason));
+  assert.ok(/four letters or digits/.test(r.cmd('airport', { icao: '12' }).reason));
+  assert.strictEqual(r.cmd('airport', { icao: 'ZZZZ' }).reason, 'no ground network for ZZZZ in the scenery');
+  assert.strictEqual(r.cmd('airport', { icao: 'xdm1' }).status, 'accepted');
+  assert.deepStrictEqual(JSON.parse(r.d.down['/gcs/down/airport']), demoground);
+  assert.strictEqual(r.cmd('airport', { icao: 'XDM1' }, 'OTHER').status, 'accepted', 'a station that does not hold control may read the map');
+  assert.strictEqual(r.cmd('reposition', { lat: 34.9, lon: -117.8, heading: 10 }, 'OTHER').reason, 'T has control');
+  assert.strictEqual(r.cmd('reposition', {}).reason, 'reposition: a point needs 2 numbers');
+  assert.strictEqual(r.cmd('reposition', { lat: 95, lon: 0, heading: 0 }).reason, 'reposition: latitude 95 is not on the earth');
+  assert.strictEqual(r.cmd('reposition', { lat: 34.9, lon: -117.8 }).reason, 'reposition: the heading is not a number');
+  const s2 = demoground.parking[1];
+  assert.strictEqual(r.cmd('reposition', { lat: s2.lat, lon: s2.lon, heading: s2.h }).status, 'accepted');
+  assert.strictEqual(r.d.get('/position/latitude-deg'), s2.lat);
+  assert.strictEqual(r.d.get('/position/longitude-deg'), s2.lon);
+  assert.strictEqual(r.d.get('/orientation/heading-deg'), s2.h);
+  r.cmd('plan', plan);
+  r.cmd('start');
+  assert.strictEqual(r.cmd('reposition', { lat: s2.lat, lon: s2.lon, heading: s2.h }).reason, 'the plan has begun');
+}
 console.log('demo OK');

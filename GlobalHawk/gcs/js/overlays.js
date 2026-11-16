@@ -85,6 +85,9 @@
       this.rainStatus = 'off';
       this.fileStatus = '';
       this.drawnFields = [];
+      this.ground = null; // the ground network the aircraft sent (js/ground.js Net), or null
+      this.groundStatus = '';
+      this.stand = null; // the plan's stand: { at: [lat, lon], heading }
       this.airports = new AP.Airports({ fetch: (u) => this.net(u), store: o.store || null, base: o.sourcesBase });
       this.hazards = new W.Hazards({ fetch: (u) => this.net(u), awc: o.awc || null });
       this.metars = new W.Metars({ fetch: (u) => this.net(u), awc: o.awc || null });
@@ -106,6 +109,13 @@
       this.install();
       if (this.dom) this.buildPanel();
       if (this.store) this.restore();
+    }
+
+    /** The airport's ground network, from the aircraft (null: none); drawn by the Taxiways and Stands layers. */
+    setGround(net, status) {
+      this.ground = net;
+      this.groundStatus = status || (net ? `${net.icao}: ${net.parking.length} stands, ${net.arcs.length} taxiway segments` : '');
+      this.redraw();
     }
 
     /** Every request to a third party goes through here: refused when the page is offline. */
@@ -460,9 +470,125 @@
       if (L.shown('areas')) this.paintAreas(m, x);
       if (L.shown('link')) this.paintLink(m, x, ctx);
       if (L.shown('wind')) this.paintWind(m, x, ctx, vb);
+      if (this.ground && vb) {
+        if (L.shown('taxiways')) this.paintTaxiways(m, x, vb);
+        if (L.shown('parking')) this.paintParking(m, x, vb);
+      }
       this.drawnFields = [];
       if (L.shown('airports')) this.paintAirports(m, x, ctx, vb);
       m.data.airfields = this.drawnFields;
+    }
+
+    /** The taxiways of the airport the aircraft sent: a band as wide as a taxiway (75 ft, at least 2 px), the runway's own arcs as a thin dotted line, names and runway ends when close. */
+    paintTaxiways(m, x, vb) {
+      const net = this.ground;
+      const col = PAL.LAYERS.taxiways;
+      const pad = 0.004;
+      const seen = (p) => p[0] >= vb[0] - pad && p[0] <= vb[2] + pad && p[1] >= vb[1] - pad && p[1] <= vb[3] + pad;
+      x.save();
+      x.lineCap = 'round';
+      x.lineJoin = 'round';
+      x.strokeStyle = hexAlpha(col, 0.4);
+      x.lineWidth = Math.min(10, Math.max(2, 75 / m.ftPerPx));
+      x.beginPath();
+      for (const [a, b, k] of net.arcs) {
+        if (net.isRw[k] || !(seen(net.nodes[a]) || seen(net.nodes[b]))) continue;
+        const p = m.project(net.nodes[a]);
+        const q = m.project(net.nodes[b]);
+        x.moveTo(p[0], p[1]);
+        x.lineTo(q[0], q[1]);
+      }
+      x.stroke();
+      x.strokeStyle = col;
+      x.lineWidth = 1;
+      x.beginPath();
+      for (const [a, b, k] of net.arcs) {
+        if (net.isRw[k] || !(seen(net.nodes[a]) || seen(net.nodes[b]))) continue;
+        const p = m.project(net.nodes[a]);
+        const q = m.project(net.nodes[b]);
+        x.moveTo(p[0], p[1]);
+        x.lineTo(q[0], q[1]);
+      }
+      x.stroke();
+      x.strokeStyle = hexAlpha(col, 0.55);
+      x.setLineDash([2, 5]);
+      x.beginPath();
+      for (const [a, b, k] of net.arcs) {
+        if (!net.isRw[k] || !(seen(net.nodes[a]) || seen(net.nodes[b]))) continue;
+        const p = m.project(net.nodes[a]);
+        const q = m.project(net.nodes[b]);
+        x.moveTo(p[0], p[1]);
+        x.lineTo(q[0], q[1]);
+      }
+      x.stroke();
+      x.setLineDash([]);
+      if (m.ftPerPx < 40) {
+        for (const l of net.labels()) if (seen(l.at)) {
+          const q = m.project(l.at);
+          this.text(x, l.name, q[0] + 4, q[1] - 4, col, true);
+        }
+        for (const r of net.runways) if (seen([r.lat, r.lon])) {
+          const q = m.project([r.lat, r.lon]);
+          x.fillStyle = col;
+          x.beginPath();
+          x.arc(q[0], q[1], 3, 0, 2 * Math.PI);
+          x.fill();
+          this.text(x, `${r.n}`, q[0] + 6, q[1] + 4, col, true);
+        }
+      }
+      x.restore();
+    }
+
+    /** The stands: a ring of the stand's radius with a tick for the way it faces; dashed and marked when the aircraft does not fit (under 20 m); the plan's stand ringed in white. */
+    paintParking(m, x, vb) {
+      const net = this.ground;
+      const col = PAL.LAYERS.parking;
+      const pad = 0.002;
+      const near = m.ftPerPx < 14;
+      x.save();
+      for (const s of net.parking) {
+        if (s.lat < vb[0] - pad || s.lat > vb[2] + pad || s.lon < vb[1] - pad || s.lon > vb[3] + pad) continue;
+        const q = m.project([s.lat, s.lon]);
+        const rft = Math.max(s.r, 6) * 3.2808;
+        const r = Math.max(3.5, rft / m.ftPerPx);
+        const tip = m.project(geo.along([s.lat, s.lon], s.h, rft));
+        x.strokeStyle = col;
+        x.fillStyle = hexAlpha(col, s.fits ? 0.18 : 0.06);
+        x.lineWidth = 1.5;
+        x.setLineDash(s.fits ? [] : [3, 3]);
+        x.beginPath();
+        x.arc(q[0], q[1], r, 0, 2 * Math.PI);
+        x.fill();
+        x.stroke();
+        x.setLineDash([]);
+        x.beginPath();
+        x.moveTo(q[0], q[1]);
+        x.lineTo(tip[0], tip[1]);
+        x.stroke();
+        if (!s.fits && near) {
+          x.beginPath();
+          x.moveTo(q[0] - 4, q[1] - 4);
+          x.lineTo(q[0] + 4, q[1] + 4);
+          x.moveTo(q[0] + 4, q[1] - 4);
+          x.lineTo(q[0] - 4, q[1] + 4);
+          x.stroke();
+        }
+        if (near || m.ftPerPx < 30) this.text(x, `${s.n}${s.fits ? '' : ' (too small)'}`, q[0] + r + 3, q[1] + 4, col, true);
+      }
+      const st = this.stand;
+      if (st && st.at) {
+        const q = m.project(st.at);
+        const tip = m.project(geo.along(st.at, st.heading || 0, 90));
+        x.strokeStyle = '#ffffff';
+        x.lineWidth = 2.5;
+        x.beginPath();
+        x.arc(q[0], q[1], 9, 0, 2 * Math.PI);
+        const d = Math.hypot(tip[0] - q[0], tip[1] - q[1]) || 1;
+        x.moveTo(q[0] + ((tip[0] - q[0]) / d) * 9, q[1] + ((tip[1] - q[1]) / d) * 9);
+        x.lineTo(q[0] + ((tip[0] - q[0]) / d) * 32, q[1] + ((tip[1] - q[1]) / d) * 32);
+        x.stroke();
+      }
+      x.restore();
     }
 
     paintAirspace(m, x, alt, all, inView) {
@@ -776,6 +902,8 @@
         'wx-hazard': this.hazards.status,
         wind: this.wind.status,
         areas: this.areas.length ? `${this.areas.length} areas loaded` : 'nothing loaded',
+        taxiways: this.groundStatus || 'no ground map: load an airport in the plan editor',
+        parking: this.groundStatus || 'no ground map: load an airport in the plan editor',
         terrain: this.prefs.offline ? 'offline' : this.terrainStatus || 'not drawn yet',
       }[id];
       return [reason, data].filter(Boolean).join(' · ');
@@ -833,6 +961,8 @@
       if (L.shown('wind') && this.windNote) out.push(sw(PAL.LAYERS.wind, false, this.windNote));
       if (L.shown('airports')) out.push(sw(PAL.LAYERS.airports, false, 'field: usable now') + sw(PAL.LAYERS.airports, true, 'only lighter'));
       if (L.shown('areas')) out.push(sw(PAL.LAYERS.areas, false, 'loaded areas'));
+      if (this.ground && L.shown('taxiways')) out.push(sw(PAL.LAYERS.taxiways, false, 'taxiway'));
+      if (this.ground && L.shown('parking')) out.push(sw(PAL.LAYERS.parking, false, 'stand') + sw(PAL.LAYERS.parking, true, 'too small (< 20 m)'));
       return out.join('');
     }
   }

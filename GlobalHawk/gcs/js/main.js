@@ -232,7 +232,7 @@
   /* ------------------------------------------------------------- preparing a command */
   function arm(cmd) {
     armed = cmd;
-    document.querySelectorAll('#commands button').forEach((b) => b.classList.remove('armed'));
+    document.querySelectorAll('#commands button, #gd-place').forEach((b) => b.classList.remove('armed'));
     if (cmd && cmd.button) cmd.button.classList.add('armed');
     $('map').classList.toggle('aim', !!(cmd && cmd.needsPoint));
     renderConfirm();
@@ -427,7 +427,9 @@
     map.flash(at, hit ? `camera → ${hit.name}` : 'camera → here');
   }
   map.onClick = (p, screen) => {
-    if (aiming) {
+    if (pickingStand && editor) {
+      pickStand(p);
+    } else if (aiming) {
       link.camera(G.camera.point(p));
       aim(false);
     } else if (armed && armed.needsPoint) {
@@ -609,6 +611,8 @@
     $('c-edit').classList.toggle('on', !!editor);
     if (!editor) {
       if (rp) rpClear();
+      pickingStand = false;
+      $('map').classList.toggle('aim', !!(armed && armed.needsPoint) || aiming);
       $('rp-undo').disabled = true;
       map.data.handles = null;
       map.data.editing = null;
@@ -661,6 +665,7 @@
     map.data.selected = editor.selected;
     map.data.editing = { plan, fc };
     map.data.preview = armed && armed.preview ? armed.preview() : { plan: { items: editor.which === 'lost' ? plan.lost_link : plan.items, field: plan.field } };
+    renderGround(plan);
     drawProfile();
     map.draw();
   }
@@ -733,6 +738,150 @@
       },
     });
   });
+
+  /* ------------------------------------------------------------- the stand, the ground map and the taxi routes (js/ground.js) */
+  // The aircraft reads the airport's ground network from FlightGear's scenery when asked (`airport`) and sends it down; the stand is picked on it, `reposition` moves the
+  // aircraft there, and the taxi routes are laid over the taxiways into the plan being edited. Nothing here flies the aircraft: it is the plan's start.
+  let ground = null; // the Net of the airport the aircraft sent
+  let pickingStand = false;
+  let groundNote = ''; // what the last ground command said
+  let standNote = ''; // what the stand is, in words
+  let taxiNote = ''; // what the last taxi routes are
+  let askedIcao = '';
+  const compass = (h) => ((Math.round(h) % 360) + 360) % 360;
+  const icaoOk = (t) => /^[A-Za-z0-9]{4}$/.test(t);
+  link.on((what, d) => {
+    if (what === 'airport') {
+      try {
+        ground = d ? new G.ground.Net(d) : null;
+      } catch (e) {
+        ground = null;
+        groundNote = 'The aircraft sent a ground map the station cannot read: ' + e.message;
+      }
+      ov.setGround(ground);
+      if (ground) groundNote = '';
+    } else if (what === 'command' && (d.name === 'airport' || d.name === 'reposition') && d.state !== 'sent') {
+      const verb = d.name === 'airport' ? `The ground map of ${askedIcao || 'the airport'}` : 'Placing the aircraft';
+      groundNote = d.state === 'accepted' ? (d.name === 'airport' ? '' : 'The aircraft was moved to the stand. (FlightGear loads the scenery there first, so the aircraft may show at the stand a little later.)')
+        : d.state === 'rejected' ? `${verb}: the aircraft said no: ${d.reason}` : `${verb}: no answer (FlightGear can take a minute to load the scenery at a new place)`;
+    }
+  });
+  /** The airport to ask for: the plan's own, else the nearest field the airports layer knows (an ICAO code), else what was asked last. */
+  function guessIcao(plan) {
+    if (plan.field && typeof plan.field.icao === 'string' && icaoOk(plan.field.icao)) return plan.field.icao.toUpperCase();
+    if (ground) return ground.icao;
+    const f = plan.field;
+    const list = demo ? G.demodata.airports() : ov.airports.list || []; // the demo's fields are made up (the list the page restored may be a real one)
+    const hit = f && Number.isFinite(f.lat) ? G.airports.nearest(list, f.lat, f.lon, 1)[0] : null;
+    return hit && icaoOk(hit.a.ident) && hit.nm < 3 ? hit.a.ident : '';
+  }
+  $('gd-load').addEventListener('click', () => {
+    const icao = $('gd-icao').value.trim().toUpperCase();
+    if (!icaoOk(icao)) return;
+    askedIcao = icao;
+    groundNote = `Asking the aircraft for the ground map of ${icao}…`;
+    link.command('airport', { icao });
+    renderEditor();
+  });
+  function pickStand(p) {
+    pickingStand = false;
+    $('map').classList.toggle('aim', !!(armed && armed.needsPoint) || aiming);
+    $('gd-pick').classList.remove('armed');
+    const spot = ground ? ground.standNear(p, Math.max(G.ground.STAND_PICK_FT, 12 * map.ftPerPx)) : null;
+    if (spot) {
+      editor.setStand([spot.lat, spot.lon], spot.h);
+      standNote = `stand ${spot.n} (${spot.t.replace(/_/g, ' ')}, radius ${spot.r} m, faces ${Math.round(spot.h)}°)${spot.fits ? '' : ': TOO SMALL for the aircraft, whose wings are 116 ft (35 m) across'}`;
+    } else {
+      const was = editor.stand();
+      editor.setStand(p, was ? was.heading : Number.isFinite(tel.hdg) ? tel.hdg : 0);
+      standNote = ground ? 'a stand of your own: not one of the airport\'s, so the way it faces is yours to give' : 'a stand of your own: no ground map is loaded, so the way it faces is yours to give';
+    }
+    renderEditor();
+  }
+  $('gd-pick').addEventListener('click', () => {
+    pickingStand = !pickingStand;
+    if (pickingStand) arm(null);
+    $('gd-pick').classList.toggle('armed', pickingStand);
+    $('map').classList.toggle('aim', pickingStand || !!(armed && armed.needsPoint) || aiming);
+  });
+  $('gd-hdg').addEventListener('change', (e) => {
+    const st = editor && editor.stand();
+    const v = Number(e.target.value);
+    if (!st || e.target.value === '' || !Number.isFinite(v)) return;
+    editor.setStand(st.at, v);
+    renderEditor();
+  });
+  $('gd-place').addEventListener('click', () => {
+    const st = editor && editor.stand();
+    if (!st) return;
+    arm({
+      name: 'reposition', button: $('gd-place'), ready: () => true,
+      args: () => ({ lat: st.at[0], lon: st.at[1], heading: st.heading }),
+      text: () => `Move the aircraft to the stand at ${st.at[0].toFixed(5)}, ${st.at[1].toFixed(5)}, facing ${compass(st.heading)}°, stopped on the ground. It works only before the plan begins; FlightGear loads the scenery there, which can take half a minute`,
+      preview: () => ({ plan: { items: [], field: { stand: st.at } } }),
+    });
+  });
+  $('gd-taxi').addEventListener('click', () => {
+    const st = editor && editor.stand();
+    if (!ground || !st) return;
+    const exit = $('gd-exit').value === '' ? null : Number($('gd-exit').value);
+    const r = G.ground.addTaxi(ground, editor.plan, { stand: st.at, heading: st.heading, exit });
+    if (r.error) {
+      taxiNote = 'No taxi routes: ' + r.error;
+    } else {
+      editor.setGround(r.plan);
+      const ft = (v) => Math.round(v / 10) * 10;
+      taxiNote = [r.out ? `Out: runway ${r.out.rw} by ${r.out.via.join(', ')}, ${ft(r.out.length_ft).toLocaleString('en-US')} ft` : '', r.in ? `In: runway ${r.in.rw} by ${r.in.exit.names.join('/')}, ${ft(r.in.length_ft).toLocaleString('en-US')} ft` : ''].filter(Boolean).concat(r.notes).join('. ');
+      map.fit(geo.planLines(r.plan.items, r.plan.field.stand).filter((l) => l.kind === 'taxi').flatMap((l) => l.points));
+    }
+    renderEditor();
+  });
+  $('gd-untaxi').addEventListener('click', () => {
+    if (!editor) return;
+    editor.setGround(G.ground.removeTaxi(ground, editor.plan));
+    taxiNote = 'The taxi routes are out of the plan.';
+    renderEditor();
+  });
+  function renderGround(plan) {
+    const st = editor.stand();
+    const live = link.state.mode === 'live';
+    if (document.activeElement !== $('gd-icao')) {
+      if (!$('gd-icao').value || ($('gd-icao').dataset.guess !== undefined && $('gd-icao').value === $('gd-icao').dataset.guess)) {
+        const g = guessIcao(plan);
+        $('gd-icao').value = g;
+        $('gd-icao').dataset.guess = g;
+      }
+    }
+    $('gd-load').disabled = !live || !icaoOk($('gd-icao').value.trim());
+    const small = ground ? ground.parking.filter((x) => !x.fits).length : 0;
+    $('gd-state').textContent = groundNote || (ground ? `${ground.icao}: ${ground.parking.length} stands${small ? ` (${small} too small for the aircraft)` : ''}, ${ground.nodes.length} taxi nodes, runways ${ground.runways.map((r) => r.n).join(', ') || 'unknown'}` : 'No ground map yet: give the airport and load it.');
+    if (document.activeElement !== $('gd-hdg')) $('gd-hdg').value = st ? String(compass(st.heading)) : '';
+    $('gd-hdg').disabled = !st;
+    $('gd-place').disabled = !(st && live && link.inControl() && !(link.status && link.status.started));
+    $('gd-taxi').disabled = !(ground && st);
+    const hasTaxi = plan.items.some((it) => it.kind === 'taxi');
+    $('gd-untaxi').disabled = !hasTaxi;
+    // the exits of the landing runway, for the way in
+    const land = plan.items.slice().reverse().find((it) => it.kind === 'land');
+    let opts = '<option value="">the first past the rollout</option>';
+    if (ground && land) {
+      const rw = ground.runwayFor(land.aim, geo.course(land.fix, land.aim).deg, -300, 4000);
+      if (rw) {
+        const aim = rw.frame.to(land.aim)[0];
+        opts += ground.exits(rw).filter((e) => e.along > aim + 2500).map((e) => `<option value="${e.node}">${esc(e.names.join('/'))}, ${Math.round(e.along / 100) * 100} ft down runway ${esc(rw.n)}</option>`).join('');
+      }
+    }
+    if ($('gd-exit').dataset.html !== opts) {
+      const keep = $('gd-exit').value;
+      $('gd-exit').innerHTML = opts;
+      $('gd-exit').dataset.html = opts;
+      $('gd-exit').value = [...$('gd-exit').options].some((o) => o.value === keep) ? keep : '';
+    }
+    $('gd-exit').disabled = !(ground && land);
+    const here2 = st ? `Stand at ${st.at[0].toFixed(5)}, ${st.at[1].toFixed(5)}, facing ${compass(st.heading)}°${standNote ? ': ' + standNote : ''}.` : 'No stand yet: pick one on the map.';
+    $('gd-info').textContent = [pickingStand ? 'Click a stand on the map (or anywhere, for a stand of your own).' : here2, hasTaxi ? taxiNote : taxiNote.startsWith('No taxi') ? taxiNote : ''].filter(Boolean).join(' ');
+    ov.stand = st;
+  }
 
   /* ------------------------------------------------------------- the height profile under the map */
   function drawProfile() {
@@ -945,10 +1094,12 @@
     const ctx = ov.situation.update({
       now: Date.now(), own: ownPos, status: live ? s : null, plan: link.plan, editing: !!editor, station, latency, traffic: trafficList, alertIds: alerts.items.map((a) => a.id),
       cameraLocked: live && !!G.camera.state(link.values).target, areas: ov.areas.length, hours: ov.prefs.windHours, engineOut: tel.failed > 0.5,
+      ground: ground ? { icao: ground.icao, stands: ground.parking.length } : null,
     });
     layers.update(ctx);
     if (Number.isFinite(tel.weight)) ov.weightNow = tel.weight;
     if (Number.isFinite(tel.fuel)) ov.fuelNow = tel.fuel;
+    if (!editor) ov.stand = link.plan && link.plan.field && link.plan.field.stand ? { at: link.plan.field.stand, heading: link.plan.field.stand_heading || 0 } : null;
     ov.tick(ctx);
     const legend = ov.legendHtml() + (map.data.routeView ? `<span class="k2" style="border-top:3px dashed ${G.COL.preview}">route on its card</span>${map.data.routeView.gaps && map.data.routeView.gaps.length ? `<span class="k2" style="border-top:5px solid ${G.COL.lost}">no landing site in reach</span>` : ''}` : '');
     if ($('legend2').dataset.html !== legend) {

@@ -1,6 +1,7 @@
 // node tests/link.test.js : the command link's station end, with a fake transport and a fake clock
 const assert = require('assert');
 const { Link, ANSWER_MS } = require('../js/link.js');
+const demoground = require('../js/demoground.js');
 
 function rig(opts) {
   let now = 1000000;
@@ -181,5 +182,35 @@ console.log('link OK');
   assert.strictEqual(Q.cmds().length, n0, 'not yet');
   Q.advance(2);
   assert.strictEqual(Q.cmds().length, n0 + 1, 'after the new delay');
+}
+// the airport's ground map comes down on its own path, as an object; nonsense is not kept
+{
+  const r = rig();
+  r.link.start();
+  assert.ok(r.transport.paths.includes('/gcs/down/airport'), 'listened to');
+  const seen = [];
+  r.link.on((what, data) => what === 'airport' && seen.push(data));
+  r.transport.onValue('/gcs/down/airport', JSON.stringify(demoground));
+  assert.strictEqual(r.link.airport.icao, 'XDM1');
+  assert.strictEqual(seen.length, 1);
+  r.transport.onValue('/gcs/down/airport', '{"icao":"X"}');
+  assert.strictEqual(r.link.airport, null, 'a message without its lists is not an airport');
+  r.transport.onValue('/gcs/down/airport', '{broken');
+  assert.strictEqual(seen.length, 2, 'unreadable text changes nothing');
+  r.transport.onValue('/gcs/down/airport', '');
+  assert.strictEqual(r.link.airport, null);
+}
+// the aircraft takes a minute to answer a reposition (FlightGear loads the scenery at the new place); the others have five seconds
+{
+  const r = rig();
+  const a = r.link.command('reposition', { lat: 1, lon: 2, heading: 3 });
+  const b = r.link.command('hold');
+  r.advance(ANSWER_MS + 100);
+  assert.strictEqual(a.state, 'sent', 'still waiting');
+  assert.strictEqual(b.state, 'no answer');
+  r.advance(60000);
+  assert.strictEqual(a.state, 'no answer', 'after a minute');
+  r.ack(a.seq, 'accepted');
+  assert.strictEqual(a.state, 'accepted', 'a late answer still counts');
 }
 console.log('link messages OK');

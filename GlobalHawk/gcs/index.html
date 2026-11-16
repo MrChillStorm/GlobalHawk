@@ -154,6 +154,28 @@
         </div>
         <table id="ed-table"></table>
         <label class="small" title="from the aiming point to the far end: the landing's forecast is held against it. The aircraft does not read it.">Runway past the aiming point, ft <input type="number" id="ed-runway" min="0" step="100" style="width:7em"></label>
+        <div id="gd">
+          <h2>Stand and taxiways</h2>
+          <div class="small">The aircraft starts from the stand and taxis by the airport's own taxiways. The ground map is FlightGear's: the aircraft reads it from its scenery and sends it here. Nothing is sent until you say.</div>
+          <div class="row">
+            <label class="small" title="the four-letter code of the airport whose scenery FlightGear has">Airport <input type="text" id="gd-icao" maxlength="4" size="5" autocomplete="off" placeholder="EFHK" style="width:5em;text-transform:uppercase"></label>
+            <button id="gd-load" title="the aircraft reads the ground network and the runway ends from FlightGear's scenery and sends them here">Load the ground map</button>
+          </div>
+          <div id="gd-state" class="small"></div>
+          <div class="row">
+            <button id="gd-pick" title="then click a stand on the map; a click anywhere else makes a stand of your own there">Pick the stand…</button>
+            <label class="small">facing <input type="number" id="gd-hdg" min="0" max="359" step="1" style="width:5em"> °</label>
+            <button id="gd-place" title="the aircraft moves itself to the stand, stopped on the ground: only before the plan begins">Place the aircraft here…</button>
+          </div>
+          <div class="row">
+            <label class="small" title="the exit the taxi route in follows">Leave the runway by <select id="gd-exit"></select></label>
+          </div>
+          <div class="row">
+            <button id="gd-taxi" title="lay a taxi route out from the stand to the runway and one in from the runway to the stand, over the airport's taxiways">Taxi routes from the stand</button>
+            <button id="gd-untaxi" title="take the taxi routes out of the plan again">Remove them</button>
+          </div>
+          <div id="gd-info" class="small"></div>
+        </div>
         <div id="ed-warn"></div>
         <div id="rp" hidden>
           <h2>Plan a route</h2>
@@ -199,6 +221,8 @@
   <script src="js/pick.js"></script>
   <script src="js/linkinfo.js"></script>
   <script src="js/demoplan.js"></script>
+  <script src="js/demoground.js"></script>
+  <script src="js/ground.js"></script>
   <script src="js/demo.js"></script>
   <script src="js/palette.js"></script>
   <script src="js/layers.js"></script>

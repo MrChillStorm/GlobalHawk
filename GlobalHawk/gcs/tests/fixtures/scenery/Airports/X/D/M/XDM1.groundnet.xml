@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<groundnet>
+	<version>1</version>
+	<parkingList>
+		<Parking index="0" type="ramp_mil_cargo" name="S1" lat="N34 53.90725449" lon="W117 52.79010649" heading="-50" radius="30"/>
+		<Parking index="1" type="ramp_mil_cargo" name="S2" lat="N34 53.89032823" lon="W117 52.76551112" heading="-50" radius="30"/>
+		<Parking index="2" type="tie_down" name="S3" lat="N34 53.87340196" lon="W117 52.74091575" heading="-50" radius="15"/>
+	</parkingList>
+	<TaxiNodes>
+		<node index="30" lat="N34 53.91783341" lon="W117 52.80547860" isOnRunway="0" holdPointType="none"/>
+		<node index="31" lat="N34 53.97078475" lon="W117 52.75130394" isOnRunway="0" holdPointType="none"/>
+		<node index="32" lat="N34 54.48516914" lon="W117 52.22503585" isOnRunway="0" holdPointType="none"/>
+		<node index="33" lat="N34 54.76883701" lon="W117 51.93481448" isOnRunway="0" holdPointType="none"/>
+		<node index="34" lat="N34 55.18488321" lon="W117 51.50915647" isOnRunway="0" holdPointType="none"/>
+		<node index="35" lat="N34 55.53158838" lon="W117 51.15444146" isOnRunway="0" holdPointType="none"/>
+		<node index="36" lat="N34 53.99617414" lon="W117 52.78819699" isOnRunway="0" holdPointType="none"/>
+		<node index="37" lat="N34 54.02143268" lon="W117 52.77807216" isOnRunway="0" holdPointType="none"/>
+		<node index="40" lat="N34 54.03782238" lon="W117 52.76130382" isOnRunway="1" holdPointType="none"/>
+		<node index="41" lat="N34 54.50429843" lon="W117 52.28405090" isOnRunway="1" holdPointType="none"/>
+		<node index="42" lat="N34 54.75644764" lon="W117 52.02607634" isOnRunway="1" holdPointType="none"/>
+		<node index="43" lat="N34 55.19770877" lon="W117 51.57462088" isOnRunway="1" holdPointType="none"/>
+		<node index="44" lat="N34 55.51289529" lon="W117 51.25215269" isOnRunway="1" holdPointType="none"/>
+		<node index="50" lat="N34 54.49574806" lon="W117 52.24040796" isOnRunway="0" holdPointType="none"/>
+		<node index="51" lat="N34 54.77501530" lon="W117 51.99686351" isOnRunway="0" holdPointType="none"/>
+		<node index="52" lat="N34 55.19546213" lon="W117 51.52452857" isOnRunway="0" holdPointType="none"/>
+	</TaxiNodes>
+	<TaxiWaySegments>
+		<arc begin="30" end="31" isPushBackRoute="0" name="A"/>
+		<arc begin="31" end="30" isPushBackRoute="0" name="A"/>
+		<arc begin="31" end="32" isPushBackRoute="0" name="A"/>
+		<arc begin="32" end="31" isPushBackRoute="0" name="A"/>
+		<arc begin="32" end="33" isPushBackRoute="0" name="A"/>
+		<arc begin="33" end="32" isPushBackRoute="0" name="A"/>
+		<arc begin="33" end="34" isPushBackRoute="0" name="A"/>
+		<arc begin="34" end="33" isPushBackRoute="0" name="A"/>
+		<arc begin="34" end="35" isPushBackRoute="0" name="A"/>
+		<arc begin="35" end="34" isPushBackRoute="0" name="A"/>
+		<arc begin="31" end="36" isPushBackRoute="0" name="B"/>
+		<arc begin="36" end="31" isPushBackRoute="0" name="B"/>
+		<arc begin="36" end="37" isPushBackRoute="0" name="B"/>
+		<arc begin="37" end="36" isPushBackRoute="0" name="B"/>
+		<arc begin="40" end="41" isPushBackRoute="0" name="04/22"/>
+		<arc begin="41" end="40" isPushBackRoute="0" name="04/22"/>
+		<arc begin="41" end="42" isPushBackRoute="0" name="04/22"/>
+		<arc begin="42" end="41" isPushBackRoute="0" name="04/22"/>
+		<arc begin="42" end="43" isPushBackRoute="0" name="04/22"/>
+		<arc begin="43" end="42" isPushBackRoute="0" name="04/22"/>
+		<arc begin="43" end="44" isPushBackRoute="0" name="04/22"/>
+		<arc begin="44" end="43" isPushBackRoute="0" name="04/22"/>
+		<arc begin="41" end="50" isPushBackRoute="0" name="E"/>
+		<arc begin="50" end="41" isPushBackRoute="0" name="E"/>
+		<arc begin="50" end="32" isPushBackRoute="0" name="E"/>
+		<arc begin="32" end="50" isPushBackRoute="0" name="E"/>
+		<arc begin="42" end="51" isPushBackRoute="0" name="C"/>
+		<arc begin="51" end="42" isPushBackRoute="0" name="C"/>
+		<arc begin="51" end="33" isPushBackRoute="0" name="C"/>
+		<arc begin="33" end="51" isPushBackRoute="0" name="C"/>
+		<arc begin="43" end="52" isPushBackRoute="0" name="D"/>
+		<arc begin="52" end="43" isPushBackRoute="0" name="D"/>
+		<arc begin="52" end="34" isPushBackRoute="0" name="D"/>
+		<arc begin="34" end="52" isPushBackRoute="0" name="D"/>
+	</TaxiWaySegments>
+</groundnet>
