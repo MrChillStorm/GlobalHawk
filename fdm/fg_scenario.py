@@ -2,6 +2,8 @@
 
 SCENARIO=box (default)  takeoff, a box at the height the station's planner picks, landing on the same runway (js/geo.js localPlan)
 SCENARIO=taxibox        from a parking spot (PARKING=121: a name in the airport's ground network): taxi to the runway, take off, the box, land, taxi back to the spot (groundplan.py)
+HOLDS=20                (taxibox) the taxi routes are the station's (js/ground.js, with its holds: a stop short of each runway the route enters or crosses and at the line-up point) and each hold is cleared
+                        by this script after the aircraft has waited that many seconds of flight (docs/PLAN.md, "Hold points and clearances"); the stops and the clearances are printed and the status text says HOLD in the CSV
 REPOSITION=1            (taxibox) FlightGear starts on the runway and the aircraft is moved to the spot by the station's `reposition` command, as the planner's "Place the aircraft here" does,
                         in place of starting at the spot by coordinates (docs/PLAN.md, "Starting at a stand from the planner", S2)
 SCENARIO=ceiling        the whole fuel load (14,500 lb), a cruise-climb of about 22 h to 65,000 ft, a long descent, landing (scenario65.py): 27 h of flight, so a high SPEEDUP
@@ -132,6 +134,14 @@ async def main():
                   "console.log(JSON.stringify(geo.localPlan([%.7f, %.7f], %.3f, %d, h)))") % (rw['thr'][0], rw['thr'][1], rw['hdg'], elev, elev + 100, wt, fl, rw['thr'][0], rw['thr'][1], rw['hdg'], elev)
             box = json.loads(subprocess.run(['node', '-e', js], capture_output=True, text=True, cwd=os.path.join(HERE, '..', 'GlobalHawk', 'gcs'), check=True).stdout)
             plan, info = groundplan.build(airport, runway, PARKING, box)
+            if os.environ.get('HOLDS'):
+                import airportdata, ground_checks
+                spot = info['spot']
+                laid = ground_checks.lay(airportdata.load(airport), plan, (spot['lat'], spot['lon']), spot['heading'], True)
+                plan = laid['plan']
+                for it in plan['items']:
+                    if it['kind'] == 'taxi':
+                        print('holds on a taxi route of %d points: %s' % (len(it['points']), '; '.join('%s %s (point %d)' % (h['id'], h['name'], h['i']) for h in it.get('holds', [])) or 'none'), flush=True)
             print('taxi out %.0f ft, taxi in %.0f ft' % (groundplan.length_ft(info['net'], [(info['spot']['lat'], info['spot']['lon'])] + info['out']), groundplan.length_ft(info['net'], info['into'])), flush=True)
         else:
             js = ("const geo = require('./js/geo.js'), pc = require('./js/plancheck.js'), P = require('./js/predict.js'), perf = require('./js/perfdata.js'); "
@@ -155,6 +165,8 @@ async def main():
         print('start:', a and a.get('status'), a and a.get('reason'), flush=True)
         rows, t_lift, t0, t_end = [], None, time.monotonic(), None
         last_beat = 0
+        hold_wait = float(os.environ.get('HOLDS', '0'))
+        waited = {}                                      # hold id -> the flight time it was first seen waiting at
         gusts, gusts_on, t_miss, eased = float(os.environ.get('GUSTS', '0')), False, None, False
         shear, shear_on = float(os.environ.get('SHEAR_KT', '0')), False
         ease, ease_after = float(os.environ.get('GUSTS_EASE', '0.3')), float(os.environ.get('GUSTS_EASE_AFTER', '90'))
@@ -177,6 +189,16 @@ async def main():
                 except ValueError:
                     v['status'], v['alerts'] = '', ''
                 rows[-1] = v
+                if hold_wait > 0:
+                    w = js_.get('wait') if st else None
+                    if w:
+                        if w['id'] not in waited:
+                            waited[w['id']] = v['t']
+                            print('waiting at %s (%s) at %.0f s of flight; %.1f ft/s' % (w['id'], w['name'], v['t'], v['vg'] or 0), flush=True)
+                        elif v['t'] - waited[w['id']] >= hold_wait and not waited.get(w['id'] + '!'):
+                            waited[w['id'] + '!'] = True
+                            a = await c.say('clear', dict(id=w['id']))
+                            print('clear %s at %.0f s of flight: %s %s' % (w['id'], v['t'], a and a.get('status'), a and a.get('reason')), flush=True)
                 if shear > 0 and not shear_on and v['status'].startswith(os.environ.get('SHEAR_AT', 'descend to')):
                     B.post('/environment/config/enabled', True)
                     B.post('/environment/config/boundary/entry[1]/wind-speed-kt', shear)

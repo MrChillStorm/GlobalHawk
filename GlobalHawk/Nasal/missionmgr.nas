@@ -40,6 +40,7 @@ var fset = func(p, v) {
 var FT_PER_DEG = 364567.2;
 var NM = 6076.1;
 var D2R = math.pi / 180.0;
+var NOSE_FT = 24.6;                # ft: the aircraft's nose (FlightGear's position for it, and the station's) is this far ahead of the centre of gravity the laws steer (GlobalHawk.xml: VRP x 0, CG x 294.98 in)
 var GLIDE_TAN = 0.07782;           # the approach path, 4.45 deg (fdm/laws.py)
 var CAPTURE_SPEED_KT = 10.0;       # the glide is taken over only within this many kt of the approach speed: 30 kt over it the speed-by-elevator law pitched up 15 deg and the aircraft zoomed through the path
 var GLIDE_CL = 0.8;                # the lift coefficient of the glide without the engine
@@ -119,6 +120,7 @@ var Manager = {
         m.sites = sites == nil ? [] : sites;
         m.contingency = nil;
         m.alert = nil;
+        m.waiting = nil;                  # the hold of a taxi item the aircraft is stopped at, until the station clears it (docs/PLAN.md, "Hold points and clearances")
         m.i = 0;
         m.k = 0;
         m.done = 0;
@@ -329,10 +331,43 @@ var Manager = {
     },
 
     # Tell the laws what the taxi leg is: the last one, or ends in a bend of so many degrees (they work out the speed from the way to go).
+    # the hold of a taxi item at point i (a leg k ends at the item's point k), or nil
+    hold_at: func(it, i) {
+        var hs = opt(it, "holds", nil);
+        if (hs == nil) return nil;
+        foreach (var h; hs) if (h.i == i) return h;
+        return nil;
+    },
+
+    # the station clears the hold the aircraft is stopped at: the taxi goes on to the next leg, or, if the hold was the item's last point, the item is over
+    clear: func {
+        var w = me.waiting;
+        var it = me.plan[me.i];
+        me.waiting = nil;
+        me.note("cleared at " ~ w.id);
+        var pts = it._pts;
+        if (me.k == size(pts) - 2) me.next();
+        else {
+            me.k += 1;
+            me.leg(pts[me.k], pts[me.k + 1]);
+            me.taxi_leg(it);
+        }
+    },
+
     taxi_leg: func(it) {
         var pts = it._pts;
         var last = me.k == size(pts) - 2;
+        var hold = me.hold_at(it, me.k) != nil;
+        last = last or hold;                                          # a leg that ends at a hold is a last leg: the laws stop at its end
+        if (hold) {
+            var a = pts[me.k];
+            var b = pts[me.k + 1];
+            var cd = course(a, b);
+            var back = minv(NOSE_FT, cd[1] / 2.0);                    # the leg is shortened by the nose's reach: it is the nose that stops short of the hold point, not the centre of gravity
+            me.leg(a, [b[0] - back * math.cos(cd[0] * D2R) / FT_PER_DEG, b[1] - back * math.sin(cd[0] * D2R) / (FT_PER_DEG * math.cos(b[0] * D2R))]);
+        }
         fset("ap/tx-last", last ? 1 : 0);
+        fset("ap/tx-stop", (hold or opt(it, "stop", 1)) ? 1 : 0);
         if (!last) fset("ap/tx-bend-deg", absv(turn(course(pts[me.k], pts[me.k + 1])[0], course(pts[me.k + 1], pts[me.k + 2])[0])));
     },
     hold_radius: func {
@@ -500,11 +535,19 @@ var Manager = {
         }
         if (kind == "taxi") {
             var pts = it._pts;
+            if (me.waiting != nil) return;                        # stopped at a hold: nothing moves until clear()
             if (fget("ap/tx-leg") == 1) {                         # the laws: the next leg is to be taken
                 me.k += 1;
                 me.leg(pts[me.k], pts[me.k + 1]);
                 me.taxi_leg(it);
-            } elsif (fget("ap/tx-done") == 1) me.next();          # the laws: the item is over
+            } elsif (fget("ap/tx-done") == 1) {                   # the laws: the item (or the leg to a hold) is over
+                var hold = me.hold_at(it, me.k);
+                if (hold == nil) me.next();
+                else {
+                    me.waiting = { i: hold.i, id: hold.id, name: hold.name, kind: hold.kind, since: fget("simulation/sim-time-sec") };
+                    me.note("holding at " ~ hold.id ~ ": " ~ hold.name);
+                }
+            }
         } elsif (kind == "takeoff") {
             if (fget("ap/tk-done") == 1) {                          # the laws took it up: schedule, pitch mode, nose wheel; the gear lever is the supervisor's (FlightGear copies /controls/gear/gear-down into the model every frame, over what the laws write)
                 fset("gear/gear-cmd-norm", 0);

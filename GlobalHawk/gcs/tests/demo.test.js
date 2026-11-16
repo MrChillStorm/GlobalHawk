@@ -166,4 +166,41 @@ function rig() {
   r.cmd('start');
   assert.strictEqual(r.cmd('reposition', { lat: s2.lat, lon: s2.lon, heading: s2.h }).reason, 'the plan has begun');
 }
+// holds on a taxi item: the aircraft stops at each, says so, and goes on only when its id is cleared (docs/PLAN.md, "Hold points and clearances")
+{
+  const r = rig();
+  const hp = copy(plan);
+  hp.items[0].holds = [{ i: 0, id: 'H1', name: 'hold short of runway 04', kind: 'runway' }, { i: 1, id: 'H2', name: 'line up on runway 04', kind: 'takeoff' }];
+  assert.strictEqual(r.cmd('plan', hp).status, 'accepted');
+  const bad = copy(hp);
+  bad.items[0].holds[1].i = 0;
+  assert.ok(/point 1 is a hold already/.test(r.cmd('plan', bad).reason));
+  assert.strictEqual(r.cmd('clear', { id: 'H1' }).reason, 'the plan has not begun');
+  assert.strictEqual(r.cmd('start').status, 'accepted');
+  assert.strictEqual(r.cmd('clear', { id: 'H1' }).reason, 'the aircraft is not waiting at a hold');
+  assert.ok(r.until((s) => s.wait, 120), 'it stops at the first hold');
+  let s = JSON.parse(r.d.down['/gcs/down/status']);
+  assert.deepStrictEqual(Object.keys(s.wait).sort(), ['id', 'kind', 'name', 'since']);
+  assert.strictEqual(s.wait.id, 'H1');
+  assert.strictEqual(s.doing, 'HOLD: waiting for clearance: hold short of runway 04');
+  assert.ok(s.alerts.some((a) => a.id === 'hold' && a.level === 'advisory' && /way is clear/.test(a.action)));
+  const lat = r.d.get('/position/latitude-deg');
+  s = r.run(30);
+  assert.strictEqual(r.d.get('/position/latitude-deg'), lat, 'it does not move');
+  assert.strictEqual(s.wait.id, 'H1', 'it waits as long as it is not cleared');
+  assert.strictEqual(r.cmd('clear', { id: 'H2' }).reason, 'the aircraft is waiting at H1 (hold short of runway 04), not H2');
+  assert.strictEqual(r.cmd('clear', {}).reason, 'clear: a hold is cleared by its id');
+  assert.strictEqual(r.cmd('clear', { id: 'H1' }, 'OTHER').reason, 'T has control');
+  assert.strictEqual(r.cmd('clear', { id: 'H1' }).status, 'accepted');
+  assert.strictEqual(JSON.parse(r.d.down['/gcs/down/status']).wait, null, 'gone at once');
+  assert.strictEqual(r.cmd('clear', { id: 'H1' }).reason, 'the aircraft is not waiting at a hold', 'a hold is cleared once');
+  assert.ok(r.until((x) => x.wait && x.wait.id === 'H2', 120), 'and stops at the second, the item\'s last point');
+  s = JSON.parse(r.d.down['/gcs/down/status']);
+  assert.strictEqual(s.kind, 'taxi', 'the takeoff does not begin by itself');
+  r.run(20);
+  assert.strictEqual(JSON.parse(r.d.down['/gcs/down/status']).kind, 'taxi');
+  assert.strictEqual(r.cmd('clear', { id: 'H2' }).status, 'accepted');
+  assert.strictEqual(JSON.parse(r.d.down['/gcs/down/status']).kind, 'takeoff', 'cleared for takeoff');
+  assert.deepStrictEqual(r.d.events.map((e) => e[1]).filter((e) => /^(holding|cleared)/.test(e)), ['holding at H1: hold short of runway 04', 'cleared at H1', 'holding at H2: line up on runway 04', 'cleared at H2']);
+}
 console.log('demo OK');

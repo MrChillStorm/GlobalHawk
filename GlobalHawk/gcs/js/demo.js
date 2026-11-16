@@ -54,6 +54,7 @@
       this.contingency = null;
       this.noSite = false;
       this.holder = null;
+      this.waiting = null; // the hold of a taxi item the aircraft is stopped at, until the station clears it (docs/PLAN.md, "Hold points and clearances")
       this.stations = {};
       this.linkLast = null;
       this.linkLost = false;
@@ -241,6 +242,21 @@
       this.s.lat = p[0];
       this.s.lon = p[1];
       this.s.hdg = ((a.heading % 360) + 360) % 360;
+      return null;
+    }
+
+    /** Clear the hold the aircraft is waiting at, by its id (as the aircraft's: fdm/onboard.py). */
+    cmd_clear(a) {
+      if (!this.started) return 'the plan has not begun';
+      if (!this.waiting) return 'the aircraft is not waiting at a hold';
+      const w = this.waiting;
+      if (typeof a.id !== 'string' || !a.id) return 'clear: a hold is cleared by its id';
+      if (a.id !== w.id) return `the aircraft is waiting at ${w.id} (${w.name}), not ${a.id}`;
+      const it = this.item();
+      this.waiting = null;
+      this.note(`cleared at ${w.id}`);
+      if (this.k === it.points.length - 1) this.next();
+      else this.k += 1;
       return null;
     }
 
@@ -441,15 +457,26 @@
         wantHdg = c.deg;
         bank = 0;
         const last = this.k === it.points.length - 1;
-        s.tas += clamp((last ? Math.min(it.speed || 15, Math.max(3, c.ft / 20)) : it.speed || 15) * KT - s.tas, -4 * dt, 3 * dt);
-        s.hdg += clamp(wrap(wantHdg - s.hdg), -25 * dt, 25 * dt);
-        s.flow = 450;
-        s.thr = 0.1;
-        if (c.ft < 25) {
-          if (last) {
-            s.tas = 0;
-            this.next();
-          } else this.k += 1;
+        const hold = (it.holds || []).find((h) => h.i === this.k) || null;
+        if (this.waiting) {
+          s.tas = 0; // stopped at a hold: nothing moves until the station clears it
+          s.flow = 450;
+          s.thr = 0.1;
+        } else {
+          s.tas += clamp((last || hold ? Math.min(it.speed || 15, Math.max(3, c.ft / 20)) : it.speed || 15) * KT - s.tas, -4 * dt, 3 * dt);
+          s.hdg += clamp(wrap(wantHdg - s.hdg), -25 * dt, 25 * dt);
+          s.flow = 450;
+          s.thr = 0.1;
+          if (c.ft < (hold ? 12 : 25)) {
+            if (hold) {
+              s.tas = 0;
+              this.waiting = { i: hold.i, id: hold.id, name: hold.name, kind: hold.kind, since: Math.round(s.t * 10) / 10 };
+              this.note(`holding at ${hold.id}: ${hold.name}`);
+            } else if (last) {
+              s.tas = 0;
+              this.next();
+            } else this.k += 1;
+          }
         }
       } else if (it.kind === 'takeoff') {
         s.ground = s.tas < 140 * KT;
@@ -562,7 +589,7 @@
       const kind = !this.started ? null : this.done ? 'done' : it.kind;
       const st = {
         t: Math.round(s.t * 10) / 10, plan: this.plan ? this.plan.id || null : null, started: this.started, item: this.started ? this.i : null, kind,
-        doing: !this.plan ? 'no plan' : !this.started ? 'waiting for start' : '', next: '', off_plan: this.off, contingency: this.contingency, alerts: [], hold: null, leg: null,
+        doing: !this.plan ? 'no plan' : !this.started ? 'waiting for start' : '', next: '', off_plan: this.off, contingency: this.contingency, alerts: [], hold: null, wait: this.waiting ? { id: this.waiting.id, name: this.waiting.name, kind: this.waiting.kind, since: this.waiting.since } : null, leg: null,
         link_lost: this.linkLost, link_age: this.linkLast === null ? null : Math.round((s.t - this.linkLast) * 10) / 10, link_timeout: this.linkTimeout,
         control: { holder: this.holder, offer_to: null, stations: Object.keys(this.stations).sort().map((n) => ({ name: n, age: Math.round((s.t - this.stations[n]) * 10) / 10 })) },
         manual: 0, target: { alt_ft: Math.round(this.target()), kcas: Math.round(this.get('/velocities/airspeed-kt') * 10) / 10 }, events: this.events.slice(-6),
@@ -574,7 +601,7 @@
         const nxt = rest.length ? 'then ' + after[rest[0]] : 'end of plan';
         const togo = (p) => (geo.course([s.lat, s.lon], p).ft / NM).toFixed(0);
         if (kind === 'done') st.doing = 'plan complete';
-        else if (kind === 'taxi') [st.doing, st.next] = [s.tas < 0.5 ? 'stopped' : `taxi, ${Math.round(s.tas / KT)} kt`, nxt];
+        else if (kind === 'taxi') [st.doing, st.next] = this.waiting ? [`HOLD: waiting for clearance: ${this.waiting.name}`, "on the station's clearance"] : [s.tas < 0.5 ? 'stopped' : `taxi, ${Math.round(s.tas / KT)} kt`, nxt];
         else if (kind === 'takeoff') [st.doing, st.next] = ['takeoff', nxt];
         else if (kind === 'route') {
           const head = { climb: 'climb to', descent: 'descend to', level: 'level at' }[this.vmode || 'level'];
@@ -597,6 +624,7 @@
       }
       if (s.failed) add('engine', 'warning', 'ENGINE FAILED', `${it && it.kind === 'engine_out' && it.site ? `Gliding to ${it.site.name} by itself. Clear the runway. ` : ''}No restart is modelled`);
       if (this.noSite && s.failed) add('no-site', 'warning', 'NO RUNWAY IN REACH', 'Gliding towards the nearest');
+      if (this.waiting) add('hold', 'advisory', `WAITING FOR CLEARANCE: ${this.waiting.name}`, 'Check that the way is clear, then clear it');
       if (this.linkLost) add('link', 'caution', 'LINK WAS LOST', 'The aircraft left its plan when the link was lost. Resume when ready');
       const navs = NAVS.reduce((n, k) => n + this.nav[k], 0);
       if (navs < 2) add('nav-one', 'caution', navs === 1 ? 'ONE NAVIGATOR LEFT' : 'NO NAVIGATOR', 'No cross-check of attitude is left. Switch one on');

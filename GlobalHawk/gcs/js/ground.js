@@ -28,6 +28,8 @@
   const TAXI_KT = 15;
   const TURN_KT = 8;
   const TAKEOFF_FT = 9000;
+  const HOLD_SHORT_FT = 200; // a runway is entered where the route comes within this of its centreline: the hold is there (docs/PLAN.md, "Hold points and clearances")
+  const HOLD_NEAR_FT = 150; // a hold placed by hand takes the route's nearest point within this of the click
   const COURSE_TOL = 10; // degrees: a runway end is the plan's when its heading is this near the plan's course
 
   /** Distance in feet; the longitude scaled at the first point's latitude, as fdm/groundplan.py does (so that routes agree to the node). */
@@ -321,9 +323,96 @@
 
   const taxiItem = (points) => ({ kind: 'taxi', points, speed: TAXI_KT, turn_speed: TURN_KT, stop: true });
 
+  /** The taxiway nearest a point: the name of the nearest arc that is not a runway's, or '' (a hold's name says where). */
+  function taxiwayNear(net, p) {
+    let best = '';
+    let bd = Infinity;
+    for (const [a, b, k] of net.arcs) {
+      if (net.isRw[k] || !net.names[k]) continue;
+      const q = net.nodes[a];
+      const r = net.nodes[b];
+      const n = [(r[0] - q[0]) * FT, (r[1] - q[1]) * FT * Math.cos(rad(q[0]))];
+      const m = [(p[0] - q[0]) * FT, (p[1] - q[1]) * FT * Math.cos(rad(q[0]))];
+      const w = Math.max(0, Math.min(1, (m[0] * n[0] + m[1] * n[1]) / Math.max(n[0] * n[0] + n[1] * n[1], 1e-9)));
+      const d = Math.hypot(m[0] - w * n[0], m[1] - w * n[1]);
+      if (d < bd) {
+        bd = d;
+        best = net.names[k];
+      }
+    }
+    return bd < 400 ? best : '';
+  }
+
+  /** The runways as strips, once each: the end whose designator sorts first stands for the pair. */
+  function strips(net) {
+    return net.runways.filter((r) => {
+      const o = reciprocal(r.n);
+      return !o || !net.end(o) || r.n < o;
+    }).map((r) => {
+      const o = net.end(reciprocal(r.n));
+      return { rw: r, name: o ? `${r.n}/${o.n}` : r.n, len: net.runwayLength(r) };
+    });
+  }
+
+  /**
+   * The holds of a taxi route: a hold short where the route first comes within HOLD_SHORT_FT of a runway's centreline (the point is put into the route where it is not one),
+   * for every runway it enters or crosses; none for a runway it begins on. entering: the runway end the route is to line up on (named by its end, "22L", not by the pair).
+   * Returns { points, holds: [{ i, kind: 'runway', name }] }, ids not yet given.
+   */
+  function runwayHolds(net, points, entering) {
+    const found = [];
+    for (const st of strips(net)) {
+      const fr = st.rw.frame;
+      const len = st.len === null ? 0 : st.len;
+      const inside = (a, l) => Math.abs(l) <= HOLD_SHORT_FT && a >= -HOLD_SHORT_FT && a <= len + HOLD_SHORT_FT;
+      const q = points.map((p) => fr.to(p));
+      if (inside(q[0][0], q[0][1])) continue; // it begins on the runway: leaving it is no hold
+      for (let k = 0; k + 1 < points.length; k++) {
+        const [a0, l0] = q[k];
+        const [a1, l1] = q[k + 1];
+        const side = Math.sign(l0);
+        if (Math.abs(l0) <= HOLD_SHORT_FT || side * l1 > HOLD_SHORT_FT) continue; // not outside to begin with, or the leg stays outside
+        const w = (side * l0 - HOLD_SHORT_FT) / (side * l0 - side * l1); // where the leg comes to the line (a leg may cross the whole strip)
+        if (!inside(a0 + w * (a1 - a0), HOLD_SHORT_FT * side)) continue;
+        found.push({ k, w, name: entering && entering.n === st.rw.n || entering && entering.n === reciprocal(st.rw.n) ? entering.n : st.name });
+        break;
+      }
+    }
+    found.sort((x, y) => x.k - y.k || x.w - y.w);
+    const out = points.map((p) => p);
+    const holds = [];
+    let shift = 0;
+    for (const f of found) {
+      const a = points[f.k];
+      const b = points[f.k + 1];
+      const at = f.w < 0.02 ? 0 : f.w > 0.98 ? 1 : f.w; // on a point already: no new one
+      let i;
+      if (at === 0) i = f.k + shift;
+      else if (at === 1) i = f.k + 1 + shift;
+      else {
+        out.splice(f.k + 1 + shift, 0, pt([a[0] + at * (b[0] - a[0]), a[1] + at * (b[1] - a[1])]));
+        i = f.k + 1 + shift;
+        shift += 1;
+      }
+      const tw = taxiwayNear(net, out[i]);
+      holds.push({ i, kind: 'runway', name: `hold short of runway ${f.name}${tw ? ' at ' + tw : ''}` });
+    }
+    return { points: out, holds };
+  }
+
+  /** Ids H1, H2, ... in the order of the plan's items and their holds. */
+  function numberHolds(items) {
+    let n = 0;
+    for (const it of items) {
+      if (it.kind !== 'taxi' || !it.holds) continue;
+      it.holds.sort((a, b) => a.i - b.i);
+      for (const h of it.holds) h.id = `H${++n}`;
+    }
+  }
+
   /**
    * The plan with taxi routes laid from the stand: a taxi item before the takeoff (the takeoff then begins at the line-up point) and one after the landing.
-   * opts: { stand: [lat, lon], heading, exit (node index or null) }. The result is { plan, out, in, notes } or { error }.
+   * opts: { stand: [lat, lon], heading, exit (node index or null), holds (false: none; the default derives them) }. The result is { plan, out, in, notes } or { error }.
    */
   function addTaxi(net, plan, opts) {
     const p = clone(plan);
@@ -349,7 +438,15 @@
       out.rw = rw.n;
       out.length_ft = routeFt([stand].concat(out.points));
       if (ti > 0 && items[ti - 1].kind === 'taxi') items.splice(ti - 1, 1);
-      items.splice(items.indexOf(t), 0, taxiItem(out.points));
+      const item = taxiItem(out.points);
+      if (opts.holds !== false) {
+        const rh = runwayHolds(net, out.points, rw);
+        item.points = rh.points;
+        item.holds = rh.holds.concat([{ i: rh.points.length - 1, kind: 'takeoff', name: `lined up on runway ${rw.n}: cleared for takeoff` }]);
+        out.points = item.points;
+        out.holds = item.holds;
+      }
+      items.splice(items.indexOf(t), 0, item);
       const rl = net.runwayLength(rw);
       if (rl !== null && out.lineup_ft + len > rl) notes.push(`the takeoff run from the line-up point (${Math.round(len).toLocaleString('en-US')} ft) is longer than runway ${rw.n} (${Math.round(rl).toLocaleString('en-US')} ft)`);
     }
@@ -362,11 +459,84 @@
       if (into.error) return { error: into.error };
       into.rw = rw.n;
       into.length_ft = routeFt(into.points);
-      items.splice(items.indexOf(land) + 1, 0, taxiItem(into.points));
+      const item = taxiItem(into.points);
+      if (opts.holds !== false) {
+        const rh = runwayHolds(net, into.points, null);
+        item.points = rh.points;
+        if (rh.holds.length) item.holds = rh.holds;
+        into.points = item.points;
+        into.holds = rh.holds;
+      }
+      items.splice(items.indexOf(land) + 1, 0, item);
     }
+    numberHolds(items);
+    if (out && out.holds) out.holds = items.find((it) => it.kind === 'taxi' && it.holds && it.holds.some((h) => h.kind === 'takeoff')).holds;
+    if (into && into.holds && into.holds.length) into.holds = items[items.length - 1].kind === 'taxi' ? items[items.length - 1].holds || [] : [];
     p.items = items;
     p.field = Object.assign({}, p.field, { stand: pt(stand), stand_heading: Math.round((opts.heading || 0) * 10) / 10 });
     return { plan: p, out, in: into, notes };
+  }
+
+  /**
+   * A hold placed by the operator: on the taxi item `n` of the plan, at the point of its route nearest `at` (within HOLD_NEAR_FT; a point is put into the route where there
+   * is none within 20 ft). Returns { plan } or { error }.
+   */
+  function addHold(net, plan, n, at) {
+    const p = clone(plan);
+    const it = p.items[n];
+    if (!it || it.kind !== 'taxi') return { error: 'that is not a taxi route' };
+    if ((it.holds || []).length >= 16) return { error: 'a taxi route carries at most 16 holds' };
+    let best = null;
+    for (let k = 0; k + 1 < it.points.length; k++) {
+      const a = it.points[k];
+      const b = it.points[k + 1];
+      const v = [(b[0] - a[0]) * FT, (b[1] - a[1]) * FT * Math.cos(rad(a[0]))];
+      const m = [(at[0] - a[0]) * FT, (at[1] - a[1]) * FT * Math.cos(rad(a[0]))];
+      const w = Math.max(0, Math.min(1, (m[0] * v[0] + m[1] * v[1]) / Math.max(v[0] * v[0] + v[1] * v[1], 1e-9)));
+      const d = Math.hypot(m[0] - w * v[0], m[1] - w * v[1]);
+      if (!best || d < best.d) best = { k, w, d };
+    }
+    if (it.points.length === 1) {
+      const d = dist(at, it.points[0]);
+      best = d <= HOLD_NEAR_FT ? { k: 0, w: 0, d } : null;
+    }
+    if (!best || best.d > HOLD_NEAR_FT) return { error: `click within ${HOLD_NEAR_FT} ft of a taxi route` };
+    let i;
+    if (it.points.length === 1) i = 0;
+    else {
+      const a = it.points[best.k];
+      const b = it.points[best.k + 1];
+      const len = dist(a, b);
+      if (best.w * len < 20) i = best.k;
+      else if ((1 - best.w) * len < 20) i = best.k + 1;
+      else {
+        it.points.splice(best.k + 1, 0, pt([a[0] + best.w * (b[0] - a[0]), a[1] + best.w * (b[1] - a[1])]));
+        i = best.k + 1;
+        for (const h of it.holds || []) if (h.i >= i) h.i += 1; // the holds after the new point move up one
+      }
+    }
+    if ((it.holds || []).some((h) => h.i === i)) return { error: 'there is a hold there already' };
+    const tw = net ? taxiwayNear(net, it.points[i]) : '';
+    const ids = new Set();
+    for (const x of p.items) for (const h of x.holds || []) ids.add(h.id);
+    let m = 1;
+    while (ids.has(`H${m}`)) m++;
+    it.holds = (it.holds || []).concat([{ i, id: `H${m}`, name: tw ? `hold on ${tw}` : 'hold', kind: 'point' }]).sort((x, y) => x.i - y.i);
+    return { plan: p };
+  }
+
+  /** The plan without one hold (the point stays in the route). */
+  function removeHold(plan, id) {
+    const p = clone(plan);
+    for (const it of p.items) {
+      if (!it.holds) continue;
+      const k = it.holds.findIndex((h) => h.id === id);
+      if (k < 0) continue;
+      it.holds.splice(k, 1);
+      if (!it.holds.length) delete it.holds;
+      return { plan: p };
+    }
+    return { error: 'no such hold' };
   }
 
   function routeFt(points) {
@@ -394,7 +564,7 @@
   }
 
   const api = {
-    Net, Frame, check, reciprocal, dist, taxiOut, taxiIn, addTaxi, removeTaxi, routeFt,
+    Net, Frame, check, reciprocal, dist, taxiOut, taxiIn, addTaxi, removeTaxi, routeFt, runwayHolds, addHold, removeHold, taxiwayNear, HOLD_SHORT_FT,
     MIN_SPOT_RADIUS_M, STAND_PICK_FT, FILLET_FT, LINEUP_FT, ROLLOUT_FT, TAXI_KT, TURN_KT, RUNWAY_ARC,
   };
   if (node) module.exports = api;

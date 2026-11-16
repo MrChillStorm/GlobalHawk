@@ -37,6 +37,7 @@ ALERTS = {
     'fuel-low': 'Less than the low-fuel figure is left.',
     'aoa': 'The angle of attack has been over its limit for half a second. The alert stands for at least 3 s and until the angle is back under the limit. The aircraft brings it back by itself: its pitch command is held down.',
     'aoa-near': 'The angle of attack has been within 0.15 deg of its limit for 3 s: closer than the approach is flown (0.2 to 0.3 deg under it at light weights). It clears when the angle has been more than 0.25 deg under the limit for 2 s.',
+    'hold': 'The aircraft has stopped at a hold of its taxi route (a stop short of a runway it is to enter or cross, the line-up point for the takeoff, or a place the operator chose) and waits. It goes on only when the station in control clears that hold, by name, in the Clearances panel; it does not creep, and it stays where it is if the link is lost.',
     'manual': 'The aircraft is being flown by hand from the station in control.',
     'off-plan': 'The aircraft has left its plan on a command (go to, hold, return home) and stays off it until Resume plan.',
     'no-link': 'This station is not hearing the aircraft. Raised by the station itself.',

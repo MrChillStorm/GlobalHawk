@@ -57,6 +57,12 @@ label in a menu or dialog; the second is what the operator sees.
 | c-home | Return home | Flies the lost-link route and lands. |
 | c-timeout | Link time-out… | Sets how long the aircraft may go without hearing the station in control before it leaves its plan for the lost-link route. Only the station in control; the aircraft takes 10 to 300 s. |
 
+## Clearances
+
+| id | Shown as | What it does |
+|---|---|---|
+| clr-go | Clear… | Appears with the Clearances panel when the plan's taxi routes have holds. Clears the hold the aircraft is waiting at, after you confirm; it names the hold and says what the aircraft will do next. Only the station in control; it is off when the aircraft is not waiting at a hold. |
+
 ## Station
 
 | id | Shown as | What it does |
@@ -98,6 +104,8 @@ label in a menu or dialog; the second is what the operator sees.
 | gd-exit | Leave the runway by | The exit the taxi route in follows: by default the first past where the rollout ends. |
 | gd-taxi | Taxi routes from the stand | Lays a taxi route out from the stand to the runway's start (the takeoff then begins at the line-up point) and one in from the runway's exit to the stand, over the airport's taxiways. Replaces the plan's taxi items. |
 | gd-untaxi | Remove them | Takes the taxi routes out of the plan again; the takeoff begins where the runway does. |
+| gd-holds-on | hold points | When ticked, the taxi routes the editor lays have holds: a stop short of every runway the route enters or crosses and one at the line-up point for the takeoff. Each is cleared by you, one by one, from the Clearances panel. |
+| gd-addhold | Add a hold… | Then click a taxi route in the plan: the aircraft will stop there and wait for your clearance. The × beside a hold in the list takes it out. |
 | ed-send | Send plan… | Prepares the edited plan for sending; it then goes on Send, as any command. |
 | ed-save | Save as file | Keeps the edited plan as a file. |
 | ed-close | Close | Leaves the editor; what was not sent is dropped. |

@@ -129,6 +129,12 @@
           <button id="c-timeout" title="how long the aircraft goes without hearing the station in control before it leaves its plan for the lost-link route">Link time-out…</button>
         </div>
       </div>
+      <div id="clr" hidden>
+        <h2>Clearances</h2>
+        <div id="clr-list" class="small"></div>
+        <div id="clr-state" class="mid"></div>
+        <div class="row"><button id="clr-go" title="clear the aircraft to go on from the hold it is waiting at; you are asked to confirm">Clear…</button></div>
+      </div>
       <h2>Camera</h2>
       <div id="camera">
         <div id="cam-state" class="small"></div>
@@ -174,6 +180,9 @@
             <button id="gd-taxi" title="lay a taxi route out from the stand to the runway and one in from the runway to the stand, over the airport's taxiways">Taxi routes from the stand</button>
             <button id="gd-untaxi" title="take the taxi routes out of the plan again">Remove them</button>
           </div>
+          <label class="tick" title="the routes stop at each runway they enter or cross and at the line-up point, and go on only when you clear that hold"><input type="checkbox" id="gd-holds-on" checked> hold points: stop at runways and for takeoff, cleared one by one</label>
+          <div id="gd-holds" class="small"></div>
+          <div class="row"><button id="gd-addhold" title="then click a taxi route: the aircraft stops there and waits for your clearance">Add a hold…</button></div>
           <div id="gd-info" class="small"></div>
         </div>
         <div id="ed-warn"></div>

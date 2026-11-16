@@ -103,6 +103,12 @@ def cases(plan):
         p = json.loads(json.dumps(plan))
         p.update(kw)
         return p
+    H = lambda i, id_='H1', name='hold short of runway 04', kind='runway': dict(i=i, id=id_, name=name, kind=kind)
+
+    def withholds(holds):
+        p = json.loads(json.dumps(plan))
+        p['items'][0]['holds'] = holds
+        return p
     route = plan['items'][1]
     far = [[10.0, 20.0, 5000.0], [10.0, 120.0, 5000.0]]
     return [
@@ -132,6 +138,11 @@ def cases(plan):
         # the ground map and the move to a stand (docs/PLAN.md, "Starting at a stand from the planner"): the refusals only; an accepted reposition would move the aircraft
         ('CHECK', 'airport', {}), ('CHECK', 'airport', dict(icao='12')), ('CHECK', 'airport', dict(icao='ZZZZ')), ('OTHER', 'airport', dict(icao='ZZZZ')),      # any station may ask
         ('CHECK', 'reposition', {}), ('CHECK', 'reposition', dict(lat=95.0, lon=0.0, heading=0.0)), ('CHECK', 'reposition', dict(lat=60.0, lon=25.0)), ('OTHER', 'reposition', dict(lat=60.0, lon=25.0, heading=0.0)),
+        # the holds of a taxi item (docs/PLAN.md, "Hold points and clearances"): one good, then the faults the check names
+        ('CHECK', 'plan', withholds([H(0)])), ('CHECK', 'plan', withholds([H(0), H(0, 'H2')])), ('CHECK', 'plan', withholds([H(5)])), ('CHECK', 'plan', withholds([H(0, '')])),
+        ('CHECK', 'plan', withholds([H(0, 'H' * 25)])), ('CHECK', 'plan', withholds([H(0, kind='gate')])), ('CHECK', 'plan', withholds([H(0, kind='takeoff')])), ('CHECK', 'plan', withholds('runway')),
+        ('CHECK', 'plan', withholds([H(0), H(1, 'H1')])), ('CHECK', 'plan', withholds([H(0, name='')])), ('CHECK', 'plan', withholds([H(0.5)])), ('CHECK', 'plan', withholds([H(0), H(1, 'H2', kind='takeoff')])),
+        ('CHECK', 'clear', {}), ('CHECK', 'clear', dict(id='H1')), ('OTHER', 'clear', dict(id='H1')),
         ('CHECK', 'plan', plan),
     ]
 

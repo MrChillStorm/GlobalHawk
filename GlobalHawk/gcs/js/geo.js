@@ -46,6 +46,31 @@
     return out;
   }
 
+  /** The holds of a plan's taxi items, placed: [{ id, name, kind, at: [lat, lon], course }], course the way the route goes there (deg). */
+  function planHolds(items, from) {
+    const out = [];
+    let last = from || null;
+    for (const it of items || []) {
+      let end = null;
+      if (it.kind === 'taxi') {
+        const pts = (last ? [last] : []).concat(it.points);
+        const off = last ? 1 : 0;
+        for (const h of it.holds || []) {
+          const k = h.i + off;
+          if (!pts[k]) continue;
+          const c = k > 0 ? course(pts[k - 1], pts[k]).deg : pts[k + 1] ? course(pts[k], pts[k + 1]).deg : 0;
+          out.push({ id: h.id, name: h.name, kind: h.kind, at: [pts[k][0], pts[k][1]], course: c });
+        }
+        end = it.points[it.points.length - 1];
+      } else if (it.kind === 'takeoff') end = it.end;
+      else if (it.kind === 'route') end = it.points[it.points.length - 1];
+      else if (it.kind === 'land') end = it.aim;
+      else if (it.kind === 'hold') end = it.centre;
+      if (end) last = end;
+    }
+    return out;
+  }
+
   /**
    * A local flight from where the aircraft stands, lined up on a runway: takeoff straight ahead, a box to the
    * right at boxFt (default 3,000 ft over the fix; js/plancheck.js localBoxFt picks the height the aircraft can climb to and come down from), and a landing back on the same runway; the lost-link route goes straight to that landing.
@@ -104,7 +129,7 @@
     return [centre[0] + dn / FT_PER_DEG, centre[1] + de / (FT_PER_DEG * Math.cos(rad(centre[0])))];
   }
 
-  const api = { FT_PER_DEG, NM, course, along, turn, planLines, localPlan, toScreen, fromScreen };
+  const api = { FT_PER_DEG, NM, course, along, turn, planLines, planHolds, localPlan, toScreen, fromScreen };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else (root.GCS = root.GCS || {}).geo = api;
 })(typeof window !== 'undefined' ? window : globalThis);

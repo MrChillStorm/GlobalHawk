@@ -14,6 +14,10 @@
   const MAX_LEG_NM = 3000;
   const MIN_FINAL_NM = 8;
   const MAX_DESCENT_DEG = 6; // a route leg goes down no more steeply than this on average (the aircraft's own check; docs/PLAN.md, "The aircraft refuses what it cannot fly")
+  const MAX_HOLDS = 16; // holds a taxi item may carry (docs/PLAN.md, "Hold points and clearances")
+  const HOLD_KINDS = ['runway', 'takeoff', 'junction', 'point'];
+  const HOLD_ID_MAX = 24;
+  const HOLD_NAME_MAX = 80;
   const MIN_GRADIENT_LEG_NM = 2; // shorter legs are not judged on their slope
   const num = (x) => typeof x === 'number' && Number.isFinite(x);
   const g = (x) => String(Number(Number(x).toPrecision(6))); // as Python's %g prints
@@ -26,6 +30,30 @@
     return null;
   }
 
+  const text = (x, n) => typeof x === 'string' && x.length >= 1 && x.length <= n;
+
+  /** null if a taxi item's holds are good, or the first fault as text; ids: the ids met so far in this list of items. */
+  function holdsFault(holds, npts, w, ids) {
+    if (!Array.isArray(holds) || holds.length > MAX_HOLDS) return `${w} (taxi): holds is not a list of at most ${MAX_HOLDS}`;
+    const used = new Set();
+    for (let n = 0; n < holds.length; n++) {
+      const h = holds[n];
+      const x = `${w} (taxi) hold ${n + 1}`;
+      if (!h || typeof h !== 'object' || Array.isArray(h)) return `${x}: not a hold`;
+      const i = h.i;
+      if (!num(i) || i !== Math.floor(i) || !(i >= 0 && i < npts)) return `${x}: i is not a whole number from 0 to ${npts - 1}`;
+      if (used.has(i)) return `${x}: point ${i + 1} is a hold already`;
+      used.add(i);
+      if (!text(h.id, HOLD_ID_MAX)) return `${x}: id is not text of 1 to ${HOLD_ID_MAX} characters`;
+      if (ids.has(h.id)) return `${x}: id ${h.id} is used twice in the plan`;
+      ids.add(h.id);
+      if (!text(h.name, HOLD_NAME_MAX)) return `${x}: name is not text of 1 to ${HOLD_NAME_MAX} characters`;
+      if (!HOLD_KINDS.includes(h.kind)) return `${x}: kind ${JSON.stringify(h.kind === undefined ? null : h.kind)} is not runway, takeoff, junction or point`;
+      if (h.kind === 'takeoff' && i !== npts - 1) return `${x}: a takeoff hold belongs at the last point (point ${npts})`;
+    }
+    return null;
+  }
+
   function checkItems(items, what) {
     if (!Array.isArray(items) || !items.length) return `${what}: no items`;
     for (let n = 0; n < items.length; n++) {
@@ -33,6 +61,7 @@
       const isItem = it && typeof it === 'object' && !Array.isArray(it);
       if (!isItem || !KINDS.includes(it.kind)) return `${what} item ${n + 1}: unknown kind ${JSON.stringify(isItem ? (it.kind === undefined ? null : it.kind) : it)}`;
     }
+    const ids = new Set();
     for (let n = 0; n < items.length; n++) {
       const it = items[n];
       const w = `${what} item ${n + 1}`;
@@ -45,6 +74,10 @@
           if (bad) return bad;
         }
         for (let m = 0; m + 1 < pts.length; m++) if (geo.course(pts[m], pts[m + 1]).ft / geo.NM > MAX_LEG_NM) return `${w} (${kind}): a leg longer than ${MAX_LEG_NM} nmi`;
+        if (kind === 'taxi' && it.holds !== undefined && it.holds !== null) {
+          const bad = holdsFault(it.holds, pts.length, w, ids);
+          if (bad) return bad;
+        }
         if (kind === 'route') {
           for (let m = 0; m + 1 < pts.length; m++) {
             const ft = geo.course(pts[m], pts[m + 1]).ft;

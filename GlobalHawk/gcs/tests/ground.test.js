@@ -136,7 +136,7 @@ function r6(x) {
   const t = p.items[1];
   near(fr.to(t.start)[0], 450, 0.5, 'the takeoff begins at the line-up point');
   near(geo.course(t.start, t.end).ft, geo.course(demoplan.items[1].start, demoplan.items[1].end).ft, 120, 'and is as long as it was');
-  assert.deepStrictEqual(p.items[0], { kind: 'taxi', points: r.out.points, speed: 15, turn_speed: 8, stop: true });
+  assert.deepStrictEqual(p.items[0], { kind: 'taxi', points: r.out.points, speed: 15, turn_speed: 8, stop: true, holds: r.out.holds });
   assert.deepStrictEqual(p.items[4].points, r.in.points);
   assert.strictEqual(r.out.rw, '04');
   assert.strictEqual(r.in.rw, '04');
@@ -169,6 +169,71 @@ function r6(x) {
   const wrongWay = clone(demoplan);
   wrongWay.items[1].end = geo.along(wrongWay.items[1].start, 100, 9000);
   assert.ok(/not on a runway of XDM1/.test(G.addTaxi(net, wrongWay, { stand }).error), 'a takeoff along no runway');
+}
+
+// the holds (docs/PLAN.md, "Hold points and clearances")
+{
+  const r = G.addTaxi(net, demoplan, { stand, heading: 310, exit: null });
+  const taxi = r.plan.items.filter((i) => i.kind === 'taxi');
+  const hs = taxi[0].holds;
+  assert.deepStrictEqual(hs.map((h) => [h.id, h.kind]), [['H1', 'runway'], ['H2', 'takeoff']], 'a hold short of the runway, then the takeoff clearance');
+  assert.strictEqual(hs[0].name, 'hold short of runway 04 at B', 'the runway entered, the taxiway it is entered by');
+  assert.strictEqual(hs[1].name, 'lined up on runway 04: cleared for takeoff');
+  assert.strictEqual(hs[1].i, taxi[0].points.length - 1, 'the takeoff hold is at the line-up point, the last');
+  const q = fr.to(taxi[0].points[hs[0].i]);
+  near(Math.abs(q[1]), 200, 1.5, 'the hold short is 200 ft from the centreline');
+  near(q[0], 20, 2, '... on the straight into the runway');
+  assert.ok(taxi[0].points.slice(0, hs[0].i).every((p) => Math.abs(fr.to(p)[1]) > 200), 'and the route is outside it until there');
+  assert.strictEqual(taxi[1].holds, undefined, 'the taxi in leaves the runway: no hold');
+  assert.deepStrictEqual(r.in.holds, []);
+  assert.strictEqual(plancheck.checkPlan(r.plan), null, 'the aircraft takes the holds');
+  // the route is the route without holds, with the hold's point put in
+  const plain = G.addTaxi(net, demoplan, { stand, heading: 310, exit: null, holds: false });
+  assert.strictEqual(plain.plan.items[0].holds, undefined, 'none asked for: none');
+  assert.strictEqual(plain.plan.items[0].points.length + 1, taxi[0].points.length);
+  assert.ok(G.routeFt(plain.plan.items[0].points) - G.routeFt(taxi[0].points) < 0.5 && G.routeFt(taxi[0].points) - G.routeFt(plain.plan.items[0].points) < 0.5, 'and as long');
+  // again: the same
+  assert.deepStrictEqual(G.addTaxi(net, r.plan, { stand, heading: 310, exit: null }).plan.items, r.plan.items, 'idempotent with holds');
+  // taxiway names for the hold
+  assert.strictEqual(G.taxiwayNear(net, net.nodes[0]), 'A');
+  // the operator's: on the first taxi item, on A, 1,000 ft along it
+  const onA = net.nodes.findIndex((p) => Math.abs(fr.to(p)[0] - 20) < 1 && Math.abs(fr.to(p)[1] - 300) < 1);
+  assert.ok(onA >= 0);
+  const a0 = r.plan.items[0].points[0];
+  const click = geo.along(a0, geo.course(a0, r.plan.items[0].points[1]).deg, 150);
+  const add = G.addHold(net, r.plan, 0, click);
+  assert.ok(!add.error, add.error);
+  const t0 = add.plan.items[0];
+  assert.strictEqual(t0.holds.length, 3);
+  assert.deepStrictEqual(t0.holds.map((h) => h.i), [1, 3, 8], 'the point is put into the route and the holds after it move up one');
+  assert.strictEqual(t0.holds[0].id, 'H3', 'the first id not used');
+  assert.strictEqual(t0.holds[0].kind, 'point');
+  assert.strictEqual(t0.holds[0].name, 'hold on A');
+  assert.strictEqual(t0.points.length, r.plan.items[0].points.length + 1);
+  assert.strictEqual(plancheck.checkPlan(add.plan), null);
+  assert.deepStrictEqual(t0.holds.slice(1).map((h) => h.name), hs.map((h) => h.name), 'the others are as they were');
+  assert.ok(/there already/.test(G.addHold(net, add.plan, 0, click).error), 'not twice');
+  assert.ok(/within 150 ft/.test(G.addHold(net, r.plan, 0, geo.along(a0, 0, 2000)).error), 'a click far from the route');
+  assert.ok(/not a taxi route/.test(G.addHold(net, r.plan, 2, click).error));
+  const gone = G.removeHold(add.plan, 'H3');
+  assert.deepStrictEqual(gone.plan.items[0].holds.map((h) => h.id), ['H1', 'H2']);
+  assert.deepStrictEqual(G.removeHold(G.removeHold(gone.plan, 'H1').plan, 'H2').plan.items[0].holds, undefined, 'no holds left: no list');
+  assert.ok(/no such hold/.test(G.removeHold(gone.plan, 'H9').error));
+  // a route that crosses a runway: a hold short of it, and none for the runway it leaves
+  const m = JSON.parse(JSON.stringify(D));
+  const f = new G.Frame([34.9, -117.88], 40);
+  const cross = [f.ll(6500, 450), f.ll(6500, 300), f.ll(6500, -300), f.ll(6500, -450)]; // across runway 04/22 at 6,500 ft, from the right side to the left
+  const rh = G.runwayHolds(net, cross, null);
+  assert.strictEqual(rh.holds.length, 1);
+  assert.strictEqual(rh.holds[0].name, 'hold short of runway 04/22 at A', 'a runway crossed is named by its pair (and the taxiway nearest)');
+  near(Math.abs(f.to(rh.points[rh.holds[0].i])[1]), 200, 1.5, 'a hold 200 ft out on the side it comes from');
+  assert.strictEqual(rh.points.length, 5);
+  const back = G.runwayHolds(net, cross.slice().reverse(), null);
+  assert.strictEqual(back.holds.length, 1, 'and the same from the other side');
+  assert.ok(f.to(back.points[back.holds[0].i])[1] < -150, 'on its own side');
+  assert.strictEqual(G.runwayHolds(net, [f.ll(6500, 0), f.ll(6500, 300)], null).holds.length, 0, 'a route that begins on the runway leaves it without a hold');
+  assert.strictEqual(G.runwayHolds(net, [f.ll(6500, 450), f.ll(6500, 300)], null).holds.length, 0, 'one that stays outside needs none');
+  void m;
 }
 
 // a taxiway that meets the runway at a slant: no turn is laid, the route is followed to the centreline and on down it

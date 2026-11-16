@@ -4,6 +4,7 @@ for the JSBSim checks. It only writes ap/* properties and the gear command.
 
 A plan is a list of items:
     dict(kind='taxi', points=[(lat, lon), ...], speed=15, turn_speed=8)       ends stopped at the last point if stop=True
+        holds=[dict(i=3, id='H1', name='hold short of runway 22L', kind='runway')]      stops at points[i] and waits until clear(): the leg that ends there is taken as a last leg, which the laws stop at
     dict(kind='takeoff', start=(lat, lon), end=(lat, lon), elev=2300)
     dict(kind='route', points=[(lat, lon, alt_ft), ...])
     dict(kind='land', fix=(lat, lon), aim=(lat, lon), elev=2300)
@@ -67,6 +68,7 @@ GA_EXTRA_FT = 3.0 * NM         # ... flies back downwind to this far behind the 
 GA_CIRCUIT_ABOVE_FT = 1000.0   # ft: the circuit is flown this far above the height the final is begun from, and the last leg comes down to it
 GA_GEAR_UP_FT = 150.0          # ft of height gained, climbing: the gear comes up (the landing puts it down again where the circuit levels at the fix)
 GA_FREE_FT = 1000.0            # ft of height gained: the go-around's own speed and rates are given up to the route's
+NOSE_FT = 24.6                 # ft: the aircraft's nose (FlightGear's position for it, and the station's) is this far ahead of the centre of gravity the laws steer (GlobalHawk.xml: VRP x 0, CG x 294.98 in)
 GA_MAX = 2                     # missed approaches the manager flies; the next one it holds over the fix and asks the operator
 
 
@@ -100,6 +102,7 @@ class Manager:
         self.f, self.plan = f, list(plan)
         self.lost_link, self.sites = lost_link, list(sites)
         self.contingency, self.alert = None, None
+        self.waiting = None             # the hold of a taxi item the aircraft is stopped at, until the station clears it (docs/PLAN.md, "Hold points and clearances")
         self.i, self.k, self.frame, self.done = 0, 0, 0, False
         self.events = []
         self.missed = 0                 # the missed approaches this manager has flown
@@ -304,11 +307,32 @@ class Manager:
                 f['ap/thrust-mode'] = 4
                 self.next()
 
+    def clear(self):
+        """The station clears the hold the aircraft is stopped at: the taxi goes on to the next leg, or, if the hold was the item's last point, the item is over."""
+        w, it = self.waiting, self.plan[self.i]
+        self.waiting = None
+        self.note('cleared at %s' % w['id'])
+        pts = it['_pts']
+        if self.k == len(pts) - 2:
+            self.next()
+        else:
+            self.k += 1
+            self.leg(pts[self.k], pts[self.k + 1])
+            self.taxi_leg(it)
+
     def taxi_leg(self, it):
         """Tell the laws what the taxi leg is: the last one, or ends in a bend of so many degrees (they work out the speed from the way to go)."""
         f, pts = self.f, it['_pts']
         last = self.k == len(pts) - 2
+        hold = self.k in {h['i'] for h in it.get('holds') or []}
+        last = last or hold                                 # a leg that ends at a hold is a last leg: the laws stop at its end
+        if hold:
+            a, b = pts[self.k], pts[self.k + 1]
+            c, d = course(a, b)
+            back = min(NOSE_FT, d / 2.0)                    # the leg is shortened by the nose's reach: it is the nose that stops short of the hold point, not the centre of gravity
+            self.leg(a, (b[0] - back * math.cos(math.radians(c)) / FT_PER_DEG, b[1] - back * math.sin(math.radians(c)) / (FT_PER_DEG * math.cos(math.radians(b[0])))))
         f['ap/tx-last'] = 1 if last else 0
+        f['ap/tx-stop'] = 1 if hold or it.get('stop', True) else 0
         if not last:
             f['ap/tx-bend-deg'] = abs(turn(course(pts[self.k], pts[self.k + 1])[0], course(pts[self.k + 1], pts[self.k + 2])[0]))
 
@@ -457,12 +481,19 @@ class Manager:
             return
         if kind == 'taxi':
             pts = it['_pts']
+            if self.waiting is not None:
+                return                                      # stopped at a hold: nothing moves until clear()
             if f['ap/tx-leg'] == 1:                         # the laws: the next leg is to be taken
                 self.k += 1
                 self.leg(pts[self.k], pts[self.k + 1])
                 self.taxi_leg(it)
-            elif f['ap/tx-done'] == 1:                      # the laws: the item is over
-                self.next()
+            elif f['ap/tx-done'] == 1:                      # the laws: the item (or the leg to a hold) is over
+                hold = {h['i']: h for h in it.get('holds') or []}.get(self.k)
+                if hold is None:
+                    self.next()
+                else:
+                    self.waiting = dict(hold, since=f['simulation/sim-time-sec'])
+                    self.note('holding at %s: %s' % (hold['id'], hold['name']))
         elif kind == 'takeoff':
             if f['ap/tk-done'] == 1:                            # the laws took it up: schedule, pitch mode, nose wheel (and the gear in the model: in FlightGear its command is the lever's, which is the supervisor's to move)
                 f['gear/gear-cmd-norm'] = 0

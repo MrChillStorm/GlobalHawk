@@ -8,7 +8,7 @@
   'use strict';
   const G = root.GCS;
   const geo = G.geo;
-  const COL = { plan: '#c9d1d9', active: '#ff4fd8', lost: '#ffb000', preview: '#3fd0ff', site: '#7ee787', grid: '#1c2530', text: '#9aa7b4', own: '#ffffff', trail: '#5b6b7a', camera: '#39ff14' };
+  const COL = { plan: '#c9d1d9', active: '#ff4fd8', lost: '#ffb000', preview: '#3fd0ff', site: '#7ee787', grid: '#1c2530', text: '#9aa7b4', own: '#ffffff', trail: '#5b6b7a', camera: '#39ff14', hold: '#bb7799' };
 
   class MapView {
     constructor(canvas) {
@@ -173,9 +173,38 @@
       x.fillText(text, q[0] + (dx === undefined ? 8 : dx), q[1] + (dy === undefined ? -8 : dy));
     }
 
-    plan(plan, colour, dash, labels) {
+    /** The holds of a plan's taxi items: a bar across the route and the id, the one the aircraft waits at ringed and thick. */
+    holds(plan, waiting) {
+      const x = this.ctx;
+      const from = plan.field && plan.field.stand ? plan.field.stand : null;
+      for (const h of geo.planHolds(plan.items, from)) {
+        const q = this.project(h.at);
+        const on = waiting && waiting.id === h.id;
+        const a = this.project(geo.along(h.at, h.course + 90, 90));
+        const b = this.project(geo.along(h.at, h.course - 90, 90));
+        x.save();
+        x.strokeStyle = COL.hold;
+        x.lineWidth = on ? 5 : 3;
+        x.lineCap = 'butt';
+        x.beginPath();
+        x.moveTo(a[0], a[1]);
+        x.lineTo(b[0], b[1]);
+        x.stroke();
+        if (on) {
+          x.lineWidth = 2;
+          x.beginPath();
+          x.arc(q[0], q[1], 13, 0, 2 * Math.PI);
+          x.stroke();
+        }
+        x.restore();
+        this.label(h.at, `${h.id}${h.kind === 'takeoff' ? ' takeoff' : ''}`, COL.hold, 10, on ? -16 : -8);
+      }
+    }
+
+    plan(plan, colour, dash, labels, withHolds) {
       if (!plan) return;
       const from = plan.field && plan.field.stand ? plan.field.stand : null;
+      if (withHolds) this.holds(plan, this.data && this.data.status ? this.data.status.wait : null);
       for (const l of geo.planLines(plan.items, from)) {
         this.line(l.points, colour, l.kind === 'route' ? 2 : 1.5, dash);
         if (l.kind === 'route') {
@@ -261,7 +290,7 @@
           if (first) this.label(first, d.lostLabel || 'lost-link route', COL.lost, 8, 16);
           if (this.own && first && d.airborne) this.line([this.own.p, first], COL.lost, 1, [2, 6]);
         }
-        this.plan(p, COL.plan, null, true);
+        this.plan(p, COL.plan, null, true, true);
         for (const s of p.sites || []) {
           const q = this.project(s.aim);
           x.strokeStyle = COL.site;
@@ -320,7 +349,7 @@
       // a command being prepared
       const pv = d.preview;
       if (pv) {
-        if (pv.plan) this.plan(pv.plan, COL.preview, [6, 4], false);
+        if (pv.plan) this.plan(pv.plan, COL.preview, [6, 4], false, true);
         if (pv.line) this.line(pv.line, COL.preview, 2, [6, 4]);
         if (pv.circle) this.circle(pv.circle.centre, pv.circle.radiusFt, COL.preview, 2, [6, 4]);
         if (pv.label && pv.at) this.label(pv.at, pv.label, COL.preview);

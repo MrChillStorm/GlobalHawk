@@ -6,7 +6,7 @@
 (function (root) {
   'use strict';
   const MIN_DISTANCE = 90;
-  const EXISTING = { plan: '#c9d1d9', active: '#ff4fd8', lost: '#ffb000', preview: '#3fd0ff', site: '#7ee787', trail: '#5b6b7a', camera: '#39ff14' };
+  const EXISTING = { plan: '#c9d1d9', active: '#ff4fd8', lost: '#ffb000', preview: '#3fd0ff', site: '#7ee787', trail: '#5b6b7a', camera: '#39ff14', hold: '#bb7799' };
   const LAYERS = {
     airspace: '#ff5252',
     airports: '#ffe08a',

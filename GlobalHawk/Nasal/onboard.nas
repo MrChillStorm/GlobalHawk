@@ -22,6 +22,10 @@ var crosswind_limit_kt = func(w) {
         if (w <= XW_WEIGHT[i]) return XW_LIMIT[i - 1] + (XW_LIMIT[i] - XW_LIMIT[i - 1]) * (w - XW_WEIGHT[i - 1]) / (XW_WEIGHT[i] - XW_WEIGHT[i - 1]);
     return XW_LIMIT[size(XW_LIMIT) - 1];
 };
+var MAX_HOLDS = 16;                   # holds a taxi item may carry (docs/PLAN.md, "Hold points and clearances")
+var HOLD_KINDS = ["runway", "takeoff", "junction", "point"];
+var HOLD_ID_MAX = 24;
+var HOLD_NAME_MAX = 80;
 var REPOSITION_MAX_KT = 2.0;           # the aircraft moves to a new place on the ground only when it stands (docs/GCS.md, `reposition`)
 var AIRPORT_MAX_BYTES = 100000;        # what the station takes over the link for an airport (fdm/airportdata.py)
 var FUEL_LOW_LB = 1500.0;              # assumed: about an hour and a half at cruise
@@ -55,6 +59,32 @@ var point_fault = func(p, n, what) {
     return nil;
 };
 
+var is_text = func(x, n) { return typeof(x) == "scalar" and !is_num(x) and size(x) >= 1 and size(x) <= n; };
+
+# nil if a taxi item's holds are good, or the first fault as text. ids: the ids met so far in this list of items
+var holds_fault = func(holds, npts, w, ids) {
+    if (typeof(holds) != "vector" or size(holds) > MAX_HOLDS) return sprintf("%s (taxi): holds is not a list of at most %d", w, MAX_HOLDS);
+    var used = {};
+    forindex (var n; holds) {
+        var h = holds[n];
+        var x = sprintf("%s (taxi) hold %d", w, n + 1);
+        if (typeof(h) != "hash") return x ~ ": not a hold";
+        var i = opt(h, "i", nil);
+        if (!is_num(i) or i != math.floor(i) or i < 0 or i >= npts) return sprintf("%s: i is not a whole number from 0 to %d", x, npts - 1);
+        if (contains(used, i ~ "")) return sprintf("%s: point %d is a hold already", x, i + 1);
+        used[i ~ ""] = 1;
+        var id = opt(h, "id", nil);
+        if (!is_text(id, HOLD_ID_MAX)) return sprintf("%s: id is not text of 1 to %d characters", x, HOLD_ID_MAX);
+        if (contains(ids, id)) return sprintf("%s: id %s is used twice in the plan", x, id);
+        ids[id] = 1;
+        if (!is_text(opt(h, "name", nil), HOLD_NAME_MAX)) return sprintf("%s: name is not text of 1 to %d characters", x, HOLD_NAME_MAX);
+        var kind = opt(h, "kind", nil);
+        if (!among(kind, HOLD_KINDS)) return sprintf("%s: kind %s is not runway, takeoff, junction or point", x, JSON.encode(kind));
+        if (kind == "takeoff" and i != npts - 1) return sprintf("%s: a takeoff hold belongs at the last point (point %d)", x, npts);
+    }
+    return nil;
+};
+
 # nil if a list of plan items can be flown, or the first fault as text
 var check_items = func(items, what) {
     if (typeof(items) != "vector" or size(items) == 0) return what ~ ": no items";
@@ -63,6 +93,7 @@ var check_items = func(items, what) {
         if (typeof(it) != "hash" or !among(opt(it, "kind", nil), KINDS))
             return sprintf("%s item %d: unknown kind %s", what, n + 1, JSON.encode(typeof(it) == "hash" ? opt(it, "kind", nil) : it));
     }
+    var ids = {};
     forindex (var n; items) {
         var it = items[n];
         var w = sprintf("%s item %d", what, n + 1);
@@ -76,6 +107,10 @@ var check_items = func(items, what) {
             }
             for (var m = 0; m + 1 < size(pts); m += 1)
                 if (course(pts[m], pts[m + 1])[1] / NM > MAX_LEG_NM) return sprintf("%s (%s): a leg longer than %.0f nmi", w, kind, MAX_LEG_NM);
+            if (kind == "taxi" and opt(it, "holds", nil) != nil) {
+                var bad = holds_fault(it.holds, size(pts), w, ids);
+                if (bad != nil) return bad;
+            }
             if (kind == "route")
                 for (var m = 0; m + 1 < size(pts); m += 1) {
                     var ft = course(pts[m], pts[m + 1])[1];
@@ -430,6 +465,18 @@ var Onboard = {
             me.started = 1;
             return nil;
         },
+        # clear the hold the aircraft is waiting at (docs/PLAN.md, "Hold points and clearances"): by id, so that a clearance meant for one is never taken for another
+        "clear": func(a) {
+            var m = me.started ? me.mgr : nil;
+            if (m == nil) return "the plan has not begun";
+            if (m.waiting == nil) return "the aircraft is not waiting at a hold";
+            var w = m.waiting;
+            var id = opt(a, "id", nil);
+            if (!is_text(id, 1000000)) return "clear: a hold is cleared by its id";
+            if (cmp(id, w.id) != 0) return sprintf("the aircraft is waiting at %s (%s), not %s", w.id, w.name, id);
+            m.clear();
+            return nil;
+        },
         "airport": func(a) {
             var got = airport_message(opt(a, "icao", nil));
             if (got[1] != nil) return got[1];
@@ -609,7 +656,7 @@ var Onboard = {
         s["item"] = nil; s["kind"] = nil;
         s["doing"] = me.plan == nil ? "no plan" : "waiting for start";
         s["next"] = ""; s["off_plan"] = me.off; s["contingency"] = nil;
-        s["hold"] = nil; s["leg"] = nil;
+        s["hold"] = nil; s["wait"] = nil; s["leg"] = nil;
         s["link_lost"] = fget("ap/link-lost") ? JSON.T : JSON.F;
         s["link_age"] = fget("ap/link-monitor") ? round_to(fget("ap/link-age-sec"), 1) : nil;
         s["link_timeout"] = fget("ap/link-timeout-sec");
@@ -623,6 +670,7 @@ var Onboard = {
                 var r = opt(it, "radius", nil);
                 s["hold"] = { lat: it.centre[0], lon: it.centre[1], radius_ft: math.floor((r != nil ? r : m.hold_radius()) + 0.5), alt_ft: it.alt };
             }
+            if (m.waiting != nil) s["wait"] = { id: m.waiting.id, name: m.waiting.name, kind: m.waiting.kind, since: round_to(m.waiting.since, 1) };
             if (kind != "done" and kind != "hold" and kind != "go_around")
                 s["leg"] = [[fget("ap/leg-lat0-deg"), fget("ap/leg-lon0-deg")], [fget("ap/leg-lat1-deg"), fget("ap/leg-lon1-deg")]];
             if (kind == "engine_out") {
@@ -711,6 +759,7 @@ var Onboard = {
                     add("crosswind", "caution", "CROSSWIND OVER LIMIT", sprintf("The wind across the final is %.0f kt; the landing holds its limits to %.0f kt at %.0f lb. Go around or divert if it is not to be accepted", xw, lim, fget("inertia/weight-lbs")));
             }
         }
+        if (m != nil and m.waiting != nil) add("hold", "advisory", "WAITING FOR CLEARANCE: " ~ m.waiting.name, "Check that the way is clear, then clear it");
         if (fget("limits/overstress")) add("structure", "warning", "STRUCTURAL LIMIT PASSED", "Land");
         if (fget("ap/link-lost")) add("link", "caution", "LINK WAS LOST", "The aircraft left its plan when the link was lost. Resume when ready");
         if (fget("nav/miscompare")) add("nav-disagree", "caution", "NAVIGATORS DISAGREE", "The aircraft is using the one that matches its turn rate. Land");
@@ -732,6 +781,7 @@ var Onboard = {
         if (kind == "done") return ["plan complete", ""];
         if (fget("ap/manual") > 0)
             return ["FLOWN BY HAND (" ~ (fget("ap/manual") == 1 ? "protected" : "direct") ~ ")", "automatic when commanded, or if the link is lost"];
+        if (kind == "taxi" and m.waiting != nil) return ["HOLD: waiting for clearance: " ~ m.waiting.name, "on the station's clearance"];
         if (kind == "taxi") return [fget("ap/ground-speed-kt") < 0.3 ? "stopped" : sprintf("taxi, %.0f kt", fget("ap/ground-speed-kt")), nxt];
         if (kind == "takeoff") return ["takeoff", nxt];
         if (kind == "route") {

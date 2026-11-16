@@ -17,6 +17,9 @@ MAX_LEG_NM = 3000.0
 MIN_FINAL_NM = 8.0
 REPOSITION_MAX_KT = 2.0            # the aircraft moves to a new place on the ground only when it stands (docs/GCS.md, `reposition`)
 MAX_DESCENT_DEG = 6.0               # a route leg goes down no more steeply than this on average: the glide path is 4.45 deg, the flown descent 2.5 to 3.5 (docs/PLAN.md, "The aircraft refuses what it cannot fly")
+MAX_HOLDS = 16                     # holds a taxi item may carry (docs/PLAN.md, "Hold points and clearances")
+HOLD_KINDS = ('runway', 'takeoff', 'junction', 'point')
+HOLD_ID_MAX, HOLD_NAME_MAX = 24, 80
 MIN_GRADIENT_LEG_NM = 2.0          # shorter legs are not judged on their slope: the turns at their ends take most of them
 FPS_PER_KT = 1.6878099
 
@@ -64,6 +67,39 @@ def _point(p, n, what):
     return None
 
 
+def _text(x, n):
+    return isinstance(x, str) and 1 <= len(x) <= n
+
+
+def holds_fault(holds, npts, w, ids):
+    """None if a taxi item's holds are good, or the first fault as text. ids: the ids met so far in this list of items (an id is used once)."""
+    if not isinstance(holds, list) or len(holds) > MAX_HOLDS:
+        return '%s (taxi): holds is not a list of at most %d' % (w, MAX_HOLDS)
+    used = set()
+    for n, h in enumerate(holds):
+        x = '%s (taxi) hold %d' % (w, n + 1)
+        if not isinstance(h, dict):
+            return '%s: not a hold' % x
+        i = h.get('i')
+        if not _num(i) or i != math.floor(i) or not 0 <= i < npts:
+            return '%s: i is not a whole number from 0 to %d' % (x, npts - 1)
+        if i in used:
+            return '%s: point %d is a hold already' % (x, i + 1)
+        used.add(i)
+        if not _text(h.get('id'), HOLD_ID_MAX):
+            return '%s: id is not text of 1 to %d characters' % (x, HOLD_ID_MAX)
+        if h['id'] in ids:
+            return '%s: id %s is used twice in the plan' % (x, h['id'])
+        ids.add(h['id'])
+        if not _text(h.get('name'), HOLD_NAME_MAX):
+            return '%s: name is not text of 1 to %d characters' % (x, HOLD_NAME_MAX)
+        if h.get('kind') not in HOLD_KINDS:
+            return '%s: kind %s is not runway, takeoff, junction or point' % (x, json.dumps(h.get('kind'), separators=(',', ':')))
+        if h['kind'] == 'takeoff' and i != npts - 1:
+            return '%s: a takeoff hold belongs at the last point (point %d)' % (x, npts)
+    return None
+
+
 def check_items(items, what):
     """None if a list of plan items can be flown, or the first fault as text."""
     if not isinstance(items, list) or not items:
@@ -71,6 +107,7 @@ def check_items(items, what):
     for n, it in enumerate(items):
         if not isinstance(it, dict) or it.get('kind') not in KINDS:
             return '%s item %d: unknown kind %s' % (what, n + 1, json.dumps(it.get('kind') if isinstance(it, dict) else it, separators=(',', ':')))
+    ids = set()
     for n, it in enumerate(items):
         w = '%s item %d' % (what, n + 1)
         kind = it['kind']
@@ -85,6 +122,10 @@ def check_items(items, what):
             for a, b in zip(pts[:-1], pts[1:]):
                 if MM.course(a, b)[1] / MM.NM > MAX_LEG_NM:
                     return '%s (%s): a leg longer than %.0f nmi' % (w, kind, MAX_LEG_NM)
+            if kind == 'taxi' and it.get('holds') is not None:
+                bad = holds_fault(it['holds'], len(pts), w, ids)
+                if bad:
+                    return bad
             if kind == 'route':
                 for m, (a, b) in enumerate(zip(pts[:-1], pts[1:])):
                     ft, drop = MM.course(a, b)[1], a[2] - b[2]
@@ -273,6 +314,22 @@ class Onboard:
         self.mgr = MM.Manager(f, items, lost_link=lost, sites=sites)
         f['ap/engaged'] = 1
         self.started = True
+        return None
+
+    def cmd_clear(self, a):
+        """Clear the hold the aircraft is waiting at (docs/PLAN.md, "Hold points and clearances"): by id, so that a clearance meant for one is never taken for another."""
+        m = self.mgr if self.started else None
+        if m is None:
+            return 'the plan has not begun'
+        if m.waiting is None:
+            return 'the aircraft is not waiting at a hold'
+        w = m.waiting
+        id_ = a.get('id')
+        if not isinstance(id_, str) or not id_:
+            return 'clear: a hold is cleared by its id'
+        if id_ != w['id']:
+            return 'the aircraft is waiting at %s (%s), not %s' % (w['id'], w['name'], id_)
+        m.clear()
         return None
 
     def cmd_airport(self, a):
@@ -489,7 +546,7 @@ class Onboard:
         m = self.mgr if self.started else None
         s = dict(t=round(f['simulation/sim-time-sec'], 1), plan=self.plan.get('id') if self.plan else None, started=self.started,
                  item=None, kind=None, doing='no plan' if self.plan is None else 'waiting for start', next='', off_plan=self.off,
-                 contingency=None, alerts=[], hold=None, leg=None, link_lost=bool(f['ap/link-lost']),
+                 contingency=None, alerts=[], hold=None, wait=None, leg=None, link_lost=bool(f['ap/link-lost']),
                  link_age=round(f['ap/link-age-sec'], 1) if f['ap/link-monitor'] else None, link_timeout=f['ap/link-timeout-sec'])
         if m:
             it = m.plan[min(m.i, len(m.plan) - 1)]
@@ -503,6 +560,9 @@ class Onboard:
             if kind == 'engine_out':
                 s['site'] = it.get('site', {}).get('name')
                 s['surplus_ft'] = round(it.get('surplus', 0.0))
+        if m and getattr(m, 'waiting', None):
+            w = m.waiting
+            s['wait'] = dict(id=w['id'], name=w['name'], kind=w['kind'], since=round(w['since'], 1))
         s['alerts'] = self.alerts(m)
         now = f['simulation/sim-time-sec']
         s['control'] = dict(holder=self.holder, offer_to=self.offer[0] if self.offer else None,
@@ -577,6 +637,8 @@ class Onboard:
                 xw = abs(-f['ap/wind-north-filt-fps'] * math.sin(c) + f['ap/wind-east-filt-fps'] * math.cos(c)) / FPS_PER_KT
                 if xw > lim:
                     add('crosswind', 'caution', 'CROSSWIND OVER LIMIT', 'The wind across the final is %.0f kt; the landing holds its limits to %.0f kt at %.0f lb. Go around or divert if it is not to be accepted' % (xw, lim, f['inertia/weight-lbs']))
+        if m and getattr(m, 'waiting', None):
+            add('hold', 'advisory', 'WAITING FOR CLEARANCE: ' + m.waiting['name'], 'Check that the way is clear, then clear it')
         if f['limits/overstress']:
             add('structure', 'warning', 'STRUCTURAL LIMIT PASSED', 'Land')
         if f['ap/link-lost']:
@@ -608,6 +670,8 @@ class Onboard:
         if f['ap/manual'] > 0:
             return 'FLOWN BY HAND (%s)' % ('protected' if f['ap/manual'] == 1 else 'direct'), 'automatic when commanded, or if the link is lost'
         if kind == 'taxi':
+            if getattr(m, 'waiting', None):
+                return 'HOLD: waiting for clearance: %s' % m.waiting['name'], 'on the station\'s clearance'
             return ('stopped' if f['ap/ground-speed-kt'] < 0.3 else 'taxi, %.0f kt' % f['ap/ground-speed-kt']), nxt
         if kind == 'takeoff':
             return 'takeoff', nxt

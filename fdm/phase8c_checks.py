@@ -159,6 +159,26 @@ def descent_cases(plan):
     return out
 
 
+def hold_cases(plan):
+    """Plans whose taxi item has holds (docs/PLAN.md, "Hold points and clearances"): good ones and each fault the check names."""
+    H = lambda i, id_='H1', name='hold short of runway 04', kind='runway': dict(i=i, id=id_, name=name, kind=kind)
+    cases = [None, [], [H(0)], [H(1, kind='takeoff')], [H(0), H(1, 'H2', kind='takeoff')], [H(0, kind='junction'), H(1, 'H2', kind='point')],
+             'runway', {'i': 0}, [H(0), H(0, 'H2')], [H(2)], [H(-1)], [H(0.5)], [H(None)], [dict(H(0), i='0')], [H(0, '')], [H(0, 'x' * 25)], [H(0, 'x' * 24)], [H(0, 7)], [H(0), H(1, 'H1')],
+             [H(0, name='')], [H(0, name='n' * 81)], [H(0, name='n' * 80)], [H(0, kind='gate')], [H(0, kind=None)], [H(0, kind='takeoff')], [H(0), 5], [[H(i, 'H%d' % i, kind='point') for i in range(2)]],
+             [dict(i=0, id='H1', name='x')], [dict(id='H1', name='x', kind='point')], [H(i % 2, 'H%d' % i) for i in range(17)]]
+    out = []
+    for h in cases:
+        p = copy.deepcopy(plan)
+        if h is not None:
+            p['items'][0]['holds'] = h
+        out.append(p)
+    p = copy.deepcopy(plan)                                 # the same id in the lost-link route's taxi item: checked per list of items
+    p['lost_link'].insert(0, dict(kind='taxi', points=[[34.9, -117.88], [34.91, -117.88]], holds=[H(0)]))
+    p['items'][0]['holds'] = [H(0)]
+    out.append(p)
+    return out
+
+
 def ports():
     plan = json.load(open(PLAN))
     rng = random.Random(8)
@@ -175,6 +195,12 @@ def ports():
     got = [OB.check_plan(p) for _, _, p in extra]
     wrong = ['%s: %s' % (name, g) for (name, refused, _), g in zip(extra, got) if (g is not None) != refused or (refused and 'does not come down more steeply than 6 deg' not in (g or ''))]
     add('C2b', 'the plan check refuses a leg that goes down over 6 deg and nothing else', not wrong, '5.9 deg, a climb and a leg under 2 nmi accepted; 6.1, 7 and 8.3 deg and the lost-link route\'s steep leg refused with the leg named%s' % ('' if not wrong else '; WRONG: ' + ' | '.join(wrong)))
+    hp = hold_cases(plan)
+    ho = [OB.check_plan(p) for p in hp]
+    ht = node("const pc = require('./js/plancheck.js'); console.log(JSON.stringify(input.map((p) => pc.checkPlan(p))));", hp)
+    hd = [(a, b) for a, b in zip(ho, ht) if a != b]
+    add('C2c', 'the plan check, ported: the holds of a taxi item, good and damaged', not hd and sum(a is not None for a in ho) >= 20 and ho[2] is None and ho[4] is None,
+        '%d plans, %d refused, the same words on %d%s' % (len(hp), sum(a is not None for a in ho), sum(a == b for a, b in zip(ho, ht)), '' if not hd else '; e.g. aircraft "%s", station "%s"' % hd[0]))
     # reach: the aircraft's planner with a stand-in for the flight model
     cases = []
     m = MM.Manager.__new__(MM.Manager)

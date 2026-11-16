@@ -147,22 +147,22 @@ def s2_python():
 NODE = r"""
 const G = require(process.argv[2] + '/js/ground.js');
 const fs = require('fs');
-const [msgPath, planPath, lat, lon, hdg] = process.argv.slice(3);
+const [msgPath, planPath, lat, lon, hdg, holds] = process.argv.slice(3);
 const net = new G.Net(JSON.parse(fs.readFileSync(msgPath)));
 const plan = JSON.parse(fs.readFileSync(planPath));
-const r = G.addTaxi(net, plan, { stand: [Number(lat), Number(lon)], heading: Number(hdg), exit: null });
+const r = G.addTaxi(net, plan, { stand: [Number(lat), Number(lon)], heading: Number(hdg), exit: null, holds: holds === '1' });
 console.log(JSON.stringify(r));
 """
 
 
-def lay(msg, plan, stand, heading):
-    """What the station's module (js/ground.js addTaxi) makes of a plan, run in node."""
+def lay(msg, plan, stand, heading, holds=False):
+    """What the station's module (js/ground.js addTaxi) makes of a plan, run in node; holds: with the holds it derives (they put points into the route: the geometry checks of S3 ask for none)."""
     with tempfile.TemporaryDirectory() as d:
         mp, pp, sp = (os.path.join(d, n) for n in ('msg.json', 'plan.json', 'run.js'))
         json.dump(msg, open(mp, 'w'))
         json.dump(plan, open(pp, 'w'))
         open(sp, 'w').write(NODE)
-        out = subprocess.run(['node', sp, os.path.abspath(GCS), mp, pp, str(stand[0]), str(stand[1]), str(heading)], capture_output=True, text=True)
+        out = subprocess.run(['node', sp, os.path.abspath(GCS), mp, pp, str(stand[0]), str(stand[1]), str(heading), '1' if holds else '0'], capture_output=True, text=True)
     if out.returncode:
         raise RuntimeError(out.stderr[-300:])
     return json.loads(out.stdout)
@@ -172,12 +172,12 @@ def s4_plans():
     """S4: the plans the station lays pass the aircraft's own check, Python's here (Nasal's in FlightGear: python3 ground_checks.py fg)."""
     demo = json.load(open(os.path.join(HERE, '..', 'GlobalHawk', 'Missions', 'demo-local.json')))
     xdm = AD.load('XDM1', [os.path.join(GCS, 'tests', 'fixtures', 'scenery')])
-    r = lay(xdm, demo, (xdm['parking'][0]['lat'], xdm['parking'][0]['lon']), xdm['parking'][0]['h'])
+    r = lay(xdm, demo, (xdm['parking'][0]['lat'], xdm['parking'][0]['lon']), xdm['parking'][0]['h'], True)
     plans = [('XDM1', r)]
     if have_efhk():
         ref = json.load(open(os.path.join(HERE, '..', 'GlobalHawk', 'Missions', 'efhk-taxi-box-taxi.json')))
         sp = GP.Net('EFHK').park[SPOT]
-        plans.append(('EFHK', lay(AD.load('EFHK'), ref, (sp['lat'], sp['lon']), sp['heading'])))
+        plans.append(('EFHK', lay(AD.load('EFHK'), ref, (sp['lat'], sp['lon']), sp['heading'], True)))
     for name, r in plans:
         if 'error' in r:
             add('S4.1', 'the station lays the taxi routes at %s' % name, False, r['error'])
@@ -203,7 +203,7 @@ def s3():
         json.dump(msg, open(mp, 'w'))
         json.dump(plan, open(pp, 'w'))
         open(sp, 'w').write(NODE)
-        out = subprocess.run(['node', sp, os.path.abspath(GCS), mp, pp, str(spot['lat']), str(spot['lon']), str(spot['heading'])], capture_output=True, text=True)
+        out = subprocess.run(['node', sp, os.path.abspath(GCS), mp, pp, str(spot['lat']), str(spot['lon']), str(spot['heading']), '0'], capture_output=True, text=True)
     if out.returncode:
         add('S3.1', 'the station\'s module runs', False, out.stderr[-300:])
         return

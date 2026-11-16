@@ -232,7 +232,7 @@
   /* ------------------------------------------------------------- preparing a command */
   function arm(cmd) {
     armed = cmd;
-    document.querySelectorAll('#commands button, #gd-place').forEach((b) => b.classList.remove('armed'));
+    document.querySelectorAll('#commands button, #gd-place, #clr-go, #gd-addhold').forEach((b) => b.classList.remove('armed'));
     if (cmd && cmd.button) cmd.button.classList.add('armed');
     $('map').classList.toggle('aim', !!(cmd && cmd.needsPoint));
     renderConfirm();
@@ -429,6 +429,8 @@
   map.onClick = (p, screen) => {
     if (pickingStand && editor) {
       pickStand(p);
+    } else if (addingHold && editor) {
+      placeHold(p);
     } else if (aiming) {
       link.camera(G.camera.point(p));
       aim(false);
@@ -612,6 +614,7 @@
     if (!editor) {
       if (rp) rpClear();
       pickingStand = false;
+      addingHold = false;
       $('map').classList.toggle('aim', !!(armed && armed.needsPoint) || aiming);
       $('rp-undo').disabled = true;
       map.data.handles = null;
@@ -744,6 +747,7 @@
   // aircraft there, and the taxi routes are laid over the taxiways into the plan being edited. Nothing here flies the aircraft: it is the plan's start.
   let ground = null; // the Net of the airport the aircraft sent
   let pickingStand = false;
+  let addingHold = false; // the next click on the map puts a hold on a taxi route
   let groundNote = ''; // what the last ground command said
   let standNote = ''; // what the stand is, in words
   let taxiNote = ''; // what the last taxi routes are
@@ -825,7 +829,7 @@
     const st = editor && editor.stand();
     if (!ground || !st) return;
     const exit = $('gd-exit').value === '' ? null : Number($('gd-exit').value);
-    const r = G.ground.addTaxi(ground, editor.plan, { stand: st.at, heading: st.heading, exit });
+    const r = G.ground.addTaxi(ground, editor.plan, { stand: st.at, heading: st.heading, exit, holds: $('gd-holds-on').checked });
     if (r.error) {
       taxiNote = 'No taxi routes: ' + r.error;
     } else {
@@ -840,6 +844,40 @@
     if (!editor) return;
     editor.setGround(G.ground.removeTaxi(ground, editor.plan));
     taxiNote = 'The taxi routes are out of the plan.';
+    renderEditor();
+  });
+  /** The operator's hold: the next click on a taxi route of the plan being edited. */
+  $('gd-addhold').addEventListener('click', () => {
+    addingHold = !addingHold;
+    if (addingHold) arm(null);
+    pickingStand = false;
+    $('gd-pick').classList.remove('armed');
+    $('gd-addhold').classList.toggle('armed', addingHold);
+    $('map').classList.toggle('aim', addingHold || !!(armed && armed.needsPoint) || aiming);
+  });
+  function placeHold(p) {
+    addingHold = false;
+    $('gd-addhold').classList.remove('armed');
+    $('map').classList.toggle('aim', !!(armed && armed.needsPoint) || aiming);
+    let got = null;
+    let why = 'there is no taxi route in the plan: lay the taxi routes first';
+    editor.plan.items.forEach((it, n) => {
+      if (got || it.kind !== 'taxi') return;
+      const r = G.ground.addHold(ground, editor.plan, n, p);
+      if (r.error) why = r.error;
+      else got = r;
+    });
+    if (got) {
+      editor.setGround(got.plan);
+      taxiNote = 'A hold is on the route.';
+    } else taxiNote = 'No hold: ' + why + '.';
+    renderEditor();
+  }
+  $('gd-holds').addEventListener('click', (e) => {
+    const id = e.target.getAttribute && e.target.getAttribute('data-rmhold');
+    if (!id || !editor) return;
+    const r = G.ground.removeHold(editor.plan, id);
+    if (r.plan) editor.setGround(r.plan);
     renderEditor();
   });
   function renderGround(plan) {
@@ -861,6 +899,14 @@
     $('gd-taxi').disabled = !(ground && st);
     const hasTaxi = plan.items.some((it) => it.kind === 'taxi');
     $('gd-untaxi').disabled = !hasTaxi;
+    const holdList = [];
+    plan.items.forEach((it) => (it.kind === 'taxi' ? it.holds || [] : []).forEach((h) => holdList.push(h)));
+    const holdsHtml = holdList.length ? holdList.map((h) => `<div><b>${esc(h.id)}</b> ${esc(h.name)} <button data-rmhold="${esc(h.id)}" title="take this hold out: the aircraft will not stop here">×</button></div>`).join('') : hasTaxi ? 'No holds on the taxi routes.' : '';
+    if ($('gd-holds').dataset.html !== holdsHtml) {
+      $('gd-holds').innerHTML = holdsHtml;
+      $('gd-holds').dataset.html = holdsHtml;
+    }
+    $('gd-addhold').disabled = !hasTaxi;
     // the exits of the landing runway, for the way in
     const land = plan.items.slice().reverse().find((it) => it.kind === 'land');
     let opts = '<option value="">the first past the rollout</option>';
@@ -881,6 +927,49 @@
     const here2 = st ? `Stand at ${st.at[0].toFixed(5)}, ${st.at[1].toFixed(5)}, facing ${compass(st.heading)}°${standNote ? ': ' + standNote : ''}.` : 'No stand yet: pick one on the map.';
     $('gd-info').textContent = [pickingStand ? 'Click a stand on the map (or anywhere, for a stand of your own).' : here2, hasTaxi ? taxiNote : taxiNote.startsWith('No taxi') ? taxiNote : ''].filter(Boolean).join(' ');
     ov.stand = st;
+  }
+
+  /* ------------------------------------------------------------- clearances: the holds of the taxi routes, cleared one at a time */
+  // The aircraft stops at each hold of a taxi item and waits (status.wait); `clear` with the hold's id lets it go on. The button is for the hold it waits at only.
+  const cleared = new Set(); // ids this station has seen cleared
+  let lastWait = null;
+  const WHAT_NEXT = {
+    runway: 'The aircraft will taxi on, onto or across the runway. Check that the runway is clear.',
+    takeoff: 'The aircraft will begin its takeoff roll at once. Check that the runway and the climb-out are clear.',
+    junction: 'The aircraft will taxi on.',
+    point: 'The aircraft will taxi on.',
+  };
+  $('clr-go').addEventListener('click', () => {
+    const w = link.status && link.status.wait;
+    if (!w) return;
+    arm({
+      name: 'clear', button: $('clr-go'), args: () => ({ id: w.id }),
+      ready: () => !!(link.status && link.status.wait && link.status.wait.id === w.id),
+      text: () => `Clear ${w.id}: ${w.name}. ${WHAT_NEXT[w.kind] || ''}`,
+      preview: () => (link.plan ? { plan: link.plan } : null),
+    });
+  });
+  function renderClearances(s, live, mine) {
+    const w = live && s ? s.wait : null;
+    if (lastWait && (!w || w.id !== lastWait.id)) cleared.add(lastWait.id);
+    lastWait = w || null;
+    const holds = [];
+    if (link.plan) link.plan.items.forEach((it, n) => (it.kind === 'taxi' ? it.holds || [] : []).forEach((h) => holds.push({ h, n })));
+    $('clr').hidden = !holds.length && !w;
+    if ($('clr').hidden) return;
+    const item = s && s.started ? s.item : -1;
+    const list = holds.map(({ h, n }) => {
+      const mark = w && w.id === h.id ? '●' : cleared.has(h.id) || n < item || (s && s.kind === 'done') ? '✓' : '○';
+      const cls = w && w.id === h.id ? 'sel' : '';
+      return `<div class="${cls}">${mark} <b>${esc(h.id)}</b> ${esc(h.name)}</div>`;
+    }).join('');
+    if ($('clr-list').dataset.html !== list) {
+      $('clr-list').innerHTML = list;
+      $('clr-list').dataset.html = list;
+    }
+    $('clr-state').textContent = w ? `Waiting at ${w.id}: ${w.name}` : s && s.started && holds.length ? 'Not waiting at a hold.' : holds.length ? 'The aircraft will stop at each hold and wait for you.' : '';
+    $('clr-go').textContent = w ? `Clear ${w.id}…` : 'Clear…';
+    $('clr-go').disabled = !(w && mine);
   }
 
   /* ------------------------------------------------------------- the height profile under the map */
@@ -1053,6 +1142,7 @@
     const live = link.state.mode === 'live' && link.lastDown !== null && Date.now() - link.lastDown < 3000 + link.latency;
     // only the station that has control commands (before anyone has it, the first to speak gets it)
     const mine = renderControl(s, live) || !!(live && s && s.control && !s.control.holder);
+    renderClearances(s, live, mine);
     $('doing').textContent = !live ? 'no connection' : s ? s.doing : 'waiting for the aircraft';
     $('doing').style.color = s && s.contingency ? 'var(--lost)' : '';
     $('next').textContent = live && s ? s.next + (s.off_plan ? `   (off the plan: ${s.off_plan})` : '') : '';
