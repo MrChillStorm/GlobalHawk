@@ -14,6 +14,8 @@ label in a menu or dialog; the second is what the operator sees.
 | fit | plan | Shows the whole plan. |
 | orient | north up / track up | Turns the map: north at the top, or the way the aircraft is going (its track) at the top. The arrow in the corner points to north. |
 | profile | the height profile | Under the map: the heights the plan asks for, dashed, and the height forecast. |
+| layers-btn | Layers | Opens and closes the panel of what the map shows: the base map, airspace, weather, airports, link range and the rest. Each layer is Off, Auto or On: Auto shows it when its reason holds and says why, in a chip under the toolbar (the cross on a chip puts that layer away until its reason has gone and come back); On and Off are yours. Escape closes the panel. |
+| declutter-btn | Declutter | Puts every optional layer away; a second click brings them back. The plan, the aircraft and the lost-link route stay. |
 
 ## Confirming a command
 
@@ -80,6 +82,7 @@ label in a menu or dialog; the second is what the operator sees.
 
 | id | Shown as | What it does |
 |---|---|---|
+| cam-click | A click on the map locks the camera there | On at the start, and kept in this browser. A click on the map that no command and no plan edit asked for locks the belly camera on what is there: an aircraft (at its height), a landing site, a route point, an airfield, or else the place itself. Switched off, only Lock on… points the camera. |
 | cam-point | Lock on… | Then click the map: the belly camera stays on that point of the ground. |
 | cam-nearest | Nearest object | Locks the belly camera on the nearest aircraft, ship or vehicle FlightGear has. |
 | cam-unlock | Unlock | Frees the camera: it stays where it is turned. |
@@ -116,6 +119,13 @@ label in a menu or dialog; the second is what the operator sees.
 | gd-untaxi | Remove them | Takes the taxi routes out of the plan again; the takeoff begins where the runway does. |
 | gd-holds-on | hold points | When ticked, the taxi routes the editor lays have holds: a stop short of every runway the route enters or crosses and one at the line-up point for the takeoff. Each is cleared by you, one by one, from the Clearances panel. |
 | gd-addhold | Add a hold… | Then click a taxi route in the plan: the aircraft will stop there and wait for your clearance. The × beside a hold in the list takes it out. |
+| rp-sites | Emergency landing sites | The route planner's panel, shown while the editor edits the route. Whether the routes found stay within glide reach of a landing site, by the aircraft's own planner's glide rule with a margin: Prefer keeps one in reach where it can, Require never leaves their reach, Off does not consider them. |
+| rp-short | count shorter strips as sites too (a last resort) | Counts a paved runway of at least 0.75 of what the landing asks as a landing site: a landing that may run off its end, used only as a last resort. |
+| rp-alt | Height | The height the routes are flown at: the best of 10,000 to 65,000 ft, or one of the heights listed. |
+| rp-wind | use the winds aloft | Plans the routes by the winds aloft (the real world's, not the simulator's); unticked, in still air. |
+| rp-go | Find routes | Works out the least-fuel, the fastest and a cautious route from where the route begins to the plan's landing, round what the layers avoid, and shows each as a card with its figures; picking a card draws it on the map. Advice only: nothing is sent. |
+| rp-use | Use this route | Puts the picked route into the plan being edited. It is sent only by Send plan…, and the aircraft checks it then. |
+| rp-undo | Undo | Gives back the route the plan had before Use this route. |
 | ed-send | Send plan… | Prepares the edited plan for sending; it then goes on Send, as any command. |
 | ed-save | Save as file | Keeps the edited plan as a file. |
 | ed-close | Close | Leaves the editor; what was not sent is dropped. |
@@ -137,6 +147,7 @@ label in a menu or dialog; the second is what the operator sees.
 
 | Label | What it does |
 |---|---|
+| Select livery... | Opens FlightGear's livery selector: White (the default), Finnish Air Force (GH-601) and Dark grey (military). The choice paints the aircraft at once and is kept for the next start. |
 | Autostart | Starts the engine: the rotors run up in about half a minute. |
 | Shutdown | Stops the engine. A plan's start is refused with the engine off. |
 | Belly camera: lock and slew... | Opens the camera's dialog. |

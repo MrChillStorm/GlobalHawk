@@ -5,6 +5,33 @@
 \ann{Route} & Edits the plan's route. \\
 \ann{Lost-link route} & Edits the route flown when the link is lost. \\
 \ann{Runway past the aiming point, ft} & How much runway there is from the aiming point to the far end. The landing's forecast is held against it; the aircraft does not read it. \\
+\ann{Airport} & The four-letter code of the airport whose scenery FlightGear has (EFHK). Filled in from the nearest field when the editor opens. \\
+\ann{Load the ground map} & Asks the aircraft for the airport's stands, taxiways and runway ends, which it reads from FlightGear's scenery; they are drawn as the Stands and Taxiways layers. Any station may ask: it moves nothing. \\
+\ann{Pick the stand\ldots{}} & Then click a stand on the map; a click anywhere else makes a stand of your own there. The stand is kept in the plan (field.stand, field.stand\_heading). \\
+\ann{facing} & The way the aircraft faces on the stand, in degrees: the airport's own for one of its stands, yours to give for any other. \\
+\ann{Place the aircraft here\ldots{}} & Moves the aircraft, stopped on the ground, to the stand (FlightGear's own reposition), on Send. Only before the plan begins. FlightGear loads the scenery at the new place first: half a minute. \\
+\ann{Runway} & The runway ends of the airport whose ground map is loaded, with heading and length: the end the flight takes off from and lands on. \\
+\ann{Plan a flight on it} & Lays a flight on the chosen runway end in place of the plan being edited: a takeoff, a box, the landing on the same runway; and, if a stand is chosen, the taxi routes from it. Refused, with the reason, when the taxiways do not reach that runway from the stand or the field's height is not known; the plan then stays as it was. \\
+\ann{Undo} & Gives back the plan as it was before the last runway, taxi route or hold change made in the editor. \\
+\ann{Destination} & The four-letter code of the airport to land at (EFTP); it may be the departure's own. FlightGear must have its scenery. \\
+\ann{Load its ground map} & Asks the aircraft for the destination airport's ground network and runway ends, as for the departure; the same airport as the departure needs no second request. Both maps are drawn by the Taxiways and Stands layers. \\
+\ann{Land on} & The destination's runway ends, each with how far the course from the departure runway to it is from the runway's own: fewer degrees is straighter in. \\
+\ann{field (ft)} & The destination's height above the sea: filled in from the airports the page knows, else yours to type. The landing needs it. \\
+\ann{Pick the stand there\ldots{}} & Then click a stand on the destination's map (a click elsewhere makes a stand of your own there). The taxi in ends there. \\
+\ann{cruise up to} & The highest the cruise may be; it is lowered to what the climb and the descent between the two allow. \\
+\ann{Plan the flight there} & Lays a flight from the runway chosen above to the destination in place of the plan being edited: the takeoff, a route, the landing with its own height; and, with the stands chosen, the taxi routes at both ends. The same airport: the same runway is the local flight, another one a circuit. Undo gives the old plan back. \\
+\ann{Leave the runway by} & The exit the taxi route in follows: by default the first past where the rollout ends. \\
+\ann{Taxi routes from the stand} & Lays a taxi route out from the stand to the runway's start (the takeoff then begins at the line-up point) and one in from the runway's exit to the stand, over the airport's taxiways. Replaces the plan's taxi items. \\
+\ann{Remove them} & Takes the taxi routes out of the plan again; the takeoff begins where the runway does. \\
+\ann{hold points} & When ticked, the taxi routes the editor lays have holds: a stop short of every runway the route enters or crosses and one at the line-up point for the takeoff. Each is cleared by you, one by one, from the Clearances panel. \\
+\ann{Add a hold\ldots{}} & Then click a taxi route in the plan: the aircraft will stop there and wait for your clearance. The $\times$ beside a hold in the list takes it out. \\
+\ann{Emergency landing sites} & The route planner's panel, shown while the editor edits the route. Whether the routes found stay within glide reach of a landing site, by the aircraft's own planner's glide rule with a margin: Prefer keeps one in reach where it can, Require never leaves their reach, Off does not consider them. \\
+\ann{count shorter strips as sites too (a last resort)} & Counts a paved runway of at least 0.75 of what the landing asks as a landing site: a landing that may run off its end, used only as a last resort. \\
+\ann{Height} & The height the routes are flown at: the best of 10,000 to 65,000 ft, or one of the heights listed. \\
+\ann{use the winds aloft} & Plans the routes by the winds aloft (the real world's, not the simulator's); unticked, in still air. \\
+\ann{Find routes} & Works out the least-fuel, the fastest and a cautious route from where the route begins to the plan's landing, round what the layers avoid, and shows each as a card with its figures; picking a card draws it on the map. Advice only: nothing is sent. \\
+\ann{Use this route} & Puts the picked route into the plan being edited. It is sent only by Send plan\ldots{}, and the aircraft checks it then. \\
+\ann{Undo} & Gives back the route the plan had before Use this route. \\
 \ann{Send plan\ldots{}} & Prepares the edited plan for sending; it then goes on Send, as any command. \\
 \ann{Save as file} & Keeps the edited plan as a file. \\
 \ann{Close} & Leaves the editor; what was not sent is dropped. \\
