@@ -18,6 +18,10 @@ SHEAR_KT=75             a wind shear on the final: from the status SHEAR_AT ('de
                         FlightGear's boundary layers carry the wind aloft (entry 1, 500 ft) and move it only 0.25 kt a second, so it is set 3 minutes before the glide; the gusts GUSTS give are the milspec
                         model's, which at low altitude are 0.1 times the wind at 20 ft whatever the severity (1.7 kt at 28 kt): too small to trouble the aircraft (the first gusty flight landed). On a missed
                         approach it eases (GUSTS_EASE_AFTER) back to SHEAR_EASE=36.4 kt from 315
+GUST_SYS=1              the gust system on (ap/gust-sys, fdm/laws.py GS_*): switched on once the plan is accepted; 0 (the default) the aircraft as it was (docs/PLAN.md, "Gusts: find out first")
+FG_GUST=a:-15@100       one discrete 1-cosine gust on the final, by JSBSim's own cosine-gust model (/fdm/jsbsim/atmosphere/cosine-gust/*: FlightGear writes JSBSim's steady wind every frame and
+                        leaves the gust alone; its /environment/wind-from-down-fps is overwritten, a first try with it did nothing): AXIS:KT@H as fdm/gustbench.py's g= (a along, positive more headwind;
+                        x across, positive from the right; v vertical, positive an updraught), begun the first time the wheel height is under H ft; FG_GUST_RISE=2 s up and down, FG_GUST_HOLD=2 s at its size
 METARWIND=31020KT       the wind at the field, from 310 at 20 kt (the METAR holds it); SPEEDUP=4 the sim's speed; DURATION the longest wait, s of real time
 FlightGear starts on the runway, the plan is sent as a station would, heartbeats go, and the telemetry is written as CSV when the flight ends. One FlightGear at a time:
 it refuses to start while one answers on port 5477. The screen must be unlocked.
@@ -45,6 +49,7 @@ KEYS = dict(
     legc=J + 'ap/leg-course-deg', psi=J + 'attitude/psi-deg', steer=J + 'fcs/steer-pos-deg', slaw=J + 'ap/steer-law', slim=J + 'ap/steer-limit',
     yawg=J + 'ap/yaw-ground-deg', rud=J + 'fcs/rudder-cmd-norm', r=J + 'velocities/r-rad_sec', vg=J + 'velocities/vg-fps',
     kcas=J + 'velocities/vc-kts', wh=J + 'aero/wheel-height-ft', phi=J + 'attitude/phi-deg', theta=J + 'attitude/theta-deg',
+    wdown=J + 'atmosphere/total-wind-down-fps', wnorth=J + 'atmosphere/total-wind-north-fps', weast=J + 'atmosphere/total-wind-east-fps', gson=J + 'ap/gs-on', gsthr=J + 'ap/gs-throttle', gssys=J + 'ap/gust-sys',
     thr=J + 'fcs/throttle-cmd-norm', thrust=J + 'engine/thrust-lbf', mains=J + 'ap/on-mains',
     wdir='/environment/wind-from-heading-deg', wspd='/environment/wind-speed-kt', lat='/position/latitude-deg', lon='/position/longitude-deg',
     hdg='/orientation/heading-deg', gtrk=J + 'ap/ground-track-deg', nz=J + 'accelerations/Nz', tm=J + 'ap/thrust-mode', thrn=J + 'ctl/throttle-norm', vscmd=J + 'ap/alt-vs-cmd-fps', altcmd=J + 'ap/alt-cmd-ft', spl=J + 'ap/spoiler-cmd', pred=J + 'ap/turn-bank-cmd-deg', xtnew=J + 'ap/turn-xt-new-ft',
@@ -163,6 +168,17 @@ async def main():
         B.post('/sim/speed-up', float(os.environ.get('SPEEDUP', '4')))
         a = await c.say('start')
         print('start:', a and a.get('status'), a and a.get('reason'), flush=True)
+        if os.environ.get('GUST_SYS', '0') == '1':
+            B.post('/fdm/jsbsim/ap/gust-sys', 1)
+            print('the gust system is on', flush=True)
+        fg_gust = os.environ.get('FG_GUST')
+        gust_t0 = None
+        if fg_gust:
+            g_axis, _, g_rest = fg_gust.partition(':')
+            g_kt, _, g_h = g_rest.partition('@')
+            g_kt, g_h = float(g_kt), float(g_h)
+            g_rise, g_hold = float(os.environ.get('FG_GUST_RISE', '2')), float(os.environ.get('FG_GUST_HOLD', '2'))
+            assert g_axis in ('a', 'x', 'v'), 'FG_GUST: the axis is a, x or v'
         rows, t_lift, t0, t_end = [], None, time.monotonic(), None
         last_beat = 0
         hold_wait = float(os.environ.get('HOLDS', '0'))
@@ -199,6 +215,23 @@ async def main():
                             waited[w['id'] + '!'] = True
                             a = await c.say('clear', dict(id=w['id']))
                             print('clear %s at %.0f s of flight: %s %s' % (w['id'], v['t'], a and a.get('status'), a and a.get('reason')), flush=True)
+                if fg_gust and gust_t0 is None and isinstance(v.get('wh'), (int, float)) and v.get('lm') == 1 and v.get('mains') == 0 and v['wh'] <= g_h:
+                    # the wind vector (north, east, down) the gust adds, from the axes: more headwind blows towards the opposite of the heading, a wind from the right towards the left, an updraught up
+                    ch_, sh_ = math.cos(math.radians(hdg)), math.sin(math.radians(hdg))
+                    if g_axis == 'a':
+                        vec = (-g_kt * ch_, -g_kt * sh_, 0.0)
+                    elif g_axis == 'x':
+                        vec = (g_kt * sh_, -g_kt * ch_, 0.0)
+                    else:
+                        vec = (0.0, 0.0, -g_kt)
+                    mag = math.sqrt(sum(x * x for x in vec))
+                    C = '/fdm/jsbsim/atmosphere/cosine-gust/'
+                    for k_, val in (('startup-duration-sec', g_rise), ('steady-duration-sec', g_hold), ('end-duration-sec', g_rise), ('magnitude-ft_sec', mag * 1.68781), ('frame', 3),
+                                    ('X-velocity-ft_sec', vec[0] / mag), ('Y-velocity-ft_sec', vec[1] / mag), ('Z-velocity-ft_sec', vec[2] / mag)):
+                        B.post(C + k_, val)
+                    B.post(C + 'start', 1)
+                    gust_t0 = time.monotonic()
+                    print('the gust (%s %+.0f kt) begins at %.0f ft of wheel height, %.0f s of flight' % (g_axis, g_kt, v['wh'], v['t']), flush=True)
                 if shear > 0 and not shear_on and v['status'].startswith(os.environ.get('SHEAR_AT', 'descend to')):
                     B.post('/environment/config/enabled', True)
                     B.post('/environment/config/boundary/entry[1]/wind-speed-kt', shear)

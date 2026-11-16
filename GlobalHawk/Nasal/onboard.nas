@@ -769,6 +769,7 @@ var Onboard = {
         var aoa = me.aoa_step(fget("ap/alpha-limit-deg") - fget("aero/alpha-deg"), fget("ap/engaged") == 1 and fget("ap/on-mains") == 0, t);
         if (aoa[0]) add("aoa", "caution", "ANGLE OF ATTACK LIMIT EXCEEDED", "The aircraft is bringing it back");
         elsif (aoa[1]) add("aoa-near", "advisory", "NEAR THE ANGLE OF ATTACK LIMIT", "The aircraft is holding it under the limit");
+        if (fget("ap/gust-alert") == 1) add("gust", "caution", "GUSTS OR WIND SHEAR ON THE FINAL", fget("ap/gust-sys") == 1 ? "The gust system is correcting" : "The gust system is off: the landing may be hard");
         if (fget("ap/manual") > 0) add("manual", "advisory", "FLOWN BY HAND: " ~ (fget("ap/manual") == 1 ? "PROTECTED" : "DIRECT, NO PROTECTIONS"));
         if (me.off != nil and (me.off == "goto" or me.off == "hold" or me.off == "home")) add("off-plan", "advisory", "OFF THE PLAN: " ~ string.uc(me.off));
         return out;

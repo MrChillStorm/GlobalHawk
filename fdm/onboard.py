@@ -654,6 +654,8 @@ class Onboard:
             add('aoa', 'caution', 'ANGLE OF ATTACK LIMIT EXCEEDED', 'The aircraft is bringing it back')
         elif near:
             add('aoa-near', 'advisory', 'NEAR THE ANGLE OF ATTACK LIMIT', 'The aircraft is holding it under the limit')
+        if f['ap/gust-alert'] == 1:
+            add('gust', 'caution', 'GUSTS OR WIND SHEAR ON THE FINAL', 'The gust system is correcting' if f['ap/gust-sys'] == 1 else 'The gust system is off: the landing may be hard')
         if f['ap/manual'] > 0:
             add('manual', 'advisory', 'FLOWN BY HAND: ' + ('PROTECTED' if f['ap/manual'] == 1 else 'DIRECT, NO PROTECTIONS'))
         if self.off in ('goto', 'hold', 'home'):

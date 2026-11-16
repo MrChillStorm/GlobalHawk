@@ -4,6 +4,7 @@
 set -e
 cd "$(dirname "$0")"
 /opt/homebrew/bin/python3 mktables.py
+/opt/homebrew/bin/python3 mkgust.py
 /opt/homebrew/bin/python3 figures.py
 tectonic -X compile ghawk_report.tex
 cp ghawk_report.pdf ../../GlobalHawk-JSBSim-model-report.pdf

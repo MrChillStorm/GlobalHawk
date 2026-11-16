@@ -81,6 +81,19 @@
   <property value="0">ap/v-level-from</property>
   <property value="150">ap/v-level-span</property>
   <property value="0">ap/v-level-sp0</property>
+  <property value="0">ap/gust-sys</property>
+  <property value="0">ap/approach-add-kt</property>
+  <property value="0">ap/approach-add-auto</property>
+  <property value="0">ap/approach-add-used</property>
+  <property value="0">ap/gs-add-lat</property>
+  <property value="0">ap/gs-on</property>
+  <property value="0">ap/gs-throttle</property>
+  <property value="0">ap/gs-detect</property>
+  <property value="-1000">ap/gs-detect-t</property>
+  <property value="0">ap/gust-alert</property>
+  <property value="0">ap/gs-flare-extra-deg</property>
+  <property value="0">ap/gs-glide-extra-deg</property>
+  <property value="0">ap/theta-speed-gs-deg</property>
   <property value="0">limits/overstress</property>
   <property value="0">limits/failed</property>
   <property value="0">limits/reset</property>
@@ -604,10 +617,94 @@
         aero/wheel-height-ft lt ap/flare-height-ft
       </test>
     </switch>
-    <fcs_function name="ap/approach-keas">
-      <description>the speed for a lift coefficient of 0.645 at this weight</description>
+    <lag_filter name="ap/gs-wind-down-filt-fps">
+      <input>atmosphere/total-wind-down-fps</input>
+      <c1>0.1</c1>
+    </lag_filter>
+    <lag_filter name="ap/gs-wind-north-filt-fps">
+      <input>atmosphere/total-wind-north-fps</input>
+      <c1>0.1</c1>
+    </lag_filter>
+    <lag_filter name="ap/gs-wind-east-filt-fps">
+      <input>atmosphere/total-wind-east-fps</input>
+      <c1>0.1</c1>
+    </lag_filter>
+    <fcs_function name="ap/gs-dw2-fps2">
+      <description>the wind's departure from its mean, squared, summed over the three axes</description>
       <function>
-        <quotient><pow><quotient><property>inertia/weight-lbs</property><value>0.413937</value></quotient><value>0.5</value></pow><value>1.68781</value></quotient>
+<sum><pow><difference><property>atmosphere/total-wind-north-fps</property><property>ap/gs-wind-north-filt-fps</property></difference><value>2</value></pow><pow><difference><property>atmosphere/total-wind-east-fps</property><property>ap/gs-wind-east-filt-fps</property></difference><value>2</value></pow><pow><difference><property>atmosphere/total-wind-down-fps</property><property>ap/gs-wind-down-filt-fps</property></difference><value>2</value></pow></sum>
+      </function>
+    </fcs_function>
+    <lag_filter name="ap/gs-dw2-lp-fps2">
+      <input>ap/gs-dw2-fps2</input>
+      <c1>0.0333333</c1>
+    </lag_filter>
+    <fcs_function name="ap/gust-sigma-kt">
+      <description>how gusty the air is: the per-axis rms of the wind about its mean, kt</description>
+      <function>
+<quotient><sqrt><quotient><max><value>0</value><property>ap/gs-dw2-lp-fps2</property></max><value>3</value></quotient></sqrt><value>1.68781</value></quotient>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/gs-w20e-kt">
+      <description>the wind at 20 ft that spread belongs to (sigma_w = 0.1 W20), kt</description>
+      <function>
+<product><value>10</value><property>ap/gust-sigma-kt</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/gs-xw-kt">
+      <description>the mean wind across the leg's course, kt</description>
+      <function>
+<quotient><abs><sum><product><value>-1</value><property>ap/gs-wind-north-filt-fps</property><sin><product><property>ap/leg-course-deg</property><value>0.0174533</value></product></sin></product><product><property>ap/gs-wind-east-filt-fps</property><cos><product><property>ap/leg-course-deg</property><value>0.0174533</value></product></cos></product></sum></abs><value>1.68781</value></quotient>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/gs-add-gust">
+      <description>the share of the maximum addition the gusts are worth</description>
+      <function>
+          <table><independentVar lookup="row">ap/gs-w20e-kt</independentVar><tableData>
+              0 0
+              14 0
+              18 1
+              24 1
+              28 0
+              200 0
+          </tableData></table>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/gs-add-cross">
+      <description>the share of it the crosswind leaves</description>
+      <function>
+          <table><independentVar lookup="row">ap/gs-xw-kt</independentVar><tableData>
+              0 1
+              10 1
+              21 0.5
+              30 0
+              200 0
+          </tableData></table>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/gs-add-now">
+      <description>the addition the air asks for now, kt</description>
+      <function>
+<product><value>12</value><property>ap/gs-add-gust</property><property>ap/gs-add-cross</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/gs-add-lat-next">
+      <description>followed above GS_PICK_H_FT of wheel height (the wheel height reads 1,000 ft above 1,000: it is clipped there), held under it</description>
+      <function>
+<ifthen><gt><property>aero/wheel-height-ft</property><value>999</value></gt><property>ap/gs-add-now</property><property>ap/gs-add-lat</property></ifthen>
+      </function>
+      <output>ap/gs-add-lat</output>
+    </fcs_function>
+    <fcs_function name="ap/approach-add-used">
+      <description>the addition the approach speed carries: the aircraft's own pick, or the one set</description>
+      <function>
+<ifthen><eq><property>ap/approach-add-auto</property><value>1</value></eq><property>ap/gs-add-lat</property><property>ap/approach-add-kt</property></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/approach-keas">
+      <description>the speed for a lift coefficient of 0.645 at this weight, and ap/approach-add-kt more (0: as it was; the gusty-wind addition of docs/PLAN.md, "Gusts: find out first")</description>
+      <function>
+        <sum><quotient><pow><quotient><property>inertia/weight-lbs</property><value>0.413937</value></quotient><value>0.5</value></pow><value>1.68781</value></quotient><property>ap/approach-add-used</property></sum>
       </function>
     </fcs_function>
     <switch name="ap/latch-bias-pitch-deg">
@@ -728,6 +825,24 @@
       </function>
       <clipto><min>-20</min><max>20</max></clipto>
     </fcs_function>
+    <fcs_function name="ap/gs-on">
+      <description>the gust system is on: switched on, in the landing, in the air, under GS_H_FT</description>
+      <function>
+<ifthen><and><eq><property>ap/gust-sys</property><value>1</value></eq><eq><property>ap/engaged</property><value>1</value></eq><eq><property>ap/manual</property><value>0</value></eq><eq><property>ap/land-mode</property><value>1</value></eq><eq><property>ap/rollout</property><value>0</value></eq><eq><property>ap/on-mains</property><value>0</value></eq><lt><property>aero/wheel-height-ft</property><value>500</value></lt></and><value>1</value><value>0</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/gs-glide-extra-deg">
+      <description>pitch more in the glide for the sink beyond the path's that the spoilers cannot take</description>
+      <function>
+<ifthen><and><eq><property>ap/gs-on</property><value>1</value></eq><eq><property>ap/flare</property><value>0</value></eq></and><min><value>4</value><product><value>0.25</value><max><value>0</value><difference><difference><value>0</value><property>ap/glide-sink-error-fps</property></difference><value>2</value></difference></max></product></min><value>0</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/theta-speed-gs-deg">
+      <description>the speed law's pitch, not under the floor in the glide while the gust system is on, and the extra for the sink</description>
+      <function>
+<ifthen><and><eq><property>ap/gs-on</property><value>1</value></eq><eq><property>ap/flare</property><value>0</value></eq></and><sum><max><property>ap/theta-speed-deg</property><difference><value>-1</value><property>ap/theta-latched-deg</property></difference></max><property>ap/gs-glide-extra-deg</property></sum><property>ap/theta-speed-deg</property></ifthen>
+      </function>
+    </fcs_function>
     <fcs_function name="ap/pitch-mode-prev-next">
       <description>the pitch mode of the frame before</description>
       <function>
@@ -838,9 +953,9 @@
       </function>
     </fcs_function>
     <fcs_function name="ap/theta-flare-deg">
-      <description>the flare's pitch attitude</description>
+      <description>the flare's pitch attitude, and the gust system's extra</description>
       <function>
-        <difference><value>2.4</value><property>ap/theta-latched-deg</property></difference>
+        <sum>        <difference><value>2.4</value><property>ap/theta-latched-deg</property></difference><property>ap/gs-flare-extra-deg</property></sum>
       </function>
     </fcs_function>
     <fcs_function name="ap/theta-takeoff-deg">
@@ -860,7 +975,7 @@
       <test value="ap/theta-manual-deg">ap/manual == 1</test>
       <test value="ap/theta-flare-deg">ap/flare == 1</test>
       <test value="ap/theta-takeoff-deg">ap/pitch-mode == 3</test>
-      <test value="ap/theta-speed-deg">ap/pitch-mode == 1</test>
+      <test value="ap/theta-speed-gs-deg">ap/pitch-mode == 1</test>
       <test value="ap/theta-alt-deg">ap/pitch-mode == 2</test>
     </switch>
     <fcs_function name="ap/alpha-ahead-deg">
@@ -3645,8 +3760,9 @@
       <test value="ap/thrust-speed">ap/thrust-mode == 3</test>
     </switch>
     <switch name="ctl/throttle-norm">
-      <description>what the engine takes: the laws' throttle when engaged, the throttle command otherwise</description>
+      <description>what the engine takes: the laws' throttle when engaged, the throttle command otherwise; the gust system's while it is on in the landing</description>
       <default value="fcs/throttle-cmd-norm"/>
+      <test value="ap/gs-throttle">ap/gs-on == 1</test>
       <test value="ap/throttle-slewed">ap/engaged == 1</test>
     </switch>
     <fcs_function name="ap/throttle-slewed-next">
@@ -4271,6 +4387,44 @@
 <ifthen><eq><property>ap/ci-on</property><value>1</value></eq><property>ap/ci-heading-deg</property><property>ap/heading-cmd-deg</property></ifthen>
       </function>
       <output>ap/heading-cmd-deg</output>
+    </fcs_function>
+    <fcs_function name="ap/gs-throttle-target">
+      <description>the throttle the speed lost asks for (idle in the flare)</description>
+      <function>
+<ifthen><and><eq><property>ap/gs-on</property><value>1</value></eq><eq><property>ap/flare</property><value>0</value></eq></and><min><value>0.7</value><product><value>0.06</value><max><value>0</value><difference><product><value>-1</value><property>ap/speed-error-kt</property></product><value>4</value></difference></max></product></min><value>0</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/gs-throttle-next">
+      <description>the gust system's throttle, rate limited</description>
+      <function>
+<sum><property>ap/gs-throttle</property><max><product><value>-0.4</value><property>simulation/dt</property></product><min><product><value>0.6</value><property>simulation/dt</property></product><difference><property>ap/gs-throttle-target</property><property>ap/gs-throttle</property></difference></min></max></sum>
+      </function>
+      <output>ap/gs-throttle</output>
+    </fcs_function>
+    <fcs_function name="ap/gs-flare-extra-deg">
+      <description>pitch more in the flare for the sink the spoilers cannot take</description>
+      <function>
+<ifthen><and><eq><property>ap/gs-on</property><value>1</value></eq><eq><property>ap/flare</property><value>1</value></eq></and><min><value>3.5</value><product><value>0.35</value><max><value>0</value><difference><difference><value>0</value><sum><property>velocities/h-dot-fps</property><property>ap/flare-sink-wanted-fps</property></sum></difference><value>2</value></difference></max></product></min><value>0</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/gs-detect">
+      <description>speed lost or sink beyond the path on the final, whatever the gust system is doing</description>
+      <function>
+<ifthen><and><eq><property>ap/engaged</property><value>1</value></eq><eq><property>ap/manual</property><value>0</value></eq><eq><property>ap/land-mode</property><value>1</value></eq><eq><property>ap/rollout</property><value>0</value></eq><eq><property>ap/on-mains</property><value>0</value></eq><lt><property>aero/wheel-height-ft</property><value>500</value></lt><or><gt><product><value>-1</value><property>ap/speed-error-kt</property></product><value>8</value></gt><and><eq><property>ap/flare</property><value>0</value></eq><lt><property>ap/glide-sink-error-fps</property><value>-8</value></lt></and><and><eq><property>ap/flare</property><value>1</value></eq><lt><sum><property>velocities/h-dot-fps</property><property>ap/flare-sink-wanted-fps</property></sum><value>-8</value></lt></and></or></and><value>1</value><value>0</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/gs-detect-t-next">
+      <description>the last time the gust monitor met its threshold</description>
+      <function>
+<ifthen><eq><property>ap/gs-detect</property><value>1</value></eq><property>simulation/sim-time-sec</property><property>ap/gs-detect-t</property></ifthen>
+      </function>
+      <output>ap/gs-detect-t</output>
+    </fcs_function>
+    <fcs_function name="ap/gust-alert">
+      <description>the gust alert: raised from the monitor and held GS_ALERT_HOLD_S</description>
+      <function>
+<ifthen><lt><difference><property>simulation/sim-time-sec</property><property>ap/gs-detect-t</property></difference><value>4</value></lt><value>1</value><value>0</value></ifthen>
+      </function>
     </fcs_function>
   </channel>
 </system>

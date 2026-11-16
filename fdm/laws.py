@@ -153,6 +153,31 @@ FLARE_SINK = 1.6                 # ft/s wanted at the ground (0.5 m/s)
 FLARE_GAIN = 0.6                 # spoiler travel per ft/s of sink error in the flare
 FLARE_TTG = 2.6                  # s: the flare starts at this many seconds to touchdown at the sink it has beyond FLARE_SLACK, if that is higher than FLARE_HEIGHT
 FLARE_SLACK = 4.0                # ft/s of sink that is not a downdraft: the approach's own is 17.2 and gusts of light turbulence reach 21, so only more
+# ---- the gust system (docs/PLAN.md, "Gusts: find out first"): a switch, ap/gust-sys (0: the aircraft as it was, 1: on), that does nothing but in the landing (ap/land-mode 1, on the glide and in the flare, in the air)
+GS_H_FT = 500.0                  # ft of wheel height: the system is on from here down
+GS_PITCH_FLOOR_DEG = -1.0        # deg: in the glide the speed law may not take the nose under this attitude (the approach's own is +0.4): a lost headwind pitched it to -7 deg and the sink from 18 to 33 ft/s
+GS_THR_PER_KT = 0.06             # throttle per kt of speed lost beyond GS_THR_DEAD_KT: the landing's throttle is idle (0.00) all the way down, nothing in it could be had against a shear
+GS_THR_DEAD_KT = 4.0             # kt
+GS_THR_MAX = 0.7                 # throttle
+GS_THR_UP = 0.6                  # per second: the system's own rate limit up (the landing's is 0.08, a ramp for the engine's sake) ...
+GS_THR_DOWN = 0.4                # ... and down (the throttle goes to idle in the flare)
+GS_FLARE_K = 0.35                # deg of pitch more in the flare per ft/s of sink beyond what the flare wants (the spoilers are at their floor after a sink error of 1 ft/s: the pitch is what is left)
+GS_FLARE_OK_FPS = 2.0            # ft/s of sink beyond the flare's own that the spoilers take, before the extra pitch
+GS_GLIDE_K = 0.25                # deg of pitch more in the glide per ft/s of sink beyond the path's (plus GS_GLIDE_OK_FPS): a downdraught takes the angle of attack and the spoilers are at their floor in a second
+GS_GLIDE_OK_FPS = 2.0            # ft/s
+GS_GLIDE_MAX_DEG = 4.0           # deg
+# ---- the approach speed's addition, picked by the aircraft (ap/approach-add-auto 1; docs/PLAN.md, "Gusts: find out first", the optimum): GS_AUTO_MAX kt times how gusty the air is (the wind at 20 ft that the
+# spread of the wind about its 10 s mean would be: 10 times the per-axis rms) times how little of the wind is across the final; latched at GS_PICK_H_FT of wheel height and held below it
+GS_AUTO_MAX_KT = 12.0
+GS_AUTO_HP_S = 10.0              # s: the wind's mean the gusts are measured from is the total wind through this lag
+GS_AUTO_EST_S = 30.0             # s: the mean square of the gusts goes through this lag
+GS_PICK_H_FT = 1000.0            # ft of wheel height: above it the addition follows the estimate, from it down it is held
+GS_AUTO_GUST = [(0.0, 0.0), (14.0, 0.0), (18.0, 1.0), (24.0, 1.0), (28.0, 0.0), (200.0, 0.0)]      # FITTED (2026-11-16, docs/PLAN.md, "The fitting rule") on the corrected `opt` flights, seeds 1 to 16, and frozen: in the units of the aircraft's own estimate (it reads about three quarters of the wind at 20 ft behind the turbulence): all of the maximum addition for a wind at 20 ft of about 30 kt, none below 19 and none above 38 (the addition did not bring the protection's events down at 40 kt and up, nor cost less than 5 ft of line and a hard landing)
+GS_AUTO_CROSS = [(0.0, 1.0), (10.0, 1.0), (21.0, 0.5), (30.0, 0.0), (200.0, 0.0)]    # the wind across the final (kt) to the share of it: with a steady wind across, +6 kt was the most the line allowed (30 kt steady at 45 deg), +3 or more at 40 kt and up added hard landings or 20 ft of line
+GS_ALERT_SPEED_KT = 8.0          # kt: the gust alert (ap/gust-alert, whether the system is on or not): speed lost this far under the target on the final ...
+GS_ALERT_SINK_FPS = 8.0          # ft/s: ... or sink this far beyond the path's (in the flare, beyond the flare's own) ...
+GS_ALERT_HOLD_S = 4.0            # s: ... and it stands this long after the last frame that met either
+GS_FLARE_MAX_DEG = 3.5           # deg: the most the extra pitch adds to the flare's (tail clearance is not modelled: no source; the angle-of-attack protection stays above this)
 DECRAB_H_START = 8.0             # ft of wheel height: the nose starts to come round to the runway's course (the MV-22B's engine-out landing does it from 3 s to 0.5 s before the wheels, by wheel height over the sink; the flare slows the descent as it goes, which holds that time at its own time constant from the flare's start: the decrab began 6 s out and the aircraft drifted off the line meanwhile; counted in height, it is in the last 3 s)
 DECRAB_H_END = 1.0               # ft of wheel height: the decrab has gone as far as it goes in the air
 DECRAB_K = 2.0                   # deg of rudder per deg of heading error in the air, from the decrab's weight (on the ground the ruddervators' own 0.5). Headless, 20 kt across: 8 to 1 ft, gain 1 leaves 3.8 deg of the 8.5 deg crab to the wheels (the rest taken on the runway, as the MV-22B does), 6 to 1.5 ft with gain 2 takes it nearly all off (1.2 deg left) and touches down with 7.8 deg of sideslip instead of 5.8
@@ -581,6 +606,96 @@ def _mission_phases():
     return ch
 
 
+def _gust_picker():
+    """The approach speed's addition, picked by the aircraft: from the wind's spread about its 10 s mean (the three axes' mean square, through GS_AUTO_EST_S) and the wind across the leg's course (the final's:
+    the filtered wind the turn prediction and the crosswind caution use), by the tables GS_AUTO_GUST and GS_AUTO_CROSS; followed from wherever the aircraft is and held from GS_PICK_H_FT of wheel height down, so that
+    the speed does not move in the glide. ap/approach-add-auto 1 uses it, 0 (the default) the addition ap/approach-add-kt as it was set (0)."""
+    X = lambda tag, *a: '<%s>%s</%s>' % (tag, ''.join(a), tag)
+    P, V = _p, _v
+    M = lambda *a: X('product', *a)
+    S = lambda *a: X('sum', *a)
+    D = lambda a, b: X('difference', a, b)
+    Q = lambda a, b: X('quotient', a, b)
+    MAX = lambda *a: X('max', *a)
+    ABS = lambda a: X('abs', a)
+    IF = lambda c, a, b: X('ifthen', c, a, b)
+    GT = lambda a, b: X('gt', a, b)
+    EQ = lambda a, b: X('eq', a, b)
+    k = math.pi / 180.0
+    ch = []
+    ch.append('''    <lag_filter name="ap/gs-wind-down-filt-fps">
+      <input>atmosphere/total-wind-down-fps</input>
+      <c1>%g</c1>
+    </lag_filter>''' % (1.0 / GS_AUTO_HP_S))
+    for comp in ('north', 'east'):
+        ch.append('''    <lag_filter name="ap/gs-wind-%s-filt-fps">
+      <input>atmosphere/total-wind-%s-fps</input>
+      <c1>%g</c1>
+    </lag_filter>''' % (comp, comp, 1.0 / GS_AUTO_HP_S))
+    sq = lambda a, b: X('pow', D(P(a), P(b)), V(2))
+    ch.append(_fn('ap/gs-dw2-fps2', S(sq('atmosphere/total-wind-north-fps', 'ap/gs-wind-north-filt-fps'), sq('atmosphere/total-wind-east-fps', 'ap/gs-wind-east-filt-fps'),
+                                        sq('atmosphere/total-wind-down-fps', 'ap/gs-wind-down-filt-fps')), 'the wind\'s departure from its mean, squared, summed over the three axes'))
+    ch.append('''    <lag_filter name="ap/gs-dw2-lp-fps2">
+      <input>ap/gs-dw2-fps2</input>
+      <c1>%g</c1>
+    </lag_filter>''' % (1.0 / GS_AUTO_EST_S))
+    ch.append(_fn('ap/gust-sigma-kt', Q(X('sqrt', Q(MAX(V(0), P('ap/gs-dw2-lp-fps2')), V(3))), V(1.68781)), 'how gusty the air is: the per-axis rms of the wind about its mean, kt'))
+    ch.append(_fn('ap/gs-w20e-kt', M(V(10), P('ap/gust-sigma-kt')), 'the wind at 20 ft that spread belongs to (sigma_w = 0.1 W20), kt'))
+    ch.append(_fn('ap/gs-xw-kt', Q(ABS(S(M(V(-1), P('ap/gs-wind-north-filt-fps'), X('sin', M(P('ap/leg-course-deg'), V(k)))), M(P('ap/gs-wind-east-filt-fps'), X('cos', M(P('ap/leg-course-deg'), V(k)))))), V(1.68781)),
+                  'the mean wind across the leg\'s course, kt'))
+    ch.append(_fn('ap/gs-add-gust', _table(GS_AUTO_GUST, 'ap/gs-w20e-kt'), 'the share of the maximum addition the gusts are worth'))
+    ch.append(_fn('ap/gs-add-cross', _table(GS_AUTO_CROSS, 'ap/gs-xw-kt'), 'the share of it the crosswind leaves'))
+    ch.append(_fn('ap/gs-add-now', M(V(GS_AUTO_MAX_KT), P('ap/gs-add-gust'), P('ap/gs-add-cross')), 'the addition the air asks for now, kt'))
+    ch.append(_fn('ap/gs-add-lat-next', IF(GT(P('aero/wheel-height-ft'), V(GS_PICK_H_FT - 1.0)), P('ap/gs-add-now'), P('ap/gs-add-lat')), 'followed above GS_PICK_H_FT of wheel height (the wheel height reads 1,000 ft above 1,000: it is clipped there), held under it', out='ap/gs-add-lat'))
+    ch.append(_fn('ap/approach-add-used', IF(EQ(P('ap/approach-add-auto'), V(1)), P('ap/gs-add-lat'), P('ap/approach-add-kt')), 'the addition the approach speed carries: the aircraft\'s own pick, or the one set'))
+    return ch
+
+
+def _gust_system():
+    """The gust system's channels (constants GS_*; the switch is ap/gust-sys). On only in the landing, in the air, from GS_H_FT of wheel height down: (1) in the glide the speed law may not take the nose under GS_PITCH_FLOOR_DEG
+    (the nose-down that a lost headwind asks for doubled the sink); (2) the throttle, idle all through the landing otherwise, is GS_THR_PER_KT per kt of speed lost beyond GS_THR_DEAD_KT, with its own rate limits, and goes to idle
+    in the flare; (3) in the flare the pitch goes up by GS_FLARE_K deg for each ft/s of sink beyond what the flare wants (plus GS_FLARE_OK_FPS), to GS_FLARE_MAX_DEG: the spoilers are at their floor for any sink error over 1 ft/s,
+    the pitch is the control that is left. The angle-of-attack protection is above all of these."""
+    X = lambda tag, *a: '<%s>%s</%s>' % (tag, ''.join(a), tag)
+    P, V = _p, _v
+    M = lambda *a: X('product', *a)
+    S = lambda *a: X('sum', *a)
+    D = lambda a, b: X('difference', a, b)
+    MAX = lambda *a: X('max', *a)
+    MIN = lambda *a: X('min', *a)
+    IF = lambda c, a, b: X('ifthen', c, a, b)
+    AND = lambda *a: X('and', *a)
+    GT = lambda a, b: X('gt', a, b)
+    LT = lambda a, b: X('lt', a, b)
+    EQ = lambda a, b: X('eq', a, b)
+    ch, early = [], []
+    early.append(_fn('ap/gs-on', IF(AND(EQ(P('ap/gust-sys'), V(1)), EQ(P('ap/engaged'), V(1)), EQ(P('ap/manual'), V(0)), EQ(P('ap/land-mode'), V(1)), EQ(P('ap/rollout'), V(0)), EQ(P('ap/on-mains'), V(0)),
+                                 LT(P('aero/wheel-height-ft'), V(GS_H_FT))), V(1), V(0)), 'the gust system is on: switched on, in the landing, in the air, under GS_H_FT'))
+    early.append(_fn('ap/gs-glide-extra-deg', IF(AND(EQ(P('ap/gs-on'), V(1)), EQ(P('ap/flare'), V(0))), MIN(V(GS_GLIDE_MAX_DEG), M(V(GS_GLIDE_K), MAX(V(0), D(D(V(0), P('ap/glide-sink-error-fps')), V(GS_GLIDE_OK_FPS))))), V(0)),
+                  'pitch more in the glide for the sink beyond the path\'s that the spoilers cannot take'))
+    early.append(_fn('ap/theta-speed-gs-deg', IF(AND(EQ(P('ap/gs-on'), V(1)), EQ(P('ap/flare'), V(0))), S(MAX(P('ap/theta-speed-deg'), D(V(GS_PITCH_FLOOR_DEG), P('ap/theta-latched-deg'))), P('ap/gs-glide-extra-deg')), P('ap/theta-speed-deg')),
+                  'the speed law\'s pitch, not under the floor in the glide while the gust system is on, and the extra for the sink'))
+    ch.append(_fn('ap/gs-throttle-target', IF(AND(EQ(P('ap/gs-on'), V(1)), EQ(P('ap/flare'), V(0))), MIN(V(GS_THR_MAX), M(V(GS_THR_PER_KT), MAX(V(0), D(M(V(-1), P('ap/speed-error-kt')), V(GS_THR_DEAD_KT))))), V(0)),
+                  'the throttle the speed lost asks for (idle in the flare)'))
+    ch.append(_fn('ap/gs-throttle-next', S(P('ap/gs-throttle'), MAX(M(V(-GS_THR_DOWN), P('simulation/dt')), MIN(M(V(GS_THR_UP), P('simulation/dt')), D(P('ap/gs-throttle-target'), P('ap/gs-throttle'))))),
+                  'the gust system\'s throttle, rate limited', out='ap/gs-throttle'))
+    ch.append(_fn('ap/gs-flare-extra-deg', IF(AND(EQ(P('ap/gs-on'), V(1)), EQ(P('ap/flare'), V(1))),
+                                              MIN(V(GS_FLARE_MAX_DEG), M(V(GS_FLARE_K), MAX(V(0), D(D(V(0), S(P('velocities/h-dot-fps'), P('ap/flare-sink-wanted-fps'))), V(GS_FLARE_OK_FPS))))), V(0)),
+                  'pitch more in the flare for the sink the spoilers cannot take'))
+    # the gust alert: a monitor, not a control: it works with the system off. Under GS_H_FT in the landing, in the air, the speed lost or the sink beyond what the path (or the flare) asks, for a frame,
+    # holds an alert for GS_ALERT_HOLD_S; the aircraft's alert list (onboard.py, onboard.nas) raises GUSTS OR WIND SHEAR ON THE FINAL while ap/gust-alert is 1
+    sink_flare = S(P('velocities/h-dot-fps'), P('ap/flare-sink-wanted-fps'))
+    ch.append(_fn('ap/gs-detect', IF(AND(EQ(P('ap/engaged'), V(1)), EQ(P('ap/manual'), V(0)), EQ(P('ap/land-mode'), V(1)), EQ(P('ap/rollout'), V(0)), EQ(P('ap/on-mains'), V(0)),
+                                         LT(P('aero/wheel-height-ft'), V(GS_H_FT)),
+                                         X('or', GT(M(V(-1), P('ap/speed-error-kt')), V(GS_ALERT_SPEED_KT)),
+                                            AND(EQ(P('ap/flare'), V(0)), LT(P('ap/glide-sink-error-fps'), V(-GS_ALERT_SINK_FPS))),
+                                            AND(EQ(P('ap/flare'), V(1)), LT(sink_flare, V(-GS_ALERT_SINK_FPS))))), V(1), V(0)),
+                  'speed lost or sink beyond the path on the final, whatever the gust system is doing'))
+    ch.append(_fn('ap/gs-detect-t-next', IF(EQ(P('ap/gs-detect'), V(1)), P('simulation/sim-time-sec'), P('ap/gs-detect-t')), 'the last time the gust monitor met its threshold', out='ap/gs-detect-t'))
+    ch.append(_fn('ap/gust-alert', IF(LT(D(P('simulation/sim-time-sec'), P('ap/gs-detect-t')), V(GS_ALERT_HOLD_S)), V(1), V(0)), 'the gust alert: raised from the monitor and held GS_ALERT_HOLD_S'))
+    return early, ch
+
+
 def laws_file():
     props = ''.join('  <property value="%g">ap/%s</property>\n' % (v, k) for k, v in (
         ('engaged', 0), ('pitch-mode', 0), ('roll-mode', 0), ('thrust-mode', 0), ('theta-cmd-deg', 0), ('speed-cmd-kcas', 150),
@@ -593,7 +708,7 @@ def laws_file():
         ('next-lat-deg', 0), ('next-lon-deg', 0), ('next-valid', 0), ('turn-phase', 0), ('turn-done', 0), ('yaw-air-w', 1), ('rollout-w', 0), ('turn-ack', 0), ('decrab-w', 0),
         ('tk-on', 0), ('tk-done', 0), ('tx-on', 0), ('tx-fast', 15), ('tx-slow', 8), ('tx-bend-deg', 0), ('tx-last', 0), ('tx-stop', 1), ('ld-on', 0), ('ld-captured', 0),
         ('ci-on', 0), ('ci-lat', 0), ('ci-lon', 0), ('ci-radius-ft', 1000), ('ci-side', 1), ('ci-out-max', 30), ('ci-lead', 1),
-        ('ga-on', 0), ('ga-h0-ft', 0), ('vt-on', 0), ('vt-sp-end', 0), ('v-sp-i', 0), ('vt-ft', 0), ('vt-path', 0), ('sp-ext', -1), ('vmode', 0), ('v-level-alt', 0), ('v-level-from', 0), ('v-level-span', LEVEL_GATE_FT), ('v-level-sp0', 0)))
+        ('ga-on', 0), ('ga-h0-ft', 0), ('vt-on', 0), ('vt-sp-end', 0), ('v-sp-i', 0), ('vt-ft', 0), ('vt-path', 0), ('sp-ext', -1), ('vmode', 0), ('v-level-alt', 0), ('v-level-from', 0), ('v-level-span', LEVEL_GATE_FT), ('v-level-sp0', 0), ('gust-sys', 0), ('approach-add-kt', 0), ('approach-add-auto', 0), ('approach-add-used', 0), ('gs-add-lat', 0), ('gs-on', 0), ('gs-throttle', 0), ('gs-detect', 0), ('gs-detect-t', -1000), ('gust-alert', 0), ('gs-flare-extra-deg', 0), ('gs-glide-extra-deg', 0), ('theta-speed-gs-deg', 0)))
     props += ''.join('  <property value="0">limits/%s</property>\n' % k for k in ('overstress', 'failed', 'reset'))
     ch = []
     # ---- part C: navigators and the link, ahead of everything that uses them
@@ -711,9 +826,10 @@ def laws_file():
         aero/wheel-height-ft lt ap/flare-height-ft
       </test>
     </switch>''' % (FLARE_HEIGHT, FLARE_TTG, FLARE_SLACK, FLARE_HEIGHT))
-    ch.append(_fn('ap/approach-keas', '        <quotient><pow><quotient>%s%s</quotient>%s</pow>%s</quotient>' % (
-        _p('inertia/weight-lbs'), _v(APPROACH_CL * WING_AREA * 0.5 * 0.0023769), _v(0.5), _v(1.6878099)),
-        'the speed for a lift coefficient of %g at this weight' % APPROACH_CL))
+    ch += _gust_picker()
+    ch.append(_fn('ap/approach-keas', '        <sum><quotient><pow><quotient>%s%s</quotient>%s</pow>%s</quotient>%s</sum>' % (
+        _p('inertia/weight-lbs'), _v(APPROACH_CL * WING_AREA * 0.5 * 0.0023769), _v(0.5), _v(1.6878099), _p('ap/approach-add-used')),
+        'the speed for a lift coefficient of %g at this weight, and ap/approach-add-kt more (0: as it was; the gusty-wind addition of docs/PLAN.md, "Gusts: find out first")' % APPROACH_CL))
     # ---- latches
     ch.append(_latch('bias-pitch-deg', 'ctl/manual-pitch-deg', 'ruddervator angle at engagement'))
     ch.append(_latch('bias-yaw-deg', 'ctl/manual-yaw-deg', 'yaw command at engagement'))
@@ -775,6 +891,7 @@ def laws_file():
                   'the flight path angle the thrust gained since the speed mode took over makes, deg'))
     ch.append(_fn('ap/theta-speed-deg', '        <sum>%s<product>%s%s</product>%s%s</sum>' % (_p('ap/theta-speed-bias-deg'), _v(G['K_v']), _p('ap/speed-error-kt'), _p('ap/theta-speed-i-deg'), _p('ap/theta-thrust-ff-deg')),
                   clip=('-20', '20')))
+    ch += _gust_system()[0]          # after the speed law, before the pitch mode's switch: with the system off the floor passes the law through with no frame of delay
     # the pitch mode of the frame before, for the bias above: the bias follows one frame into the mode, so that it is worked out with the speed error of the first frame the law is on (the
     # speed target can change in the same step as the mode: against the old target the bias carried a wrong correction, 13 deg of it in phase 7a's A10: a dive and 26 kt of speed)
     ch.append(_fn('ap/pitch-mode-prev-next', _p('ap/pitch-mode'), 'the pitch mode of the frame before', out='ap/pitch-mode-prev'))
@@ -914,7 +1031,7 @@ def laws_file():
       <test value="ap/theta-manual-deg">ap/manual == 1</test>
       <test value="ap/theta-flare-deg">ap/flare == 1</test>
       <test value="ap/theta-takeoff-deg">ap/pitch-mode == 3</test>
-      <test value="ap/theta-speed-deg">ap/pitch-mode == 1</test>
+      <test value="ap/theta-speed-gs-deg">ap/pitch-mode == 1</test>
       <test value="ap/theta-alt-deg">ap/pitch-mode == 2</test>
     </switch>''')
     ch.insert(len(ch) - 1, _fn('ap/theta-manual-deg', '        <difference>%s<product>%s%s</product></difference>' % (
@@ -925,7 +1042,7 @@ def laws_file():
     ch.insert(len(ch) - 1, _fn('ap/theta-follow-deg', _op('difference', _p('nav/pitch-deg'), _p('ap/theta-latched-deg')),
                                'in the direct law the command follows the aircraft, so that coming back is bumpless'))
     ch.insert(len(ch) - 1, _fn('ap/theta-cmd-less-latched', _op('difference', _p('ap/theta-cmd-deg'), _p('ap/theta-latched-deg'))))
-    ch.insert(len(ch) - 1, _fn('ap/theta-flare-deg', _op('difference', _v(FLARE_PITCH), _p('ap/theta-latched-deg')), 'the flare\'s pitch attitude'))
+    ch.insert(len(ch) - 1, _fn('ap/theta-flare-deg', _op('sum', _op('difference', _v(FLARE_PITCH), _p('ap/theta-latched-deg')), _p('ap/gs-flare-extra-deg')), 'the flare\'s pitch attitude, and the gust system\'s extra'))
     ch.insert(len(ch) - 1, _fn('ap/theta-takeoff-deg', '''        <ifthen>
           <or><ge>%s%s</ge><gt>%s%s</gt></or>
           <difference>%s%s</difference>
@@ -1435,8 +1552,9 @@ def laws_file():
       <test value="ap/thrust-speed">ap/thrust-mode == 3</test>
     </switch>
     <switch name="ctl/throttle-norm">
-      <description>what the engine takes: the laws' throttle when engaged, the throttle command otherwise</description>
+      <description>what the engine takes: the laws' throttle when engaged, the throttle command otherwise; the gust system's while it is on in the landing</description>
       <default value="fcs/throttle-cmd-norm"/>
+      <test value="ap/gs-throttle">ap/gs-on == 1</test>
       <test value="ap/throttle-slewed">ap/engaged == 1</test>
     </switch>''')
     # The throttle the engine takes: the laws' throttle with its rate limited, in the vertical modes in the air (a climb entered by a step to full thrust was a pull-up of 1.6 g; the speed
@@ -1609,6 +1727,7 @@ def laws_file():
         ch += _mission_vertical()
     if MISSION_PHASES:
         ch += _mission_phases()
+    ch += _gust_system()[1]
     props += ''.join('  <property value="%g">nav/%s</property>\n' % (v, k) for k, v in (
         [('%s-on' % n, 1) for n in NAVS] + [('%s-%s-error-deg' % (n, a), 0) for n in NAVS for a in ('roll', 'pitch')] +
         [('roll-deg', 0), ('pitch-deg', 0), ('miscompare', 0), ('miscompare-reset', 0)]))

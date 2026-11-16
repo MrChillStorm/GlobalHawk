@@ -38,6 +38,7 @@ ALERTS = {
     'aoa': 'The angle of attack has been over its limit for half a second. The alert stands for at least 3 s and until the angle is back under the limit. The aircraft brings it back by itself: its pitch command is held down.',
     'aoa-near': 'The angle of attack has been within 0.15 deg of its limit for 3 s: closer than the approach is flown (0.2 to 0.3 deg under it at light weights). It clears when the angle has been more than 0.25 deg under the limit for 2 s.',
     'hold': 'The aircraft has stopped at a hold of its taxi route (a stop short of a runway it is to enter or cross, the line-up point for the takeoff, or a place the operator chose) and waits. It goes on only when the station in control clears that hold, by name, in the Clearances panel; it does not creep, and it stays where it is if the link is lost.',
+    'gust': 'On the final, under 500 ft, the aircraft has lost 8 kt of speed or is sinking 8 ft/s more than the path or the flare asks (a loss of headwind, a downdraught), and the alert stands 4 s after the last time. It is raised whether or not the gust system is on: with it on, the aircraft is correcting (the nose held up, thrust added, more pitch in the flare); with it off, the landing may be hard.',
     'manual': 'The aircraft is being flown by hand from the station in control.',
     'off-plan': 'The aircraft has left its plan on a command (go to, hold, return home) and stays off it until Resume plan.',
     'no-link': 'This station is not hearing the aircraft. Raised by the station itself.',

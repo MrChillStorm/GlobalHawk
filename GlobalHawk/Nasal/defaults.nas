@@ -26,6 +26,7 @@ var DEFAULTS = {
     "ap/ci-lead": 1,
     "ap/sp-ext": -1,
     "ap/v-level-span": 150,
+    "ap/gs-detect-t": -1000,
     "nav/kna-on": 1,
     "nav/knb-on": 1,
     "nav/lna-on": 1,
