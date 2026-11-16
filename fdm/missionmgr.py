@@ -303,8 +303,7 @@ class Manager:
         elif it['task'] == 'final':
             if f['ap/rollout'] == 1 and f['ap/ground-speed-kt'] < 15.0:
                 self.note('rollout over')
-                f['ap/taxi-speed-kt'] = 0.0
-                f['ap/thrust-mode'] = 4
+                self.stop_rolling()
                 self.next()
 
     def clear(self):
@@ -540,7 +539,19 @@ class Manager:
                     self.note('glide path')
             elif f['ap/ld-done'] == 1:
                 self.note('rollout over')
+                self.stop_rolling()
                 self.next()
+
+    def stop_rolling(self):
+        """The landing's rollout is over (under 15 kt): the laws are set as a taxi item sets them, with a taxi target of 0. The rollout's own braking law works only above 15 kt and,
+        while the rollout latch (ap/rollout, cleared by the land mode going off) is set, it is the one that is taken: nothing braked the aircraft further, and the target of an
+        earlier taxi item (15 kt) was held for ever: it rolled on, off the runway's end (docs/PLAN.md, "Runway picker", E1). A taxi item that follows sets all of this again in the
+        same call."""
+        f = self.f
+        f['ap/land-mode'] = 0
+        f['ap/thrust-mode'], f['ap/ground-steer'], f['ap/pitch-mode'], f['ap/roll-mode'] = 4, 1, 0, 0
+        f['ap/spoiler-mode'], f['ap/spoiler-cmd'] = 1, 0.0
+        f['ap/taxi-speed-kt'] = 0.0
 
     def next(self):
         self.i += 1

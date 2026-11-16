@@ -323,11 +323,20 @@ var Manager = {
         } elsif (it.task == "final") {
             if (fget("ap/rollout") == 1 and fget("ap/ground-speed-kt") < 15.0) {
                 me.note("rollout over");
-                fset("ap/taxi-speed-kt", 0.0);
-                fset("ap/thrust-mode", 4);
+                me.stop_rolling();
                 me.next();
             }
         }
+    },
+
+    # The landing's rollout is over (under 15 kt): the laws are set as a taxi item sets them, with a taxi target of 0. The rollout's own braking law works only above 15 kt and,
+    # while the rollout latch (ap/rollout, cleared by the land mode going off) is set, it is the one that is taken: nothing braked the aircraft further, and the target of an
+    # earlier taxi item (15 kt) was held for ever: it rolled on, off the runway's end (docs/PLAN.md, "Runway picker", E1). A taxi item that follows sets all of this again in the same call.
+    stop_rolling: func {
+        fset("ap/land-mode", 0);
+        fset("ap/thrust-mode", 4); fset("ap/ground-steer", 1); fset("ap/pitch-mode", 0); fset("ap/roll-mode", 0);
+        fset("ap/spoiler-mode", 1); fset("ap/spoiler-cmd", 0.0);
+        fset("ap/taxi-speed-kt", 0.0);
     },
 
     # Tell the laws what the taxi leg is: the last one, or ends in a bend of so many degrees (they work out the speed from the way to go).
@@ -599,6 +608,7 @@ var Manager = {
                 }
             } elsif (fget("ap/ld-done") == 1) {
                 me.note("rollout over");
+                me.stop_rolling();
                 me.next();
             }
         }
