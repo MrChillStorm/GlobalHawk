@@ -8,12 +8,14 @@ import json
 import math
 import os
 
+import airportdata as AD
 import missionmgr as MM
 
 NAVS = ('kna', 'knb', 'lna', 'lnb')
 KINDS = ('taxi', 'takeoff', 'route', 'land', 'hold')
 MAX_LEG_NM = 3000.0
 MIN_FINAL_NM = 8.0
+REPOSITION_MAX_KT = 2.0            # the aircraft moves to a new place on the ground only when it stands (docs/GCS.md, `reposition`)
 MAX_DESCENT_DEG = 6.0               # a route leg goes down no more steeply than this on average: the glide path is 4.45 deg, the flown descent 2.5 to 3.5 (docs/PLAN.md, "The aircraft refuses what it cannot fly")
 MIN_GRADIENT_LEG_NM = 2.0          # shorter legs are not judged on their slope: the turns at their ends take most of them
 FPS_PER_KT = 1.6878099
@@ -42,7 +44,7 @@ AOA_NEAR_DEG, AOA_SEC = 0.15, 3.0              # the near-limit advisory: raised
 AOA_NEAR_OFF_DEG, AOA_CLEAR_SEC = 0.25, 2.0      # ... and cleared when it has been more than 0.25 deg under it for 2 s (hysteresis: with one threshold the caution came and went every few seconds)
 AOA_EXCEED_SEC, AOA_HOLD_SEC = 0.5, 3.0          # the exceeded caution: the angle over its limit for 0.5 s; once raised it stands at least 3 s (a 2 s excursion at the glide capture used to raise nothing)
 OFFER_SEC = 120.0                  # a handover offer lapses after this
-FREE = ('control.take', 'control.accept')      # commands a station that does not hold control may send
+FREE = ('control.take', 'control.accept', 'airport')      # commands a station that does not hold control may send ('airport' only reads the scenery)
 LINK_TIMEOUT_MIN, LINK_TIMEOUT_MAX = 10.0, 300.0   # s, assumed: under 10 a satellite delay and a missed heartbeat could trigger it
 
 
@@ -148,14 +150,15 @@ def items_for_manager(items, elev):
 
 
 class Onboard:
-    def __init__(self, f):
+    def __init__(self, f, scenery=None):
         self.f = f
+        self.scenery = scenery                  # where the ground networks are (airportdata.scenery_dirs() when None)
         self.plan, self.mgr = None, None
         self.started, self.off, self.saved = False, None, None
         self.answered = {}                       # station -> the last seq answered
         self.beat = None
         self.events = []
-        self.down = {'/gcs/down/ack': '', '/gcs/down/status': '', '/gcs/down/plan': ''}
+        self.down = {'/gcs/down/ack': '', '/gcs/down/status': '', '/gcs/down/plan': '', '/gcs/down/airport': ''}
         self.frame = 0
         self.aoa = dict(over_since=None, over_on=None, near_since=None, near_on=False, clear_since=None)      # the angle-of-attack alerts' state
         self.stations = {}                       # name -> when last heard (sim seconds)
@@ -270,6 +273,36 @@ class Onboard:
         self.mgr = MM.Manager(f, items, lost_link=lost, sites=sites)
         f['ap/engaged'] = 1
         self.started = True
+        return None
+
+    def cmd_airport(self, a):
+        """The ground network and runway ends of an airport, from the scenery, on /gcs/down/airport (airportdata.py)."""
+        try:
+            msg = AD.load(a.get('icao') if isinstance(a, dict) else None, self.scenery)
+        except ValueError as e:
+            return str(e)
+        self.down['/gcs/down/airport'] = AD.dumps(msg)
+        return None
+
+    def cmd_reposition(self, a):
+        """Put the aircraft, stopped on the ground, at a place with a heading (a parking spot the station chose). Not once the plan has begun, not in the air, not while it moves."""
+        bad = _point([a.get('lat'), a.get('lon')], 2, 'reposition')
+        if bad:
+            return bad
+        if not _num(a.get('heading')):
+            return 'reposition: the heading is not a number'
+        if self.started:
+            return 'the plan has begun'
+        f = self.f
+        if f['ap/on-mains'] == 0:
+            return 'only on the ground'
+        if f['ap/ground-speed-kt'] > REPOSITION_MAX_KT:
+            return 'only when the aircraft stands (%.0f kt)' % f['ap/ground-speed-kt']
+        import harness as H                     # the JSBSim stand-in for FlightGear's reposition
+        H.on_ground(f, f['inertia/weight-lbs'], elevation=f['position/terrain-elevation-asl-ft'], heading=float(a['heading']) % 360.0, lat=float(a['lat']), lon=float(a['lon']))
+        f['limits/reset'] = 1                   # the structure's latches, as FlightGear's start-over leaves them (see the Nasal end): cleared
+        f.run()
+        f['limits/reset'] = 0
         return None
 
     def remember(self):

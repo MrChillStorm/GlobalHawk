@@ -32,7 +32,8 @@ import time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import harness as H                 # noqa: E402
-import onboard as OB                # noqa: E402
+import onboard as OB
+import airportdata as AD                # noqa: E402
 
 GCS_DIR = os.path.join(HERE, '..', 'GlobalHawk', 'gcs')
 FG = {   # FlightGear's own properties, from the flight model's
@@ -48,7 +49,7 @@ FG = {   # FlightGear's own properties, from the flight model's
 class Sim:
     """The aircraft: the flight model, the laws and the on-board end of the link. step() runs one frame."""
 
-    def __init__(self, plan_path=None, weight=25600.0):
+    def __init__(self, plan_path=None, weight=25600.0, scenery=None):
         self.f = H.load()
         fld = dict(lat=34.9, lon=-117.88, elev_ft=2300.0, stand=None, stand_heading=0.0)
         if plan_path:
@@ -58,7 +59,7 @@ class Sim:
         self.f['limits/reset'] = 1
         self.f.run()
         self.f['limits/reset'] = 0
-        self.ob = OB.Onboard(self.f)
+        self.ob = OB.Onboard(self.f, scenery=scenery)
         self.extra = {}                          # properties a client set that nothing else owns
         self.ok = True
 
@@ -280,8 +281,11 @@ def main():
     ap.add_argument('--host', default='127.0.0.1', help='0.0.0.0 to let other machines in')
     ap.add_argument('--speed', type=float, default=1.0)
     ap.add_argument('--plan', default=os.path.join(HERE, '..', 'GlobalHawk', 'Missions', 'demo-local.json'))
+    ap.add_argument('--scenery', action='append', help="a scenery folder to read an airport's ground network from (the airport command); repeat for more. Default: FG_SCENERY and the usual TerraSync folders")
     a = ap.parse_args()
-    sim = Sim(a.plan)
+    # the made-up field of the demo plan has its ground network among the station's test fixtures (mkdemoground.py): always at hand, after the real scenery
+    scenery = (a.scenery or AD.scenery_dirs()) + [os.path.join(HERE, '..', 'GlobalHawk', 'gcs', 'tests', 'fixtures', 'scenery')]
+    sim = Sim(a.plan, scenery=scenery)
     print('the aircraft is on its stand; station: http://localhost:%d/gcs/   (speed %gx)' % (a.port, a.speed), flush=True)
     asyncio.run(Server(sim, a.speed).serve(a.port, a.host))
 

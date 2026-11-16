@@ -129,6 +129,9 @@ def cases(plan):
         ('CHECK', 'control.take', {}),
         ('OTHER', 'goto', dict(lat=60.0, lon=25.0, alt_ft=5000.0)), ('OTHER', 'control.accept', {}), ('OTHER', 'control.take', {}),
         ('CHECK', 'goto', {}), ('CHECK', 'control.offer', {}),
+        # the ground map and the move to a stand (docs/PLAN.md, "Starting at a stand from the planner"): the refusals only; an accepted reposition would move the aircraft
+        ('CHECK', 'airport', {}), ('CHECK', 'airport', dict(icao='12')), ('CHECK', 'airport', dict(icao='ZZZZ')), ('OTHER', 'airport', dict(icao='ZZZZ')),      # any station may ask
+        ('CHECK', 'reposition', {}), ('CHECK', 'reposition', dict(lat=95.0, lon=0.0, heading=0.0)), ('CHECK', 'reposition', dict(lat=60.0, lon=25.0)), ('OTHER', 'reposition', dict(lat=60.0, lon=25.0, heading=0.0)),
         ('CHECK', 'plan', plan),
     ]
 

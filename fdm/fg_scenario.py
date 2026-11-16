@@ -2,6 +2,8 @@
 
 SCENARIO=box (default)  takeoff, a box at the height the station's planner picks, landing on the same runway (js/geo.js localPlan)
 SCENARIO=taxibox        from a parking spot (PARKING=121: a name in the airport's ground network): taxi to the runway, take off, the box, land, taxi back to the spot (groundplan.py)
+REPOSITION=1            (taxibox) FlightGear starts on the runway and the aircraft is moved to the spot by the station's `reposition` command, as the planner's "Place the aircraft here" does,
+                        in place of starting at the spot by coordinates (docs/PLAN.md, "Starting at a stand from the planner", S2)
 SCENARIO=ceiling        the whole fuel load (14,500 lb), a cruise-climb of about 22 h to 65,000 ft, a long descent, landing (scenario65.py): 27 h of flight, so a high SPEEDUP
 FUEL_LB=1000            the fuel at the start, lb (the same share in every tank; the ceiling scenario's default is its whole load, the box's is the aircraft's own)
 FUEL_IMBALANCE_LB=40    of that, this many lb moved from tank 0 to tank 1 (needs FUEL_LB): a rolling moment the roll law holds the wings level against, so the final drifts off the line and the stabilised-approach
@@ -58,7 +60,7 @@ async def main():
         proc, took = None, 1                                  # one already up on the runway: use it
     else:
         # a parking spot by its coordinates and heading: FlightGear's --parkpos needs its AI traffic (the user aircraft's flight plan), which is off here, and falls back to the best runway
-        spot0 = groundplan.Net(airport).park[PARKING] if SCENARIO == 'taxibox' else None
+        spot0 = groundplan.Net(airport).park[PARKING] if SCENARIO == 'taxibox' and not os.environ.get('REPOSITION') else None
         where = ['--lat=%.8f' % spot0['lat'], '--lon=%.8f' % spot0['lon'], '--heading=%.1f' % spot0['heading']] if spot0 else ['--airport=' + airport, '--runway=' + runway]
         proc, took = P9.start(where + (['--metar=XXXX 012345Z %s 19SM SKC 15/M99 Q1013 NOSIG' % os.environ['METARWIND']] if os.environ.get('METARWIND') else []), log)
     print('FlightGear', 'up in %.0f s' % took if took else 'FAILED', flush=True)
@@ -69,6 +71,18 @@ async def main():
         await c.connect()
         c.listen_to('/gcs/down/ack', '/gcs/down/status', *KEYS.values())
         await asyncio.sleep(1.0)       # the first station to speak holds control: do not let a station on the same port get there first
+        if SCENARIO == 'taxibox' and os.environ.get('REPOSITION'):
+            sp = groundplan.Net(airport).park[PARKING]
+            c.heartbeat()
+            a = await c.say('reposition', dict(lat=sp['lat'], lon=sp['lon'], heading=sp['heading']), wait=90)
+            print('reposition to parking spot %s: %s %s' % (PARKING, a and a['status'], a and a['reason']), flush=True)
+            end = time.time() + 120
+            while time.time() < end and not B.get('/sim/sceneryloaded'):
+                c.heartbeat()
+                await asyncio.sleep(1)
+            for _ in range(10):
+                c.heartbeat()
+                await asyncio.sleep(1)
         here = [B.get('/position/latitude-deg'), B.get('/position/longitude-deg')]
         hdg = B.get('/orientation/heading-deg')
         elev = round(B.get('/position/altitude-ft') - B.get('/position/altitude-agl-ft'))

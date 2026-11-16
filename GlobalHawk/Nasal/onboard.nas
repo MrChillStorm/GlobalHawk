@@ -22,6 +22,8 @@ var crosswind_limit_kt = func(w) {
         if (w <= XW_WEIGHT[i]) return XW_LIMIT[i - 1] + (XW_LIMIT[i] - XW_LIMIT[i - 1]) * (w - XW_WEIGHT[i - 1]) / (XW_WEIGHT[i] - XW_WEIGHT[i - 1]);
     return XW_LIMIT[size(XW_LIMIT) - 1];
 };
+var REPOSITION_MAX_KT = 2.0;           # the aircraft moves to a new place on the ground only when it stands (docs/GCS.md, `reposition`)
+var AIRPORT_MAX_BYTES = 100000;        # what the station takes over the link for an airport (fdm/airportdata.py)
 var FUEL_LOW_LB = 1500.0;              # assumed: about an hour and a half at cruise
 var AOA_NEAR_DEG = 0.15;               # the near-limit advisory: raised with the angle of attack within 0.15 deg of its limit for 3 s (the approach is flown 0.2 to 0.3 deg under it at light weights) ...
 var AOA_SEC = 3.0;
@@ -30,7 +32,7 @@ var AOA_CLEAR_SEC = 2.0;
 var AOA_EXCEED_SEC = 0.5;             # the exceeded caution: the angle over its limit for 0.5 s; once raised it stands at least 3 s
 var AOA_HOLD_SEC = 3.0;
 var OFFER_SEC = 120.0;                 # a handover offer lapses after this
-var FREE = ["control.take", "control.accept"];      # commands a station that does not hold control may send
+var FREE = ["control.take", "control.accept", "airport"];      # commands a station that does not hold control may send ("airport" only reads the scenery)
 var LINK_TIMEOUT_MIN = 10.0;                # s, assumed: under 10 a satellite delay and a missed heartbeat could trigger it
 var LINK_TIMEOUT_MAX = 300.0;
 
@@ -141,6 +143,124 @@ var items_for_manager = func(items, elev) {
     return out;
 };
 
+# ---- an airport's ground network and runway ends, for the `airport` command: fdm/airportdata.py is the same in Python (its docstring has the message).
+# FlightGear finds the files in its scenery (resolvepath: whatever the machine) and io.readxml makes an element's attributes children named ___name.
+var xml_attr = func(n, k) {
+    var c = n.getChild("___" ~ k);
+    return c == nil ? nil : c.getValue();
+};
+var xml_str = func(n, k) {
+    var v = xml_attr(n, k);
+    return v == nil ? "" : v ~ "";
+};
+var xml_num = func(n, k, dflt) {
+    var v = num(xml_str(n, k));
+    return v == nil ? dflt : v;
+};
+var xml_dm = func(s) {                  # "N60 18.59300820" to degrees
+    s = s ~ "";
+    var parts = [];
+    foreach (var w; split(" ", substr(s, 1)))
+        if (size(w)) append(parts, w);
+    if (size(parts) < 2) return num(s);
+    var v = num(parts[0]) + num(parts[1]) / 60.0;
+    var h = substr(s, 0, 1);
+    return (h == "S" or h == "W") ? -v : v;
+};
+var airport_valid = func(icao) {
+    if (typeof(icao) != "scalar" or size(icao ~ "") != 4) return 0;
+    icao = icao ~ "";
+    for (var i = 0; i < 4; i += 1) {
+        var c = icao[i];
+        if (!((c >= 48 and c <= 57) or (c >= 65 and c <= 90))) return 0;
+    }
+    return 1;
+};
+# [message, nil] or [nil, why not]
+var airport_message = func(icao) {
+    if (typeof(icao) == "scalar") icao = string.uc(icao ~ "");
+    if (!airport_valid(icao)) return [nil, "an airport is four letters or digits, like EFHK"];
+    var dir = "Airports/" ~ substr(icao, 0, 1) ~ "/" ~ substr(icao, 1, 1) ~ "/" ~ substr(icao, 2, 1) ~ "/";
+    var path = resolvepath(dir ~ icao ~ ".groundnet.xml");
+    if (path == "") return [nil, "no ground network for " ~ icao ~ " in the scenery"];
+    var root = nil;
+    var err = [];
+    call(func { root = io.readxml(path); }, nil, nil, err);
+    if (size(err) or root == nil) return [nil, "the ground network of " ~ icao ~ " cannot be read"];
+    var net = root.getChild("groundnet");
+    if (net == nil) net = root;
+    var msg = { icao: icao, parking: [], nodes: [], arcs: [], names: [], runways: [] };
+    err = [];
+    call(func {
+        var pl = net.getChild("parkingList");
+        if (pl != nil)
+            foreach (var p; pl.getChildren("Parking"))
+                append(msg.parking, { n: xml_str(p, "name"), t: xml_str(p, "type"), lat: round_to(xml_dm(xml_str(p, "lat")), 6), lon: round_to(xml_dm(xml_str(p, "lon")), 6),
+                                      h: round_to(mod(xml_num(p, "heading", 0), 360.0), 1), r: xml_num(p, "radius", 0) });
+        var at = {};
+        var tn = net.getChild("TaxiNodes");
+        if (tn != nil)
+            foreach (var n; tn.getChildren("node")) {
+                at[xml_str(n, "index")] = size(msg.nodes);
+                append(msg.nodes, [round_to(xml_dm(xml_str(n, "lat")), 6), round_to(xml_dm(xml_str(n, "lon")), 6)]);
+            }
+        var ni = {};
+        var seen = {};
+        var ts = net.getChild("TaxiWaySegments");
+        if (ts != nil)
+            foreach (var a; ts.getChildren("arc")) {
+                var bu = xml_str(a, "begin");
+                var bv = xml_str(a, "end");
+                if (!contains(at, bu) or !contains(at, bv) or xml_str(a, "isPushBackRoute") == "1") continue;
+                var nm = xml_str(a, "name");
+                var lo = minv(at[bu], at[bv]);
+                var hi = maxv(at[bu], at[bv]);
+                var key = lo ~ ":" ~ hi ~ ":" ~ nm;
+                if (contains(seen, key)) continue;
+                seen[key] = 1;
+                if (!contains(ni, nm)) {
+                    ni[nm] = size(msg.names);
+                    append(msg.names, nm);
+                }
+                append(msg.arcs, [lo, hi, ni[nm]]);
+            }
+        var tpath = resolvepath(dir ~ icao ~ ".threshold.xml");
+        if (tpath != "") {
+            var tp = io.read_properties(tpath);
+            if (tp != nil)
+                foreach (var rw; tp.getChildren("runway"))
+                    foreach (var t; rw.getChildren("threshold"))
+                        append(msg.runways, { n: t.getValue("rwy") ~ "", lat: round_to(t.getValue("lat"), 6), lon: round_to(t.getValue("lon"), 6), h: round_to(t.getValue("hdg-deg"), 2),
+                                              displ: num(t.getValue("displ-m")), stopw: num(t.getValue("stopw-m")) });
+        }
+    }, nil, nil, err);
+    if (size(err)) return [nil, "the ground network of " ~ icao ~ " cannot be read (" ~ err[0] ~ ")"];
+    if (size(JSON.encode(msg)) > AIRPORT_MAX_BYTES) return [nil, "the ground network of " ~ icao ~ " is too big for the link"];
+    return [msg, nil];
+};
+
+# After a reposition FlightGear starts the flight model over, and in its first frames the structure's latches trip (limits/overstress, limits/failed: the state is empty, nothing
+# flew): "STRUCTURAL LIMIT PASSED" stood on the station and the HUD. Found 2026-11-16 in the first flight from a repositioned start. They are cleared once the scenery is
+# in and the model has run a few seconds on its wheels, as the start-up does (globalhawk.nas); a reposition is allowed only on the ground with the plan not begun, so
+# nothing real is hidden.
+var repo_watch = nil;
+var repo_settle = func {
+    if (repo_watch != nil) repo_watch.stop();
+    var tries = 0;
+    var unloaded = 0;
+    repo_watch = maketimer(0.5, func {
+        tries += 1;
+        if (!getprop("/sim/sceneryloaded")) unloaded = 1;
+        # FlightGear has started over (or ten seconds went by without it: a move within the scenery already loaded), it is loaded again and the model has run for a while
+        if ((unloaded or tries > 20) and getprop("/sim/sceneryloaded") and fget("simulation/sim-time-sec") > 2.0 and fget("ap/on-mains") > 0) {
+            repo_watch.stop();
+            fset("limits/reset", 1);
+            settimer(func { fset("limits/reset", 0); }, 1);
+        } elsif (tries > 240) repo_watch.stop();                  # two minutes: give up
+    });
+    repo_watch.start();
+};
+
 var Onboard = {
     new: func {
         var m = { parents: [Onboard] };
@@ -155,7 +275,7 @@ var Onboard = {
         m.sender = "";
         m.last_mgr = -1; m.last_status = -1;
         m.last = nil;
-        foreach (var p; ["ack", "status", "plan"]) setprop("/gcs/down/" ~ p, "");
+        foreach (var p; ["ack", "status", "plan", "airport"]) setprop("/gcs/down/" ~ p, "");
         m.status();
         return m;
     },
@@ -308,6 +428,38 @@ var Onboard = {
             me.mgr = Manager.new(me.fresh[0], me.fresh[1], me.fresh[2]);
             fset("ap/engaged", 1);
             me.started = 1;
+            return nil;
+        },
+        "airport": func(a) {
+            var got = airport_message(opt(a, "icao", nil));
+            if (got[1] != nil) return got[1];
+            setprop("/gcs/down/airport", JSON.encode(got[0]));
+            return nil;
+        },
+        "reposition": func(a) {
+            var p = [opt(a, "lat", nil), opt(a, "lon", nil)];
+            var bad = point_fault(p, 2, "reposition");
+            if (bad != nil) return bad;
+            if (!is_num(opt(a, "heading", nil))) return "reposition: the heading is not a number";
+            if (me.started) return "the plan has begun";
+            if (fget("ap/on-mains") == 0) return "only on the ground";
+            if (fget("ap/ground-speed-kt") > REPOSITION_MAX_KT) return sprintf("only when the aircraft stands (%.0f kt)", fget("ap/ground-speed-kt"));
+            # FlightGear's own reposition, as its Location dialog does it: the presets, on the ground, then the command
+            # (an airport, a runway or a parking spot named among the presets would win over the coordinates: cleared, as the teleport of Nasal/aircraft.nas does)
+            foreach (var k; ["airport-id", "runway", "parkpos", "carrier", "fix", "vor-id", "ndb-id"]) setprop("/sim/presets/" ~ k, "");
+            setprop("/sim/presets/runway-requested", 0);
+            setprop("/sim/presets/navaid-id", 0);
+            setprop("/sim/presets/offset-distance-nm", 0);
+            setprop("/sim/presets/offset-azimuth-deg", 0);
+            setprop("/sim/presets/glideslope-deg", 0);
+            setprop("/sim/presets/latitude-deg", p[0]);
+            setprop("/sim/presets/longitude-deg", p[1]);
+            setprop("/sim/presets/heading-deg", mod(a.heading, 360.0));
+            setprop("/sim/presets/altitude-ft", -9999);
+            setprop("/sim/presets/airspeed-kt", 0);
+            setprop("/sim/presets/onground", 1);
+            fgcommand("reposition");
+            repo_settle();
             return nil;
         },
         "goto": func(a) {
