@@ -694,6 +694,7 @@
     renderEditor();
   });
   $('c-edit').addEventListener('click', () => {
+    rwyNote = ''; // about the plan that was being edited
     if (editor) editor = null;
     else if (link.plan) editor = new G.PlanEditor(link.plan);
     else {
@@ -754,6 +755,7 @@
   let groundNote = ''; // what the last ground command said
   let standNote = ''; // what the stand is, in words
   let taxiNote = ''; // what the last taxi routes are
+  let rwyNote = ''; // what the last runway plan was, or why there was none
   let askedIcao = '';
   const compass = (h) => ((Math.round(h) % 360) + 360) % 360;
   const icaoOk = (t) => /^[A-Za-z0-9]{4}$/.test(t);
@@ -831,6 +833,7 @@
   $('gd-taxi').addEventListener('click', () => {
     const st = editor && editor.stand();
     if (!ground || !st) return;
+    rwyNote = '';
     const exit = $('gd-exit').value === '' ? null : Number($('gd-exit').value);
     const r = G.ground.addTaxi(ground, editor.plan, { stand: st.at, heading: st.heading, exit, holds: $('gd-holds-on').checked });
     if (r.error) {
@@ -847,6 +850,47 @@
     if (!editor) return;
     editor.setGround(G.ground.removeTaxi(ground, editor.plan));
     taxiNote = 'The taxi routes are out of the plan.';
+    rwyNote = '';
+    renderEditor();
+  });
+  /** The field's height for a plan on runway end `rw`: the ground under the aircraft when it stands within 3 nmi of it, else the plan's own field when that is there; NaN if neither. */
+  function fieldElevAt(rw) {
+    const at = [rw.lat, rw.lon];
+    const near = (p) => Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]) && G.ground.dist(p, at) <= 3 * geo.NM;
+    if (near(here()) && Number.isFinite(tel.alt) && Number.isFinite(tel.agl) && tel.agl < 100) return tel.alt - tel.agl;
+    const f = editor && editor.plan.field;
+    if (f && near([f.lat, f.lon]) && Number.isFinite(f.elev_ft)) return f.elev_ft;
+    return NaN;
+  }
+  $('gd-rwy').addEventListener('change', () => {
+    if (editor) renderEditor(); // the button wakes with the choice
+  });
+  $('gd-rwy-go').addEventListener('click', () => {
+    const name = $('gd-rwy').value;
+    if (!editor || !ground || !name) return;
+    const rw = ground.end(name);
+    const elev = fieldElevAt(rw);
+    const box = Number.isFinite(elev) ? G.plancheck.localBoxFt([rw.lat, rw.lon], rw.h, elev, forecast, stateNow(elev)) : NaN; // the height the capability asks of "Plan from here"
+    const st = editor.stand();
+    const r = G.ground.planOnRunway(ground, name, elev, box, st ? { stand: st.at, heading: st.heading, exit: null, holds: $('gd-holds-on').checked } : null);
+    if (r.error) {
+      rwyNote = `No plan on runway ${name}: ${r.error}. The plan is as it was.`;
+    } else {
+      editor.setGround(r.plan);
+      const ft = (v) => Math.round(v / 10) * 10;
+      rwyNote = [`A flight on runway ${name} is in the plan (a box at ${fmtAlt(r.plan.items.find((it) => it.kind === 'route').points[0][2])} ft; "Undo" gives the old plan back).`,
+        r.out ? `Out: runway ${r.out.rw} by ${r.out.via.join(', ')}, ${ft(r.out.length_ft).toLocaleString('en-US')} ft.` : '',
+        r.in ? `In: runway ${r.in.rw} by ${r.in.exit.names.join('/')}, ${ft(r.in.length_ft).toLocaleString('en-US')} ft.` : '',
+        st ? '' : 'No stand is chosen: pick one and use "Taxi routes from the stand" for the taxi.', ...r.notes].filter(Boolean).join(' ');
+      taxiNote = '';
+      map.fit(geo.planLines(r.plan.items, r.plan.field.stand).flatMap((l) => l.points));
+    }
+    renderEditor();
+  });
+  $('gd-rwy-undo').addEventListener('click', () => {
+    if (!editor || !editor.undoGround()) return;
+    rwyNote = 'The plan is as it was before the last change made here.';
+    taxiNote = '';
     renderEditor();
   });
   /** The operator's hold: the next click on a taxi route of the plan being edited. */
@@ -874,6 +918,7 @@
       editor.setGround(got.plan);
       taxiNote = 'A hold is on the route.';
     } else taxiNote = 'No hold: ' + why + '.';
+    rwyNote = '';
     renderEditor();
   }
   $('gd-holds').addEventListener('click', (e) => {
@@ -900,6 +945,19 @@
     $('gd-hdg').disabled = !st;
     $('gd-place').disabled = !(st && live && link.inControl() && !(link.status && link.status.started));
     $('gd-taxi').disabled = !(ground && st);
+    // the runway ends of the airport that was loaded, to lay the flight on
+    const rwyOpts = ground
+      ? '<option value="">choose a runway end</option>' + ground.runwayList().map((r) => `<option value="${esc(r.n)}">${esc(r.n)}, heading ${String(compass(r.h)).padStart(3, '0')}°${r.length_ft ? `, ${fmtAlt(Math.round(r.length_ft / 100) * 100)} ft` : ''}</option>`).join('')
+      : '<option value="">load the ground map first</option>';
+    if ($('gd-rwy').dataset.html !== rwyOpts) {
+      const keep = $('gd-rwy').value;
+      $('gd-rwy').innerHTML = rwyOpts;
+      $('gd-rwy').dataset.html = rwyOpts;
+      $('gd-rwy').value = [...$('gd-rwy').options].some((o) => o.value === keep) ? keep : '';
+    }
+    $('gd-rwy').disabled = !ground;
+    $('gd-rwy-go').disabled = !(ground && $('gd-rwy').value);
+    $('gd-rwy-undo').disabled = !editor.undoGroundPlan;
     const hasTaxi = plan.items.some((it) => it.kind === 'taxi');
     $('gd-untaxi').disabled = !hasTaxi;
     const holdList = [];
@@ -928,7 +986,7 @@
     }
     $('gd-exit').disabled = !(ground && land);
     const here2 = st ? `Stand at ${st.at[0].toFixed(5)}, ${st.at[1].toFixed(5)}, facing ${compass(st.heading)}°${standNote ? ': ' + standNote : ''}.` : 'No stand yet: pick one on the map.';
-    $('gd-info').textContent = [pickingStand ? 'Click a stand on the map (or anywhere, for a stand of your own).' : here2, hasTaxi ? taxiNote : taxiNote.startsWith('No taxi') ? taxiNote : ''].filter(Boolean).join(' ');
+    $('gd-info').textContent = [pickingStand ? 'Click a stand on the map (or anywhere, for a stand of your own).' : here2, rwyNote, hasTaxi ? taxiNote : taxiNote.startsWith('No taxi') ? taxiNote : ''].filter(Boolean).join(' ');
     ov.stand = st;
   }
 

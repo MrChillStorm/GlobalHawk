@@ -255,4 +255,87 @@ function r6(x) {
   assert.ok(/no taxiway leaves runway 04 beyond 4,700 ft/.test(G.addTaxi(n2, demoplan, { stand: m.nodes[0] }).error), 'a network with no exit from the runway: said so');
 }
 
+// the runway picker (docs/PLAN.md, "Runway picker, stage 3": R1 to R5)
+{
+  // R1: the list, in the message's order, with the lengths
+  const list = net.runwayList();
+  assert.deepStrictEqual(list.map((r) => r.n), D.runways.map((r) => r.n));
+  list.forEach((r) => {
+    assert.ok(r.length_ft > 11900 && r.length_ft < 12100, `runway ${r.n} is 12,000 ft from end to end`);
+    assert.strictEqual(r.displ_ft, 0);
+  });
+  // R2: a plan on every end, without a stand: takeoff, route, landing; both found on the same end again by the taxi builder's own lookup
+  for (const end of net.runways) {
+    const r = G.planOnRunway(net, end.n, 2300, 6500);
+    assert.ok(!r.error, r.error);
+    assert.deepStrictEqual(r.plan.items.map((i) => i.kind), ['takeoff', 'route', 'land'], end.n);
+    assert.strictEqual(plancheck.checkPlan(r.plan), null, `the aircraft takes the plan on ${end.n}`);
+    const t = r.plan.items[0];
+    const l = r.plan.items[2];
+    assert.strictEqual(net.runwayFor(t.start, geo.course(t.start, t.end).deg, -300, 3000).n, end.n, `the takeoff is on ${end.n}`);
+    assert.strictEqual(net.runwayFor(l.aim, geo.course(l.fix, l.aim).deg, -300, 4000).n, end.n, `the landing is on ${end.n}`);
+    near(end.frame.to(t.start)[0], 0, 1, 'the takeoff begins at the threshold');
+    near(end.frame.to(l.aim)[0], 800, 1, 'the aiming point is 800 ft past the threshold');
+    near(end.frame.to(l.fix)[0], -10 * geo.NM, 5, 'the fix is 10 nmi back on the centreline');
+    near(end.frame.to(l.fix)[1], 0, 1, 'the fix is on the centreline');
+    assert.deepStrictEqual(r.plan.lost_link.find((i) => i.kind === 'land').aim, l.aim, 'the lost-link route lands on the same aiming point');
+    assert.deepStrictEqual(r.plan.sites[0].aim, l.aim, 'the home site is that aiming point');
+    assert.strictEqual(r.plan.field.name, `XDM1 ${end.n}`);
+    assert.strictEqual(r.plan.field.elev_ft, 2300);
+    assert.ok(/runway /.test(r.plan.note) && r.plan.note.includes(end.n));
+    assert.strictEqual(r.out, null);
+  }
+  // the box takes the height it is given
+  assert.strictEqual(G.planOnRunway(net, '04', 2300, 9500).plan.items[1].points[0][2], 9500);
+  // with a stand: the taxi routes at once, on that runway
+  const r4 = G.planOnRunway(net, '04', 2300, 6500, { stand, heading: S1.h, exit: null, holds: true });
+  assert.ok(!r4.error, r4.error);
+  assert.deepStrictEqual(r4.plan.items.map((i) => i.kind), ['taxi', 'takeoff', 'route', 'land', 'taxi']);
+  assert.strictEqual(r4.out.rw, '04');
+  assert.strictEqual(r4.in.rw, '04');
+  assert.strictEqual(plancheck.checkPlan(r4.plan), null, 'the aircraft takes the plan with its taxi routes and holds');
+  assert.deepStrictEqual(r4.plan.field.stand, [S1.lat, S1.lon].map((v) => Math.round(v * 1e6) / 1e6));
+  near(fr.to(r4.plan.items[1].start)[0], r4.out.lineup_ft, 1, 'the takeoff begins at the line-up point');
+  const noHolds = G.planOnRunway(net, '04', 2300, 6500, { stand, heading: S1.h, exit: null, holds: false });
+  assert.ok(noHolds.plan.items.every((i) => !i.holds), 'holds off: none');
+  // R3: a runway the taxiways do not reach from that stand is refused in words, whole
+  const bad = G.planOnRunway(net, '22', 2300, 6500, { stand, heading: S1.h, exit: null });
+  assert.ok(/no taxiway leads from the stand to runway 22/.test(bad.error), bad.error);
+  assert.strictEqual(bad.plan, undefined, 'a refusal gives no plan');
+  assert.ok(G.planOnRunway(net, '22', 2300, 6500).plan, 'the same runway without a stand is a plan');
+  // R4: the field's height is asked for, never made up; an end that is not there
+  assert.ok(/height of the field is not known/.test(G.planOnRunway(net, '04', NaN, 6500).error));
+  assert.ok(/height of the field is not known/.test(G.planOnRunway(net, '04', undefined, 6500).error));
+  assert.ok(/no runway end 99/.test(G.planOnRunway(net, '99', 2300, 6500).error));
+  // a displaced threshold: the aiming point is 800 ft past the displaced threshold, not past the pavement's end
+  const m = clone(D);
+  m.runways.find((r) => r.n === '04').displ = 300; // metres
+  const nd = new G.Net(m);
+  assert.strictEqual(nd.runwayList().find((r) => r.n === '04').displ_ft, 984);
+  const rd = G.planOnRunway(nd, '04', 2300, 6500);
+  assert.ok(!rd.error, rd.error);
+  near(nd.end('04').frame.to(rd.plan.items[2].aim)[0], 984 + 800, 1, 'the aiming point past the displaced threshold');
+  assert.strictEqual(nd.runwayFor(rd.plan.items[2].aim, geo.course(rd.plan.items[2].fix, rd.plan.items[2].aim).deg, -300, 4000).n, '04');
+  // an intersection takeoff (EFHK 33 from stand 121 begins 4,400 ft down the runway): the plan is found on its runway again, so the taxi routes can be laid again or taken out
+  const mid = G.planOnRunway(net, '04', 2300, 6500).plan;
+  mid.items[0].start = fr.ll(4400, 0);
+  mid.items[0].end = fr.ll(4400 + 9000, 0);
+  const again = G.addTaxi(net, mid, { stand, heading: S1.h, exit: null });
+  assert.ok(!again.error, again.error);
+  assert.strictEqual(again.out.rw, '04');
+  const gone = G.removeTaxi(net, again.plan);
+  near(fr.to(gone.items[0].start)[0], 0, 1, 'taking the routes out puts the takeoff back at the threshold');
+  // the way in takes the next exit when the first past the rollout leads nowhere (EFHK 04R: ZH does not); an exit named by the operator is taken or refused as it is
+  const dead = clone(D);
+  dead.arcs = dead.arcs.filter((a) => !(a[0] === 3 && a[1] === 14)); // C's other end: the taxiway at runway 04's exit C is now a spur that ends
+  const nd2 = new G.Net(dead);
+  const spur = G.taxiIn(nd2, nd2.end('04'), stand, 800, null);
+  assert.ok(!spur.error, spur.error);
+  assert.deepStrictEqual(spur.exit.names, ['D'], 'C leads nowhere: the way in leaves by D');
+  assert.ok(/no taxiway leads from C on runway 04 to the stand/.test(G.taxiIn(nd2, nd2.end('04'), stand, 800, 10).error), 'C asked for by name: refused as before');
+  assert.deepStrictEqual(G.taxiIn(net, net.end('04'), stand, 800, null).exit.names, ['C'], 'where the first exit leads home it is still the one taken');
+  // the plan that replaces another begins with no taxi items: asking again for the same runway gives the same plan
+  assert.deepStrictEqual(G.planOnRunway(net, '04', 2300, 6500).plan, G.planOnRunway(net, '04', 2300, 6500).plan);
+}
+
 console.log('ground: ok');

@@ -31,6 +31,9 @@
   const HOLD_SHORT_FT = 200; // a runway is entered where the route comes within this of its centreline: the hold is there (docs/PLAN.md, "Hold points and clearances")
   const HOLD_NEAR_FT = 150; // a hold placed by hand takes the route's nearest point within this of the click
   const COURSE_TOL = 10; // degrees: a runway end is the plan's when its heading is this near the plan's course
+  const M_FT = 3.28084;
+  const TAKEOFF_REACH_FT = 12000; // a takeoff begins anywhere along its runway (an intersection takeoff at EFHK 33 begins 4,400 ft down it): the runway is found within this reach
+  const AIM_PAST_FT = 800; // the landing's aiming point past the (displaced) threshold: as geo.localPlan lays it
 
   /** Distance in feet; the longitude scaled at the first point's latitude, as fdm/groundplan.py does (so that routes agree to the node). */
   function dist(p, q) {
@@ -199,6 +202,11 @@
       return o ? dist([rw.lat, rw.lon], [o.lat, o.lon]) : null;
     }
 
+    /** The runway ends for a list, in the message's order: [{ n, h, length_ft (null if the other end is not known), displ_ft }]. */
+    runwayList() {
+      return this.runways.map((r) => ({ n: r.n, h: r.h, length_ft: this.runwayLength(r), displ_ft: Math.round((Number(r.displ) || 0) * M_FT) }));
+    }
+
     /** The runway end a point lies on the centreline of, flown along `course`: within `reach` feet along it (from `from` before the threshold). */
     runwayFor(point, course, from, to) {
       let best = null;
@@ -304,21 +312,27 @@
   function taxiIn(net, rw, stand, aimAlong, exit) {
     const fr = rw.frame;
     const list = net.exits(rw);
-    let ex = exit === null || exit === undefined ? list.find((e) => e.along >= aimAlong + ROLLOUT_FT) : list.find((e) => e.node === exit);
-    if (!ex) return { error: exit === null || exit === undefined ? `no taxiway leaves runway ${rw.n} beyond ${Math.round(aimAlong + ROLLOUT_FT).toLocaleString('en-US')} ft from its start` : 'that exit is not on the runway' };
+    const auto = exit === null || exit === undefined;
+    // by default the first exit past the rollout that a taxiway leads on from to the stand: the first one, unless that one leads nowhere (EFHK 04R: ZH does not, a later one does)
+    const cands = auto ? list.filter((e) => e.along >= aimAlong + ROLLOUT_FT) : list.filter((e) => e.node === exit);
+    if (!cands.length) return { error: auto ? `no taxiway leaves runway ${rw.n} beyond ${Math.round(aimAlong + ROLLOUT_FT).toLocaleString('en-US')} ft from its start` : 'that exit is not on the runway' };
     const end = net.nearestNode(stand);
     const forbid = new Set();
     net.nodes.forEach((p, i) => {
       if (Math.abs(fr.to(p)[1]) < CENTRE_FT) forbid.add(i);
     });
-    let best = null;
-    for (const e of net.adj[ex.node]) {
-      if (net.isRw[e.k] || forbid.has(e.to)) continue;
-      const nodes = net.route(e.to, end, forbid);
-      if (nodes && (!best || net.length(nodes) < net.length(best))) best = nodes;
+    let refused = null;
+    for (const ex of cands) {
+      let best = null;
+      for (const e of net.adj[ex.node]) {
+        if (net.isRw[e.k] || forbid.has(e.to)) continue;
+        const nodes = net.route(e.to, end, forbid);
+        if (nodes && (!best || net.length(nodes) < net.length(best))) best = nodes;
+      }
+      if (best) return { points: [net.nodes[ex.node]].concat(best.map((i) => net.nodes[i]), [stand]).map(pt), exit: ex, nodes: [ex.node].concat(best) };
+      if (!refused) refused = { error: `no taxiway leads from ${ex.names.join('/')} on runway ${rw.n} to the stand` };
     }
-    if (!best) return { error: `no taxiway leads from ${ex.names.join('/')} on runway ${rw.n} to the stand` };
-    return { points: [net.nodes[ex.node]].concat(best.map((i) => net.nodes[i]), [stand]).map(pt), exit: ex, nodes: [ex.node].concat(best) };
+    return refused;
   }
 
   const taxiItem = (points) => ({ kind: 'taxi', points, speed: TAXI_KT, turn_speed: TURN_KT, stop: true });
@@ -428,7 +442,7 @@
     if (ti >= 0) {
       const t = items[ti];
       const c = geo.course(t.start, t.end);
-      const rw = net.runwayFor(t.start, c.deg, -300, 3000);
+      const rw = net.runwayFor(t.start, c.deg, -300, TAKEOFF_REACH_FT);
       if (!rw) return { error: `the takeoff is not on a runway of ${net.icao}: no runway end lies along its ${Math.round(c.deg)} deg course from its start` };
       out = taxiOut(net, rw, stand);
       if (out.error) return { error: out.error };
@@ -475,6 +489,36 @@
     p.items = items;
     p.field = Object.assign({}, p.field, { stand: pt(stand), stand_heading: Math.round((opts.heading || 0) * 10) / 10 });
     return { plan: p, out, in: into, notes };
+  }
+
+  /**
+   * The flight "Plan from here" lays for an aircraft lined up on runway end `name` (geo.localPlan: takeoff, a box, the landing on the same runway), at the end's
+   * position and heading; the aiming point is AIM_PAST_FT past the displaced threshold. With opts.stand ({ stand, heading, exit, holds }, as addTaxi) the taxi
+   * routes from that stand are laid too. Returns { plan, rw, out, in, notes } or { error }: a refusal leaves nothing half made (docs/PLAN.md, "Runway picker").
+   * elevFt: the field's height; boxFt: the box's height (geo.localPlan asks plancheck.localBoxFt for it; null for its default).
+   */
+  function planOnRunway(net, name, elevFt, boxFt, opts) {
+    const rw = net.end(name);
+    if (!rw) return { error: `${net.icao} has no runway end ${name}` };
+    if (!Number.isFinite(elevFt)) return { error: 'the height of the field is not known: place the aircraft at the stand first' };
+    const here = [rw.lat, rw.lon];
+    const plan = geo.localPlan(here, rw.h, elevFt, Number.isFinite(boxFt) ? boxFt : undefined);
+    const aim = pt(geo.along(here, rw.h, (Number(rw.displ) || 0) * M_FT + AIM_PAST_FT));
+    plan.items.forEach((it) => {
+      if (it.kind === 'land') it.aim = aim.slice();
+    });
+    plan.lost_link.forEach((it) => {
+      if (it.kind === 'land') it.aim = aim.slice();
+    });
+    plan.sites[0].aim = aim.slice();
+    const box = plan.items.find((it) => it.kind === 'route').points[0][2];
+    plan.id = `${net.icao}-${rw.n}`;
+    plan.field = Object.assign({}, plan.field, { name: `${net.icao} ${rw.n}` });
+    plan.note = `A local flight on runway ${rw.n} of ${net.icao}: takeoff, a box at ${box.toLocaleString('en-US')} ft, landing on the same runway.`;
+    if (!opts || !opts.stand) return { plan, rw, out: null, in: null, notes: [] };
+    const r = addTaxi(net, plan, opts);
+    if (r.error) return { error: r.error };
+    return Object.assign(r, { rw });
   }
 
   /**
@@ -553,7 +597,7 @@
       const t = p.items.find((it) => it.kind === 'takeoff');
       if (t) {
         const c = geo.course(t.start, t.end);
-        const rw = net.runwayFor(t.start, c.deg, -300, 3000);
+        const rw = net.runwayFor(t.start, c.deg, -300, TAKEOFF_REACH_FT);
         if (rw) {
           t.start = pt([rw.lat, rw.lon]);
           t.end = pt(rw.frame.ll(c.ft, 0));
@@ -564,7 +608,7 @@
   }
 
   const api = {
-    Net, Frame, check, reciprocal, dist, taxiOut, taxiIn, addTaxi, removeTaxi, routeFt, runwayHolds, addHold, removeHold, taxiwayNear, HOLD_SHORT_FT,
+    Net, Frame, check, reciprocal, dist, taxiOut, taxiIn, addTaxi, planOnRunway, removeTaxi, routeFt, runwayHolds, addHold, removeHold, taxiwayNear, HOLD_SHORT_FT,
     MIN_SPOT_RADIUS_M, STAND_PICK_FT, FILLET_FT, LINEUP_FT, ROLLOUT_FT, TAXI_KT, TURN_KT, RUNWAY_ARC,
   };
   if (node) module.exports = api;

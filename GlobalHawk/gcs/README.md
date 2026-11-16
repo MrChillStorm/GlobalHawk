@@ -202,6 +202,12 @@ it (on Send, before the plan begins; FlightGear loads the scenery there first, a
 runway's exit (choose the exit, or leave "the first past the rollout") over the airport's taxiways, in the plan: the takeoff then begins at the line-up point. The method is that of
 `fdm/groundplan.py`, which flew a taxi, a box and a taxi back at EFHK. In the demo the airport is the made-up `XDM1`.
 
+**Choosing the runway.** Once the ground map is loaded, **Runway** lists the airport's runway ends (name, heading, length). **Plan a flight on it** lays the flight "Plan from here" lays for an aircraft lined up on
+that end (a takeoff, a box, the landing on the same runway, its aiming point 800 ft past the displaced threshold) in place of the plan being edited, and, if a stand is chosen, the taxi routes from it, so a stand
+and a runway are all it needs. The field's height is the ground's under the aircraft when it stands within 3 nmi of the runway, else the plan's own; if neither is known it says so and does nothing. A runway
+the taxiways do not reach from that stand is refused with the reason, and the plan stays as it was (at EFHK from stand 121: 04R, 22L, 04L and 33 are laid, 22R and 15 refused). **Undo** gives the old plan back
+(it also takes back the last taxi route or hold made in the editor). Nothing is sent until Send.
+
 **Holds and clearances.** With **hold points** ticked (the default) the taxi routes stop short of every runway they enter or cross and at the line-up point, and the aircraft waits at each until
 you clear it. The holds are drawn on the map (a bar across the route and the name, the one the aircraft waits at ringed), listed in the editor with an × each, and one can be added by a click on a
 taxi route (**Add a hold…**). Once the plan is flying, a **Clearances** panel lists the holds (✓ cleared, ● waiting, ○ ahead) and its **Clear…** button, for the hold the aircraft is waiting at

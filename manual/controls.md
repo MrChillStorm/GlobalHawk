@@ -101,6 +101,9 @@ label in a menu or dialog; the second is what the operator sees.
 | gd-pick | Pick the stand… | Then click a stand on the map; a click anywhere else makes a stand of your own there. The stand is kept in the plan (field.stand, field.stand_heading). |
 | gd-hdg | facing | The way the aircraft faces on the stand, in degrees: the airport's own for one of its stands, yours to give for any other. |
 | gd-place | Place the aircraft here… | Moves the aircraft, stopped on the ground, to the stand (FlightGear's own reposition), on Send. Only before the plan begins. FlightGear loads the scenery at the new place first: half a minute. |
+| gd-rwy | Runway | The runway ends of the airport whose ground map is loaded, with heading and length: the end the flight takes off from and lands on. |
+| gd-rwy-go | Plan a flight on it | Lays a flight on the chosen runway end in place of the plan being edited: a takeoff, a box, the landing on the same runway; and, if a stand is chosen, the taxi routes from it. Refused, with the reason, when the taxiways do not reach that runway from the stand or the field's height is not known; the plan then stays as it was. |
+| gd-rwy-undo | Undo | Gives back the plan as it was before the last runway, taxi route or hold change made in the editor. |
 | gd-exit | Leave the runway by | The exit the taxi route in follows: by default the first past where the rollout ends. |
 | gd-taxi | Taxi routes from the stand | Lays a taxi route out from the stand to the runway's start (the takeoff then begins at the line-up point) and one in from the runway's exit to the stand, over the airport's taxiways. Replaces the plan's taxi items. |
 | gd-untaxi | Remove them | Takes the taxi routes out of the plan again; the takeoff begins where the runway does. |

@@ -168,6 +168,76 @@ def lay(msg, plan, stand, heading, holds=False):
     return json.loads(out.stdout)
 
 
+NODE_RWY = r"""
+const G = require(process.argv[2] + '/js/ground.js');
+const geo = require(process.argv[2] + '/js/geo.js');
+const fs = require('fs');
+const [msgPath, lat, lon, hdg, elev, holds] = process.argv.slice(3);
+const net = new G.Net(JSON.parse(fs.readFileSync(msgPath)));
+const stand = lat === 'none' ? null : { stand: [Number(lat), Number(lon)], heading: Number(hdg), exit: null, holds: holds === '1' };
+const out = net.runways.map((e) => {
+  const r = G.planOnRunway(net, e.n, Number(elev), 7500, stand);
+  if (r.error) return { n: e.n, error: r.error };
+  const t = r.plan.items.find((i) => i.kind === 'takeoff');
+  const l = r.plan.items.find((i) => i.kind === 'land');
+  const a = net.runwayFor(t.start, geo.course(t.start, t.end).deg, -300, 12000);
+  const b = net.runwayFor(l.aim, geo.course(l.fix, l.aim).deg, -300, 4000);
+  return { n: e.n, plan: r.plan, takeoffOn: a && a.n, landOn: b && b.n, out: r.out && { rw: r.out.rw, via: r.out.via, ft: r.out.length_ft }, in: r.in && { rw: r.in.rw, exit: r.in.exit.names, ft: r.in.length_ft } };
+});
+console.log(JSON.stringify(out));
+"""
+
+
+def runway_plans(msg, stand, heading, elev, holds=True):
+    """What the station's module (js/ground.js planOnRunway) makes for each runway end of the airport, run in node: a list of { n, error | plan, takeoffOn, landOn, out, in }."""
+    with tempfile.TemporaryDirectory() as d:
+        mp, sp = (os.path.join(d, n) for n in ('msg.json', 'run.js'))
+        json.dump(msg, open(mp, 'w'))
+        open(sp, 'w').write(NODE_RWY)
+        args = ['none', '0', '0'] if stand is None else [str(stand[0]), str(stand[1]), str(heading)]
+        out = subprocess.run(['node', sp, os.path.abspath(GCS), mp] + args + [str(elev), '1' if holds else '0'], capture_output=True, text=True)
+    if out.returncode:
+        raise RuntimeError(out.stderr[-300:])
+    return json.loads(out.stdout)
+
+
+def r_runways():
+    """R2, R3 (docs/PLAN.md, "Runway picker, stage 3"): the plan on every runway end of the made-up field and of EFHK, with and without the stand: the aircraft takes it, the takeoff
+    and the landing are on that end, and a runway the taxiways do not reach is refused in words, never laid on another end."""
+    xdm = AD.load('XDM1', [os.path.join(GCS, 'tests', 'fixtures', 'scenery')])
+    cases = [('XDM1', xdm, None, None, 2300), ('XDM1', xdm, (xdm['parking'][0]['lat'], xdm['parking'][0]['lon']), xdm['parking'][0]['h'], 2300)]
+    if have_efhk():
+        sp = GP.Net('EFHK').park[SPOT]
+        efhk = AD.load('EFHK')
+        cases += [('EFHK', efhk, None, None, 167), ('EFHK', efhk, (sp['lat'], sp['lon']), sp['heading'], 167)]
+    for icao, msg, stand, heading, elev in cases:
+        res = runway_plans(msg, stand, heading, elev)
+        sim = G.Sim()
+        bad, said, done = [], [], 0
+        for r in res:
+            if 'error' in r:
+                if stand is None or not r['error'].strip():       # without a stand every end is a plan; with one a refusal must say why
+                    bad.append('%s: refused (%s)' % (r['n'], r['error']))
+                said.append('%s refused: %s' % (r['n'], r['error']))
+                continue
+            done += 1
+            a = say(sim, done, 'plan', r['plan'])
+            if a['status'] != 'accepted':
+                bad.append('%s: the aircraft says %s %s' % (r['n'], a['status'], a.get('reason', '')))
+            if r['takeoffOn'] != r['n'] or r['landOn'] != r['n']:
+                bad.append('%s: takeoff on %s, landing on %s' % (r['n'], r['takeoffOn'], r['landOn']))
+            if stand is not None:
+                if not (r['out'] and r['out']['rw'] == r['n'] and r['in'] and r['in']['rw'] == r['n']):
+                    bad.append('%s: taxi routes not on that runway' % r['n'])
+                kinds = [i['kind'] for i in r['plan']['items']]
+                if kinds[:2] != ['taxi', 'takeoff'] or kinds[-1] != 'taxi':
+                    bad.append('%s: items %s' % (r['n'], kinds))
+            said.append('%s %s' % (r['n'], ('out %d ft by %s, in %d ft by %s' % (r['out']['ft'], ','.join(r['out']['via']), r['in']['ft'], '/'.join(r['in']['exit']))) if stand is not None else 'plan'))
+        n = len(res)
+        add('R3.1' if stand is not None else 'R2.1', 'the plan on each of the %d runway ends of %s%s' % (n, icao, ' from the stand' if stand is not None else ''),
+            not bad and done >= 1 and (stand is not None or done == n), '; '.join(bad) if bad else '%d of %d laid and taken by the aircraft; %s' % (done, n, '; '.join(said)))
+
+
 def s4_plans():
     """S4: the plans the station lays pass the aircraft's own check, Python's here (Nasal's in FlightGear: python3 ground_checks.py fg)."""
     demo = json.load(open(os.path.join(HERE, '..', 'GlobalHawk', 'Missions', 'demo-local.json')))
@@ -338,6 +408,7 @@ def main():
         s2_python()
         s3()
         s4_plans()
+        r_runways()
         node_tests()
     out = os.path.join(HERE, 'out', 'ground_checks%s.txt' % ('_fg' if 'fg' in sys.argv[1:] else ''))
     os.makedirs(os.path.dirname(out), exist_ok=True)
