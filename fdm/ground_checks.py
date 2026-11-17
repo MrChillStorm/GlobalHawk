@@ -11,6 +11,7 @@ The scenery is read from where FlightGear keeps it on this machine (fdm/airportd
 import asyncio
 import json
 import math
+import wgs84 as WG                 # the one earth model: WGS84's tangent plane (fdm/wgs84.py)
 import os
 import subprocess
 import sys
@@ -25,7 +26,6 @@ import groundplan as GP             # noqa: E402
 import harness as H                 # noqa: E402
 
 GCS = os.path.join(HERE, '..', 'GlobalHawk', 'gcs')
-FT = 364567.2
 SPOT = '121'
 J = '/fdm/jsbsim/'
 rows = []
@@ -45,7 +45,7 @@ def have_efhk():
 
 
 def feet(a, b):
-    return math.hypot((a[0] - b[0]) * FT, (a[1] - b[1]) * FT * math.cos(math.radians(a[0])))
+    return WG.distance(a, b)
 
 
 # ------------------------------------------------------------------------------------------------------------------------------------- S1, Python end

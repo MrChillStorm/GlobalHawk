@@ -53,8 +53,7 @@ def simt():
 
 
 def offset(p, brg, dist):
-    c = math.radians(brg)
-    return [p[0] + dist * math.cos(c) / MM.FT_PER_DEG, p[1] + dist * math.sin(c) / (MM.FT_PER_DEG * math.cos(math.radians(p[0])))]
+    return list(MM.along(p, brg, dist))
 
 
 

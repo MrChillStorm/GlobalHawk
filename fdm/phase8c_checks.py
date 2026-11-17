@@ -233,7 +233,7 @@ def turn_lead():
         u = lambda deg: np.array([math.cos(math.radians(deg)), math.sin(math.radians(deg))])        # (north, east)
         start = fld.ll(*(-12 * NM * u(90.0)))
         B, C = fld.ll(0.0, 0.0), fld.ll(*(40000.0 * u(180.0)))
-        t = H.trim(f, alt=174.0 + h, kcas=k, weight=w, lat=start[0], lon=start[1], psi=90.0, terrain=174.0)
+        t = H.trim(f, alt=174.0 + h, kcas=k, weight=w, lat=start[0], lon=start[1], psi=MM.course(start, B)[0], terrain=174.0)          # on the leg's bearing at its start (on the ellipsoid the leg turns 0.35 deg over 12 nmi at 60 N: a start on 90 deg is that far off the line and was still settling at 40 s)
         H.engage(f, t, pitch_mode=2, thrust_mode=3, speed_schedule=0)
         mgr = MM.Manager(f, [dict(kind='route', points=[B + (174.0 + h,), C + (174.0 + h,)])])
         f['ap/engaged'] = 1

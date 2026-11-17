@@ -9,6 +9,7 @@ FlightGear) is by hand in the browser pane and written up there.
 """
 import json
 import math
+import wgs84 as WG                 # the one earth model: WGS84's tangent plane (fdm/wgs84.py)
 import os
 import subprocess
 import sys
@@ -24,7 +25,6 @@ import harness as H                 # noqa: E402
 
 GCS = os.path.join(HERE, '..', 'GlobalHawk', 'gcs')
 MISSIONS = os.path.join(HERE, '..', 'GlobalHawk', 'Missions')
-FT = 364567.2
 import missionmgr as MM         # noqa: E402
 NOSE_FT = MM.NOSE_FT
 rows = []
@@ -36,15 +36,14 @@ def add(tag, name, ok, detail):
 
 
 def feet(a, b):
-    return math.hypot((a[0] - b[0]) * FT, (a[1] - b[1]) * FT * math.cos(math.radians(a[0])))
+    return WG.distance(a, b)
 
 
 def short_by(pos, hold, prev):
     """How far short of the hold point the aircraft stands, ft along the way it came (negative: past it)."""
-    cos = math.cos(math.radians(hold[0]))
-    vn, ve = (hold[0] - prev[0]) * FT, (hold[1] - prev[1]) * FT * cos
+    vn, ve = WG.enu(prev, hold)
     n = math.hypot(vn, ve)
-    dn, de = (hold[0] - pos[0]) * FT, (hold[1] - pos[1]) * FT * cos
+    dn, de = WG.enu(pos, hold)
     return (dn * vn + de * ve) / n
 
 
@@ -117,8 +116,8 @@ def headless(plans):
 
     def nose():
         """Where the nose is, the position FlightGear gives the aircraft: NOSE_FT ahead of the centre of gravity."""
-        c, p = math.radians(f['attitude/psi-deg']), pos()
-        return (p[0] + NOSE_FT * math.cos(c) / FT, p[1] + NOSE_FT * math.sin(c) / (FT * math.cos(math.radians(p[0]))))
+        p = pos()
+        return tuple(WG.along(p, f['attitude/psi-deg'], NOSE_FT))
     a = say('plan', plan)
     add('H1', 'the plan with holds is accepted (Python check)', a['status'] == 'accepted', a['reason'] or 'accepted')
     pre = say('clear', dict(id='H1'))

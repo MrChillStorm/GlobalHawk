@@ -21,6 +21,16 @@
       this.trail = [];
       this.onClick = null;
       this.data = {};
+      // The canvas is fitted to its box when the window changes size and whenever the box itself does (a banner that comes up or goes away above the map, a panel that opens): without the second,
+      // the bitmap kept its old size, the browser stretched it to the new box, and what was drawn (the camera's cross, the plan) stood off the point that was clicked, more the lower on the map
+      // (2026-11-17: "the camera dot appears below the hand")
+      if (typeof ResizeObserver !== 'undefined') {
+        this.watch = new ResizeObserver(() => {
+          const r = this.c.getBoundingClientRect();
+          if (Math.abs(Math.max(50, r.width) - (this.w || 0)) > 0.5 || Math.abs(Math.max(50, r.height) - (this.h || 0)) > 0.5) this.resize();
+        });
+        this.watch.observe(canvas);
+      }
       let drag = null;
       canvas.addEventListener('pointerdown', (e) => {
         const r = canvas.getBoundingClientRect();
@@ -119,9 +129,9 @@
       const lat = points.map((p) => p[0]);
       const lon = points.map((p) => p[1]);
       this.centre = [(Math.min(...lat) + Math.max(...lat)) / 2, (Math.min(...lon) + Math.max(...lon)) / 2];
-      const k = Math.cos((this.centre[0] * Math.PI) / 180);
-      const spanN = (Math.max(...lat) - Math.min(...lat)) * geo.FT_PER_DEG;
-      const spanE = (Math.max(...lon) - Math.min(...lon)) * geo.FT_PER_DEG * k;
+      const [kn, ke] = geo.ftPerDeg(this.centre[0]);
+      const spanN = (Math.max(...lat) - Math.min(...lat)) * kn;
+      const spanE = (Math.max(...lon) - Math.min(...lon)) * ke;
       this.ftPerPx = Math.max(2, 1.25 * Math.max(spanN / this.h, spanE / this.w, 1));
       this.follow = false;
       this.draw();
@@ -240,8 +250,9 @@
       const lat1 = Math.max(...corners.map((q) => q[0]));
       const lon0 = Math.min(...corners.map((q) => q[1]));
       const lon1 = Math.max(...corners.map((q) => q[1]));
-      const dLat = (step * geo.NM) / geo.FT_PER_DEG;
-      const dLon = dLat / Math.cos((this.centre[0] * Math.PI) / 180);
+      const [kn, ke] = geo.ftPerDeg(this.centre[0]);
+      const dLat = (step * geo.NM) / kn;
+      const dLon = (step * geo.NM) / ke;
       x.strokeStyle = COL.grid;
       x.lineWidth = 1;
       x.beginPath();

@@ -13,11 +13,11 @@ tasks hand over; "first broken" is the earliest MISS in time.
 import csv
 import json
 import math
+import wgs84 as WG                 # the one earth model: WGS84's tangent plane (fdm/wgs84.py)
 import sys
 
 import numpy as np
 
-FT = 364567.2
 NM = 6076.1
 
 # (task handing over, to whom, what is measured, limit, where the limit comes from)
@@ -52,7 +52,7 @@ def main():
     home = [plan['field']['lat'], plan['field']['lon']]
 
     def ne(la, lo):
-        return np.array([(la - home[0]) * FT, (lo - home[1]) * FT * math.cos(math.radians(home[0]))])
+        return np.array(WG.enu(home, (la, lo)))
     pos = np.array([ne(a, b) for a, b in zip(col('lat'), col('lon'))])
     items = plan['items']
     takeoff = next((i for i in items if i['kind'] == 'takeoff'), None)

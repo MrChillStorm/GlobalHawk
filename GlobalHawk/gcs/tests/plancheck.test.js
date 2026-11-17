@@ -165,8 +165,8 @@ assert.strictEqual(legs[6].alt_ft, good.field.elev_ft);
   const old = geo.localPlan([60.33, 24.96], 153.1, 174, 15000);
   const a = pc.assess(old, { weight_lb: 25500 });
   assert.deepStrictEqual(a.map((x) => x.kind), ['descent'], JSON.stringify(a));
-  assert.ok(/^The leg from point 3 \(15000 ft\) down to the landing fix \(\d+ ft\) is 14\.8 nmi: the aircraft's descent takes about \d+\.\d nmi for \d+ ft, so it arrives about \d+ ft too high\. Lower point 3 to \d+ ft or less, or put the landing fix [\d.]+ nmi farther on\./.test(a[0].text), a[0].text);
-  assert.ok(a[0].need > 2 * a[0].have && Math.abs(a[0].have - 14.84) < 0.1);
+  assert.ok(/^The leg from point 3 \(15000 ft\) down to the landing fix \(\d+ ft\) is 14\.9 nmi: the aircraft's descent takes about \d+\.\d nmi for \d+ ft, so it arrives about \d+ ft too high\. Lower point 3 to \d+ ft or less, or put the landing fix [\d.]+ nmi farther on\./.test(a[0].text), a[0].text);
+  assert.ok(a[0].need > 2 * a[0].have && Math.abs(a[0].have - 14.91) < 0.1);
   // taking the advice makes it quiet: the height it names, or the distance it names
   const lowerTo = Number(/Lower point 3 to (\d+) ft/.exec(a[0].text)[1]);
   assert.deepStrictEqual(pc.assess(geo.localPlan([60.33, 24.96], 153.1, 174, lowerTo), { weight_lb: 25500 }).filter((x) => x.kind === 'descent'), [], 'lowered to ' + lowerTo);
@@ -188,11 +188,13 @@ assert.strictEqual(legs[6].alt_ft, good.field.elev_ft);
 {
   const FM = require('../js/flightmath.js');
   const items = [{ kind: 'route', points: [[35, -118, 20000], [35, -117, 20000], [35.5, -117, 20000]] }];
+  // a leg along a parallel and then one north is a corner of 89.7 deg on the ellipsoid, not 90 (the course to a point a degree of longitude along a parallel is 0.3 deg north of east at 35 N): the corner is read from the plan's own courses
+  const corner = Math.abs(geo.turn(geo.course(items[0].points[0], items[0].points[1]).deg, geo.course(items[0].points[1], items[0].points[2]).deg));
   const straight = pc.legs(items, null, 2300, { arcs: false });
-  const arcs = pc.legs(items, null, 2300); // (no start: the first leg has no corner, so the 90 deg corner at the second point is the only one)
-  const t = FM.turn({ delta_deg: 90, alt_ft: 20000, vg_fps: FM.lerp(require('../js/perfdata.js').alt_ft, require('../js/perfdata.js').ktas, 20000) * FM.KT, kcas: 150 });
-  const cut = t.radius_ft * (1 - Math.PI / 4);
-  assert.ok(Math.abs((straight[1].dist_ft - arcs[1].dist_ft) - cut) < 1 && Math.abs((straight[2].dist_ft - arcs[2].dist_ft) - cut) < 1, 'a 90 deg corner');
+  const arcs = pc.legs(items, null, 2300); // (no start: the first leg has no corner, so the corner at the second point is the only one)
+  const t = FM.turn({ delta_deg: corner, alt_ft: 20000, vg_fps: FM.lerp(require('../js/perfdata.js').alt_ft, require('../js/perfdata.js').ktas, 20000) * FM.KT, kcas: 150 });
+  const cut = t.radius_ft * (Math.tan((corner * Math.PI) / 360) - (corner * Math.PI) / 360); // R (tan(delta / 2) - delta / 2): R (1 - pi / 4) at 90 deg
+  assert.ok(Math.abs((straight[1].dist_ft - arcs[1].dist_ft) - cut) < 1 && Math.abs((straight[2].dist_ft - arcs[2].dist_ft) - cut) < 1, 'a corner of 89.7 deg');
   assert.strictEqual(straight[0].dist_ft, arcs[0].dist_ft, 'the first leg has no corner');
   // a corner past the fly-by limit and a nearly straight one are left alone
   const odd = pc.legs([{ kind: 'route', points: [[35, -118, 20000], [35, -117, 20000], [35.001, -118, 20000]] }], null, 2300);

@@ -144,15 +144,14 @@ def entry_contract():
     return MM.Manager.go_arounds - n0
 
 
-def gate_case(weight, imbalance, heal, seconds=3300.0, setup=None, seed=None):
+def gate_case(weight, imbalance, heal, seconds=3300.0, setup=None, seed=None, elev=2357.0):
     """M11's flight: a landing item begun on the glide 5 nmi out (as M6's landings are), flown by the manager, with tank 0 emptied by the share `imbalance` into tank 1 (a rolling moment the roll law
     holds the wings level against: the final settles off the line, flight 34's drift made on purpose). heal: the tanks are made even again at the first missed approach (the cause goes away).
     Returns the missed approaches (height over the runway, the cause, the lowest height in the 60 s after it, and whether the wheels touched), the touchdown, and whether the aircraft ended holding."""
     f = H.load(rebuild=False)
     if seed:
         f['simulation/randomseed'] = seed
-    elev = 2357.0
-    fld = MM.Field(35.0, -117.0, elev)
+    fld = MM.Field(35.0, -117.0, elev)          # elev: the runway's height; 2,357 ft here, and 171 ft (EFHK) for the gust bench with JSBSim's own turbulence, which counts the height above sea level
     u = unit(COURSE)
     aim, fix, start = fld.ll(0, 0), fld.ll(*(-10 * NM * u)), fld.ll(*(-5 * NM * u))
     keas = math.sqrt(weight / (0.645 * 540 * 0.5 * 0.0023769)) / H.KT
@@ -198,18 +197,19 @@ def gate_case(weight, imbalance, heal, seconds=3300.0, setup=None, seed=None):
 
 
 def gate_checks():
-    """M11: the stabilised-approach gate and the missed approach (docs/PLAN.md, "The approach that cannot hold its line"). Tank 0 emptied 40 % into tank 1 at 20,800 lb leaves the final 100 ft off the
-    line from 500 ft down, and then the roll law cannot bring it back. (a) The cause stays: the gate breaks between 150 and 500 ft, the missed approach climbs out (no more than 100 ft lost, gear up),
+    """M11: the stabilised-approach gate and the missed approach (docs/PLAN.md, "The approach that cannot hold its line"). Tank 0 emptied into tank 1 at 20,800 lb leaves the final 200 ft off the
+    line from 600 ft down, and then the roll law cannot bring it back (2026-11-17: the cause was 40 % of tank 0 until the landing's loops were shortened low, which holds 40 % and 70 % within 3 ft and
+    lands: docs/PLAN.md, "The lateral law's loops"; the whole tank is what the law cannot hold now, and the gate then breaks higher, 625 ft, so the window is the gate's own 150 to 1,000 ft). (a) The cause stays: the gate breaks between 150 and 500 ft, the missed approach climbs out (no more than 100 ft lost, gear up),
     flies the circuit and comes back; it breaks again (second miss); the third time the aircraft climbs out as before and holds over the fix: LANDING ABANDONED. (b) The cause goes away after the first miss (the tanks
     are made even): the second approach lands within M5b's and M7's and M8's limits."""
     n0 = MM.Manager.go_arounds
-    r = gate_case(20800.0, 0.4, False)
+    r = gate_case(20800.0, 1.0, False)
     m = r['misses']
-    ok = len(m) == 3 and r['abandoned'] and r['td'] is None and all(150.0 <= x['h'] <= 500.0 for x in m) and all(x['h'] - x['low'] <= 100.0 and x['gear_up'] and not x['down'] for x in m) and r['hold_alt'] is not None and abs(r['alt'] - r['hold_alt']) <= 300.0
+    ok = len(m) == 3 and r['abandoned'] and r['td'] is None and all(150.0 <= x['h'] <= 1000.0 for x in m) and all(x['h'] - x['low'] <= 100.0 and x['gear_up'] and not x['down'] for x in m) and r['hold_alt'] is not None and abs(r['alt'] - r['hold_alt']) <= 300.0
     add('M11', 'the line cannot be held: missed approach, again, then the landing is abandoned', ok,
         '%s; %s; holding at %.0f ft (asked %.0f)' % ('; '.join('%s at %.0f s, gear up %s, %.0f ft lost' % (x['why'].split(';')[0].replace('MISSED APPROACH: ', '').replace('LANDING ABANDONED: ', 'abandoned: '), x['t'], 'yes' if x['gear_up'] else 'NO', x['h'] - x['low']) for x in m),
                                                                      'ended holding' if r['abandoned'] else 'did not end holding (%s)' % ('landed' if r['td'] else 'flying'), r['alt'], r['hold_alt'] or 0.0))
-    r = gate_case(20800.0, 0.4, True)
+    r = gate_case(20800.0, 1.0, True)
     m, td = r['misses'], r['td']
     ok = len(m) == 1 and td is not None and td['n_before'] == 1 and 0.2 <= td['sink'] <= 1.2 and -50 <= td['past'] <= 2000 and td['xt'] <= 15.0 and m[0]['h'] - m[0]['low'] <= 100.0
     add('M11', 'the cause goes away after the first miss: the second approach lands', ok,

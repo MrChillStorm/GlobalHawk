@@ -70,6 +70,18 @@
   <property value="1">ap/ci-lead</property>
   <property value="0">ap/ga-on</property>
   <property value="0">ap/ga-h0-ft</property>
+  <property value="0">ap/ga-smart</property>
+  <property value="0">ap/ga-latch</property>
+  <property value="0">ap/final-wide</property>
+  <property value="0">ap/final-i-wide-deg</property>
+  <property value="0">ap/final-ff</property>
+  <property value="0">ap/final-ri</property>
+  <property value="0">ap/final-aim</property>
+  <property value="0">ap/final-aim-ft</property>
+  <property value="0">ap/final-i-rate-deg</property>
+  <property value="0">ap/final-ff-bank-deg</property>
+  <property value="0">ap/ga-smart-active</property>
+  <property value="0">ap/ga-theta-i-deg</property>
   <property value="0">ap/vt-on</property>
   <property value="0">ap/vt-sp-end</property>
   <property value="0">ap/v-sp-i</property>
@@ -84,6 +96,10 @@
   <property value="0">ap/gust-sys</property>
   <property value="0">ap/approach-add-kt</property>
   <property value="0">ap/approach-add-auto</property>
+  <property value="0">ap/gsmini-on</property>
+  <property value="0">ap/tower-hw-kt</property>
+  <property value="0">ap/gs-gsmini-add</property>
+  <property value="0">ap/gs-hw-live-kt</property>
   <property value="0">ap/approach-add-used</property>
   <property value="0">ap/gs-add-lat</property>
   <property value="0">ap/gs-on</property>
@@ -497,14 +513,133 @@
           </tableData></table>
       </function>
     </fcs_function>
-    <fcs_function name="ap/leg-dn-ft">
+    <fcs_function name="ap/g-start-sp">
       <function>
-        <product><value>364567</value><difference><property>ap/leg-lat1-deg</property><property>ap/leg-lat0-deg</property></difference></product>
+<sin><toradians><property>ap/leg-lat0-deg</property></toradians></sin>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-start-cp">
+      <function>
+<cos><toradians><property>ap/leg-lat0-deg</property></toradians></cos>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-start-sl">
+      <function>
+<sin><toradians><property>ap/leg-lon0-deg</property></toradians></sin>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-start-cl">
+      <function>
+<cos><toradians><property>ap/leg-lon0-deg</property></toradians></cos>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-start-x">
+      <function>
+        <product><quotient><value>6.37814e+06</value><sqrt><difference><value>1</value><product><value>0.00669438</value><property>ap/g-start-sp</property><property>ap/g-start-sp</property></product></difference></sqrt></quotient><property>ap/g-start-cp</property><property>ap/g-start-cl</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-start-y">
+      <function>
+        <product><quotient><value>6.37814e+06</value><sqrt><difference><value>1</value><product><value>0.00669438</value><property>ap/g-start-sp</property><property>ap/g-start-sp</property></product></difference></sqrt></quotient><property>ap/g-start-cp</property><property>ap/g-start-sl</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-start-z">
+      <function>
+        <product><quotient><value>6.37814e+06</value><sqrt><difference><value>1</value><product><value>0.00669438</value><property>ap/g-start-sp</property><property>ap/g-start-sp</property></product></difference></sqrt></quotient><value>0.993306</value><property>ap/g-start-sp</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-end-sp">
+      <function>
+<sin><toradians><property>ap/leg-lat1-deg</property></toradians></sin>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-end-cp">
+      <function>
+<cos><toradians><property>ap/leg-lat1-deg</property></toradians></cos>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-end-sl">
+      <function>
+<sin><toradians><property>ap/leg-lon1-deg</property></toradians></sin>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-end-cl">
+      <function>
+<cos><toradians><property>ap/leg-lon1-deg</property></toradians></cos>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-end-x">
+      <function>
+        <product><quotient><value>6.37814e+06</value><sqrt><difference><value>1</value><product><value>0.00669438</value><property>ap/g-end-sp</property><property>ap/g-end-sp</property></product></difference></sqrt></quotient><property>ap/g-end-cp</property><property>ap/g-end-cl</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-end-y">
+      <function>
+        <product><quotient><value>6.37814e+06</value><sqrt><difference><value>1</value><product><value>0.00669438</value><property>ap/g-end-sp</property><property>ap/g-end-sp</property></product></difference></sqrt></quotient><property>ap/g-end-cp</property><property>ap/g-end-sl</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-end-z">
+      <function>
+        <product><quotient><value>6.37814e+06</value><sqrt><difference><value>1</value><product><value>0.00669438</value><property>ap/g-end-sp</property><property>ap/g-end-sp</property></product></difference></sqrt></quotient><value>0.993306</value><property>ap/g-end-sp</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-ac-sp">
+      <function>
+<sin><toradians><property>position/lat-geod-deg</property></toradians></sin>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-ac-cp">
+      <function>
+<cos><toradians><property>position/lat-geod-deg</property></toradians></cos>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-ac-sl">
+      <function>
+<sin><toradians><property>position/long-gc-deg</property></toradians></sin>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-ac-cl">
+      <function>
+<cos><toradians><property>position/long-gc-deg</property></toradians></cos>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-ac-x">
+      <function>
+        <product><quotient><value>6.37814e+06</value><sqrt><difference><value>1</value><product><value>0.00669438</value><property>ap/g-ac-sp</property><property>ap/g-ac-sp</property></product></difference></sqrt></quotient><property>ap/g-ac-cp</property><property>ap/g-ac-cl</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-ac-y">
+      <function>
+        <product><quotient><value>6.37814e+06</value><sqrt><difference><value>1</value><product><value>0.00669438</value><property>ap/g-ac-sp</property><property>ap/g-ac-sp</property></product></difference></sqrt></quotient><property>ap/g-ac-cp</property><property>ap/g-ac-sl</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-ac-z">
+      <function>
+        <product><quotient><value>6.37814e+06</value><sqrt><difference><value>1</value><product><value>0.00669438</value><property>ap/g-ac-sp</property><property>ap/g-ac-sp</property></product></difference></sqrt></quotient><value>0.993306</value><property>ap/g-ac-sp</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/leg-sn-ft">
+      <description>feet north of the origin of the leg's start, in the tangent plane at its end (the plane is at the end: the turn, the descent and the landing all happen there, so that is where it has to be exact; a plane at the start of a 200 nmi leg makes the distance to go 0.17 % short at its end)</description>
+      <function>
+        <product><value>3.28084</value>        <sum>        <product><value>-1</value><property>ap/g-end-sp</property><property>ap/g-end-cl</property><difference><property>ap/g-start-x</property><property>ap/g-end-x</property></difference></product>        <product><value>-1</value><property>ap/g-end-sp</property><property>ap/g-end-sl</property><difference><property>ap/g-start-y</property><property>ap/g-end-y</property></difference></product>        <product><property>ap/g-end-cp</property><difference><property>ap/g-start-z</property><property>ap/g-end-z</property></difference></product></sum></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/leg-se-ft">
+      <description>feet east of the origin of the leg's start, in the tangent plane at its end (the plane is at the end: the turn, the descent and the landing all happen there, so that is where it has to be exact; a plane at the start of a 200 nmi leg makes the distance to go 0.17 % short at its end)</description>
+      <function>
+        <product><value>3.28084</value>        <sum>        <product><value>-1</value><property>ap/g-end-sl</property><difference><property>ap/g-start-x</property><property>ap/g-end-x</property></difference></product>        <product><property>ap/g-end-cl</property><difference><property>ap/g-start-y</property><property>ap/g-end-y</property></difference></product></sum></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/leg-dn-ft">
+      <description>the leg's length north (the end less the start), ft</description>
+      <function>
+        <product><value>-1</value><property>ap/leg-sn-ft</property></product>
       </function>
     </fcs_function>
     <fcs_function name="ap/leg-de-ft">
+      <description>the leg's length east, ft</description>
       <function>
-        <product><value>364567</value><cos><toradians><property>ap/leg-lat0-deg</property></toradians></cos><difference><property>ap/leg-lon1-deg</property><property>ap/leg-lon0-deg</property></difference></product>
+        <product><value>-1</value><property>ap/leg-se-ft</property></product>
       </function>
     </fcs_function>
     <fcs_function name="ap/leg-length-ft">
@@ -519,19 +654,21 @@
       </function>
     </fcs_function>
     <fcs_function name="ap/pos-n-ft">
+      <description>feet north of the origin of the aircraft, in the tangent plane at the leg's end</description>
       <function>
-        <product><value>364567</value><difference><property>position/lat-geod-deg</property><property>ap/leg-lat0-deg</property></difference></product>
+        <product><value>3.28084</value>        <sum>        <product><value>-1</value><property>ap/g-end-sp</property><property>ap/g-end-cl</property><difference><property>ap/g-ac-x</property><property>ap/g-end-x</property></difference></product>        <product><value>-1</value><property>ap/g-end-sp</property><property>ap/g-end-sl</property><difference><property>ap/g-ac-y</property><property>ap/g-end-y</property></difference></product>        <product><property>ap/g-end-cp</property><difference><property>ap/g-ac-z</property><property>ap/g-end-z</property></difference></product></sum></product>
       </function>
     </fcs_function>
     <fcs_function name="ap/pos-e-ft">
+      <description>feet east of the origin of the aircraft, in the tangent plane at the leg's end</description>
       <function>
-        <product><value>364567</value><cos><toradians><property>ap/leg-lat0-deg</property></toradians></cos><difference><property>position/long-gc-deg</property><property>ap/leg-lon0-deg</property></difference></product>
+        <product><value>3.28084</value>        <sum>        <product><value>-1</value><property>ap/g-end-sl</property><difference><property>ap/g-ac-x</property><property>ap/g-end-x</property></difference></product>        <product><property>ap/g-end-cl</property><difference><property>ap/g-ac-y</property><property>ap/g-end-y</property></difference></product></sum></product>
       </function>
     </fcs_function>
     <fcs_function name="ap/leg-togo-ft">
       <description>distance to the end of the leg</description>
       <function>
-        <difference><property>ap/leg-length-ft</property><quotient><sum><product><property>ap/pos-n-ft</property><property>ap/leg-dn-ft</property></product><product><property>ap/pos-e-ft</property><property>ap/leg-de-ft</property></product></sum><property>ap/leg-length-ft</property></quotient></difference>
+        <difference><value>0</value><quotient><sum><product><property>ap/pos-n-ft</property><property>ap/leg-dn-ft</property></product><product><property>ap/pos-e-ft</property><property>ap/leg-de-ft</property></product></sum><property>ap/leg-length-ft</property></quotient></difference>
       </function>
     </fcs_function>
     <fcs_function name="ap/leg-xt-ft">
@@ -550,6 +687,12 @@
         <todegrees><atan2><property>velocities/v-east-fps</property><property>velocities/v-north-fps</property></atan2></todegrees>
       </function>
     </fcs_function>
+    <fcs_function name="ap/plane-track-deg">
+      <description>the ground track in the tangent plane at the leg's end, deg east of north</description>
+      <function>
+        <todegrees><atan2>        <sum>        <product><value>-1</value><property>ap/g-end-sl</property>        <sum>        <product><value>-1</value><property>ap/g-ac-sp</property><property>ap/g-ac-cl</property><property>velocities/v-north-fps</property></product>        <product><value>-1</value><property>ap/g-ac-sl</property><property>velocities/v-east-fps</property></product>        <product><value>-1</value><property>ap/g-ac-cp</property><property>ap/g-ac-cl</property><property>velocities/v-down-fps</property></product></sum></product>        <product><property>ap/g-end-cl</property>        <sum>        <product><value>-1</value><property>ap/g-ac-sp</property><property>ap/g-ac-sl</property><property>velocities/v-north-fps</property></product>        <product><property>ap/g-ac-cl</property><property>velocities/v-east-fps</property></product>        <product><value>-1</value><property>ap/g-ac-cp</property><property>ap/g-ac-sl</property><property>velocities/v-down-fps</property></product></sum></product></sum>        <sum>        <product><value>-1</value><property>ap/g-end-sp</property><property>ap/g-end-cl</property>        <sum>        <product><value>-1</value><property>ap/g-ac-sp</property><property>ap/g-ac-cl</property><property>velocities/v-north-fps</property></product>        <product><value>-1</value><property>ap/g-ac-sl</property><property>velocities/v-east-fps</property></product>        <product><value>-1</value><property>ap/g-ac-cp</property><property>ap/g-ac-cl</property><property>velocities/v-down-fps</property></product></sum></product>        <product><value>-1</value><property>ap/g-end-sp</property><property>ap/g-end-sl</property>        <sum>        <product><value>-1</value><property>ap/g-ac-sp</property><property>ap/g-ac-sl</property><property>velocities/v-north-fps</property></product>        <product><property>ap/g-ac-cl</property><property>velocities/v-east-fps</property></product>        <product><value>-1</value><property>ap/g-ac-cp</property><property>ap/g-ac-sl</property><property>velocities/v-down-fps</property></product></sum></product>        <product><property>ap/g-end-cp</property>        <sum>        <product><property>ap/g-ac-cp</property><property>velocities/v-north-fps</property></product>        <product><value>-1</value><property>ap/g-ac-sp</property><property>velocities/v-down-fps</property></product></sum></product></sum></atan2></todegrees>
+      </function>
+    </fcs_function>
     <fcs_function name="ap/track-cmd-deg">
       <function>
         <difference>
@@ -561,7 +704,19 @@
     <fcs_function name="ap/track-error-deg">
       <description>wanted course less ground track</description>
       <function>
-        <todegrees><atan2><sin><toradians><difference><property>ap/track-cmd-deg</property><property>ap/ground-track-deg</property></difference></toradians></sin><cos><toradians><difference><property>ap/track-cmd-deg</property><property>ap/ground-track-deg</property></difference></toradians></cos></atan2></todegrees>
+        <todegrees><atan2><sin><toradians><difference><property>ap/track-cmd-deg</property><property>ap/plane-track-deg</property></difference></toradians></sin><cos><toradians><difference><property>ap/track-cmd-deg</property><property>ap/plane-track-deg</property></difference></toradians></cos></atan2></todegrees>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/plane-conv-deg">
+      <description>the angle the local north at the aircraft is turned from the north of the leg's plane, deg (the meridians' convergence: 0.35 deg 12 nmi from the end at 60 N)</description>
+      <function>
+        <todegrees><atan2>        <sum>        <product><value>-1</value><property>ap/g-end-sl</property>        <sum>        <product><value>-1</value><property>ap/g-ac-sp</property><property>ap/g-ac-cl</property><value>1</value></product>        <product><value>-1</value><property>ap/g-ac-sl</property><value>0</value></product>        <product><value>-1</value><property>ap/g-ac-cp</property><property>ap/g-ac-cl</property><value>0</value></product></sum></product>        <product><property>ap/g-end-cl</property>        <sum>        <product><value>-1</value><property>ap/g-ac-sp</property><property>ap/g-ac-sl</property><value>1</value></product>        <product><property>ap/g-ac-cl</property><value>0</value></product>        <product><value>-1</value><property>ap/g-ac-cp</property><property>ap/g-ac-sl</property><value>0</value></product></sum></product></sum>        <sum>        <product><value>-1</value><property>ap/g-end-sp</property><property>ap/g-end-cl</property>        <sum>        <product><value>-1</value><property>ap/g-ac-sp</property><property>ap/g-ac-cl</property><value>1</value></product>        <product><value>-1</value><property>ap/g-ac-sl</property><value>0</value></product>        <product><value>-1</value><property>ap/g-ac-cp</property><property>ap/g-ac-cl</property><value>0</value></product></sum></product>        <product><value>-1</value><property>ap/g-end-sp</property><property>ap/g-end-sl</property>        <sum>        <product><value>-1</value><property>ap/g-ac-sp</property><property>ap/g-ac-sl</property><value>1</value></product>        <product><property>ap/g-ac-cl</property><value>0</value></product>        <product><value>-1</value><property>ap/g-ac-cp</property><property>ap/g-ac-sl</property><value>0</value></product></sum></product>        <product><property>ap/g-end-cp</property>        <sum>        <product><property>ap/g-ac-cp</property><value>1</value></product>        <product><value>-1</value><property>ap/g-ac-sp</property><value>0</value></product></sum></product></sum></atan2></todegrees>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/psi-plane-deg">
+      <description>the heading in the leg's plane (the leg's courses are in that plane; the heading is in the local frame)</description>
+      <function>
+        <sum><property>attitude/psi-deg</property><property>ap/plane-conv-deg</property></sum>
       </function>
     </fcs_function>
     <fcs_function name="ap/ground-course-cmd-deg">
@@ -575,7 +730,7 @@
     <fcs_function name="ap/ground-error-deg">
       <description>wanted course less heading, on the ground</description>
       <function>
-        <todegrees><atan2><sin><toradians><difference><property>ap/ground-course-cmd-deg</property><property>attitude/psi-deg</property></difference></toradians></sin><cos><toradians><difference><property>ap/ground-course-cmd-deg</property><property>attitude/psi-deg</property></difference></toradians></cos></atan2></todegrees>
+        <todegrees><atan2><sin><toradians><difference><property>ap/ground-course-cmd-deg</property><property>ap/psi-plane-deg</property></difference></toradians></sin><cos><toradians><difference><property>ap/ground-course-cmd-deg</property><property>ap/psi-plane-deg</property></difference></toradians></cos></atan2></todegrees>
       </function>
     </fcs_function>
     <fcs_function name="ap/on-mains">
@@ -695,10 +850,70 @@
       </function>
       <output>ap/gs-add-lat</output>
     </fcs_function>
-    <fcs_function name="ap/approach-add-used">
-      <description>the addition the approach speed carries: the aircraft's own pick, or the one set</description>
+    <fcs_function name="ap/gs-hw-live-kt">
+      <description>the live headwind along the leg's course, kt (positive: into the wind)</description>
       <function>
-<ifthen><eq><property>ap/approach-add-auto</property><value>1</value></eq><property>ap/gs-add-lat</property><property>ap/approach-add-kt</property></ifthen>
+<quotient><product><value>-1</value><sum><product><property>ap/gs-wind-north-filt-fps</property><cos><product><property>ap/leg-course-deg</property><value>0.0174533</value></product></cos></product><product><property>ap/gs-wind-east-filt-fps</property><sin><product><property>ap/leg-course-deg</property><value>0.0174533</value></product></sin></product></sum></product><value>1.68781</value></quotient>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/gs-gsmini-add">
+      <description>what the ground-speed minimum adds to the approach speed, kt</description>
+      <function>
+<ifthen><eq><property>ap/gsmini-on</property><value>1</value></eq><max><value>0</value><difference><property>ap/gs-hw-live-kt</property><max><value>10</value><property>ap/tower-hw-kt</property></max></difference></max><value>0</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/approach-add-used">
+      <description>the addition the approach speed carries: the aircraft's own pick, or the one set, and the ground-speed minimum's</description>
+      <function>
+<sum><ifthen><eq><property>ap/approach-add-auto</property><value>1</value></eq><property>ap/gs-add-lat</property><property>ap/approach-add-kt</property></ifthen><property>ap/gs-gsmini-add</property></sum>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/ga-latch-next">
+      <description>the missed approach's climb-out is on (latched from the go-around task to the level-off)</description>
+      <function>
+<ifthen><and><eq><property>ap/ga-smart</property><value>1</value></eq><eq><property>ap/ga-on</property><value>1</value></eq></and><value>1</value><ifthen><and><eq><property>ap/ga-latch</property><value>1</value></eq><eq><property>ap/pitch-mode</property><value>1</value></eq><eq><property>ap/land-mode</property><value>0</value></eq><eq><property>ap/on-mains</property><value>0</value></eq><eq><property>ap/engaged</property><value>1</value></eq></and><value>1</value><value>0</value></ifthen></ifthen>
+      </function>
+      <output>ap/ga-latch</output>
+    </fcs_function>
+    <fcs_function name="ap/ga-smart-active">
+      <description>the smarter go-around holds the pitch</description>
+      <function>
+<ifthen><and><eq><property>ap/ga-smart</property><value>1</value></eq><eq><property>ap/ga-latch</property><value>1</value></eq><eq><property>ap/pitch-mode</property><value>1</value></eq><eq><property>ap/flare</property><value>0</value></eq><eq><property>ap/on-mains</property><value>0</value></eq></and><value>1</value><value>0</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/ga-verr-kt">
+      <description>the climb-out's speed error, kt (fast is positive): the go-around speed while the task is on, then the speed the route asks</description>
+      <function>
+<difference><property>velocities/vc-kts</property><property>ap/speed-target-kcas</property></difference>
+      </function>
+    </fcs_function>
+    <lag_filter name="ap/ga-verr-f-kt">
+      <input>ap/ga-verr-kt</input>
+      <c1>0.25</c1>
+    </lag_filter>
+    <fcs_function name="ap/ga-vband-kt">
+      <description>the filtered speed error beyond the dead band, kt</description>
+      <function>
+<ifthen><gt><abs><property>ap/ga-verr-f-kt</property></abs><value>8</value></gt><difference><property>ap/ga-verr-f-kt</property><product><ifthen><gt><property>ap/ga-verr-f-kt</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><value>8</value></product></difference><value>0</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/ga-theta-ref-deg">
+      <description>the attitude the thrust and the weight give a climb at: the path (thrust over weight less the drag's share) and the angle of attack</description>
+      <function>
+<sum><product><value>57.2958</value><asin><min><value>0.5</value><max><value>0</value><difference><quotient><value>5400</value><max><value>5000</value><property>inertia/weight-lbs</property></max></quotient><value>0.0333333</value></difference></max></min></asin></product><value>1</value></sum>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/ga-theta-i-next">
+      <description>the slow integral of the speed error beyond the band (fast pitches down), deg</description>
+      <function>
+<ifthen><eq><property>ap/ga-smart-active</property><value>1</value></eq><max><value>-3</value><min><value>3</value><sum><property>ap/ga-theta-i-deg</property><product><value>-0.02</value><property>ap/ga-vband-kt</property><property>simulation/dt</property></product></sum></min></max><value>0</value></ifthen>
+      </function>
+      <output>ap/ga-theta-i-deg</output>
+    </fcs_function>
+    <fcs_function name="ap/theta-ga-deg">
+      <description>the go-around's attitude as a change from the latched one</description>
+      <function>
+<difference><max><value>0</value><min><value>16</value><sum><property>ap/ga-theta-ref-deg</property><max><value>-4</value><min><value>4</value><product><value>-0.25</value><property>ap/ga-vband-kt</property></product></min></max><property>ap/ga-theta-i-deg</property></sum></min></max><property>ap/theta-latched-deg</property></difference>
       </function>
     </fcs_function>
     <fcs_function name="ap/approach-keas">
@@ -773,6 +988,7 @@
       <test logic="AND" value="0">
         ap/engaged == 1
         ap/pitch-mode == 1
+        ap/ga-smart-active == 0
       </test>
     </switch>
     <fcs_function name="ap/speed-error-i-kt">
@@ -804,6 +1020,7 @@
       <test value="ap/theta-speed-entry-deg">ap/pitch-mode ne 1</test>
       <test value="ap/theta-speed-entry-deg">ap/pitch-mode-prev ne 1</test>
       <test value="ap/theta-speed-entry-deg">ap/engaged == 0</test>
+      <test value="ap/theta-speed-entry-deg">ap/ga-smart-active == 1</test>
       <output>ap/theta-speed-bias-deg</output>
     </switch>
     <switch name="ap/latch-thrust-entry-lbf">
@@ -975,6 +1192,7 @@
       <test value="ap/theta-manual-deg">ap/manual == 1</test>
       <test value="ap/theta-flare-deg">ap/flare == 1</test>
       <test value="ap/theta-takeoff-deg">ap/pitch-mode == 3</test>
+      <test value="ap/theta-ga-deg">ap/ga-smart-active == 1</test>
       <test value="ap/theta-speed-gs-deg">ap/pitch-mode == 1</test>
       <test value="ap/theta-alt-deg">ap/pitch-mode == 2</test>
     </switch>
@@ -1160,10 +1378,57 @@
         <product><value>1.2</value><property>ap/track-error-deg</property><quotient><property>velocities/vt-fps</property><value>600</value></quotient></product>
       </function>
     </fcs_function>
+    <fcs_function name="ap/g-next-sp">
+      <function>
+<sin><toradians><property>ap/next-lat-deg</property></toradians></sin>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-next-cp">
+      <function>
+<cos><toradians><property>ap/next-lat-deg</property></toradians></cos>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-next-sl">
+      <function>
+<sin><toradians><property>ap/next-lon-deg</property></toradians></sin>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-next-cl">
+      <function>
+<cos><toradians><property>ap/next-lon-deg</property></toradians></cos>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-next-x">
+      <function>
+        <product><quotient><value>6.37814e+06</value><sqrt><difference><value>1</value><product><value>0.00669438</value><property>ap/g-next-sp</property><property>ap/g-next-sp</property></product></difference></sqrt></quotient><property>ap/g-next-cp</property><property>ap/g-next-cl</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-next-y">
+      <function>
+        <product><quotient><value>6.37814e+06</value><sqrt><difference><value>1</value><product><value>0.00669438</value><property>ap/g-next-sp</property><property>ap/g-next-sp</property></product></difference></sqrt></quotient><property>ap/g-next-cp</property><property>ap/g-next-sl</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-next-z">
+      <function>
+        <product><quotient><value>6.37814e+06</value><sqrt><difference><value>1</value><product><value>0.00669438</value><property>ap/g-next-sp</property><property>ap/g-next-sp</property></product></difference></sqrt></quotient><value>0.993306</value><property>ap/g-next-sp</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/next-dn-ft">
+      <description>feet north of the origin of the next waypoint, in the tangent plane at the end of this leg</description>
+      <function>
+        <product><value>3.28084</value>        <sum>        <product><value>-1</value><property>ap/g-end-sp</property><property>ap/g-end-cl</property><difference><property>ap/g-next-x</property><property>ap/g-end-x</property></difference></product>        <product><value>-1</value><property>ap/g-end-sp</property><property>ap/g-end-sl</property><difference><property>ap/g-next-y</property><property>ap/g-end-y</property></difference></product>        <product><property>ap/g-end-cp</property><difference><property>ap/g-next-z</property><property>ap/g-end-z</property></difference></product></sum></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/next-de-ft">
+      <description>feet east of the origin of the next waypoint, in the tangent plane at the end of this leg</description>
+      <function>
+        <product><value>3.28084</value>        <sum>        <product><value>-1</value><property>ap/g-end-sl</property><difference><property>ap/g-next-x</property><property>ap/g-end-x</property></difference></product>        <product><property>ap/g-end-cl</property><difference><property>ap/g-next-y</property><property>ap/g-end-y</property></difference></product></sum></product>
+      </function>
+    </fcs_function>
     <fcs_function name="ap/next-course-deg">
       <description>the next leg's course, from the end of this one to the next waypoint</description>
       <function>
-<todegrees><atan2><product><value>364567</value><cos><toradians><property>ap/leg-lat0-deg</property></toradians></cos><difference><property>ap/next-lon-deg</property><property>ap/leg-lon1-deg</property></difference></product><product><value>364567</value><difference><property>ap/next-lat-deg</property><property>ap/leg-lat1-deg</property></difference></product></atan2></todegrees>
+<todegrees><atan2><property>ap/next-de-ft</property><property>ap/next-dn-ft</property></atan2></todegrees>
       </function>
     </fcs_function>
     <fcs_function name="ap/turn-delta-deg">
@@ -1175,7 +1440,7 @@
     <fcs_function name="ap/turn-err-deg">
       <description>the next leg's course less the ground track</description>
       <function>
-        <todegrees><atan2><sin><toradians><difference><property>ap/next-course-deg</property><property>ap/ground-track-deg</property></difference></toradians></sin><cos><toradians><difference><property>ap/next-course-deg</property><property>ap/ground-track-deg</property></difference></toradians></cos></atan2></todegrees>
+        <todegrees><atan2><sin><toradians><difference><property>ap/next-course-deg</property><property>ap/plane-track-deg</property></difference></toradians></sin><cos><toradians><difference><property>ap/next-course-deg</property><property>ap/plane-track-deg</property></difference></toradians></cos></atan2></todegrees>
       </function>
     </fcs_function>
     <fcs_function name="ap/bank-alpha-cap-deg">
@@ -1827,7 +2092,7 @@
     <fcs_function name="ap/turn-dpsi-raw-deg">
       <description>the heading change to the new leg's heading</description>
       <function>
-        <todegrees><atan2><sin><toradians><difference><property>ap/turn-psi1-deg</property><property>attitude/psi-deg</property></difference></toradians></sin><cos><toradians><difference><property>ap/turn-psi1-deg</property><property>attitude/psi-deg</property></difference></toradians></cos></atan2></todegrees>
+        <todegrees><atan2><sin><toradians><difference><property>ap/turn-psi1-deg</property><property>ap/psi-plane-deg</property></difference></toradians></sin><cos><toradians><difference><property>ap/turn-psi1-deg</property><property>ap/psi-plane-deg</property></difference></toradians></cos></atan2></todegrees>
       </function>
     </fcs_function>
     <fcs_function name="ap/turn-dpsi-rad">
@@ -1857,7 +2122,7 @@
     <fcs_function name="ap/turn-lead-wind-ft">
       <description>the distance before the corner at which the arc's predicted exit is on the new line, in the wind</description>
       <function>
-<quotient><sum><sum><product><value>-1</value><sin><toradians><property>ap/next-course-deg</property></toradians></sin><sum><product><ifthen><gt><property>ap/turn-delta-deg</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><property>ap/turn-radius-air-ft</property><difference><sin><toradians><property>ap/turn-psi1-deg</property></toradians></sin><sin><toradians><property>attitude/psi-deg</property></toradians></sin></difference></product><product><property>ap/wind-north-filt-fps</property><property>ap/turn-time-s</property></product></sum></product><product><cos><toradians><property>ap/next-course-deg</property></toradians></cos><sum><product><value>-1</value><ifthen><gt><property>ap/turn-delta-deg</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><property>ap/turn-radius-air-ft</property><difference><cos><toradians><property>ap/turn-psi1-deg</property></toradians></cos><cos><toradians><property>attitude/psi-deg</property></toradians></cos></difference></product><product><property>ap/wind-east-filt-fps</property><property>ap/turn-time-s</property></product></sum></product></sum><property>ap/turn-drift-exit-ft</property></sum><ifthen><and><gt><abs><property>ap/turn-delta-deg</property></abs><value>10</value></gt><lt><abs><property>ap/turn-delta-deg</property></abs><value>150</value></lt></and><product><value>-1</value><sin><toradians><property>ap/turn-delta-deg</property></toradians></sin></product><value>-1</value></ifthen></quotient>
+<quotient><sum><sum><product><value>-1</value><sin><toradians><property>ap/next-course-deg</property></toradians></sin><sum><product><ifthen><gt><property>ap/turn-delta-deg</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><property>ap/turn-radius-air-ft</property><difference><sin><toradians><property>ap/turn-psi1-deg</property></toradians></sin><sin><toradians><property>ap/psi-plane-deg</property></toradians></sin></difference></product><product><property>ap/wind-north-filt-fps</property><property>ap/turn-time-s</property></product></sum></product><product><cos><toradians><property>ap/next-course-deg</property></toradians></cos><sum><product><value>-1</value><ifthen><gt><property>ap/turn-delta-deg</property><value>0</value></gt><value>1</value><value>-1</value></ifthen><property>ap/turn-radius-air-ft</property><difference><cos><toradians><property>ap/turn-psi1-deg</property></toradians></cos><cos><toradians><property>ap/psi-plane-deg</property></toradians></cos></difference></product><product><property>ap/wind-east-filt-fps</property><property>ap/turn-time-s</property></product></sum></product></sum><property>ap/turn-drift-exit-ft</property></sum><ifthen><and><gt><abs><property>ap/turn-delta-deg</property></abs><value>10</value></gt><lt><abs><property>ap/turn-delta-deg</property></abs><value>150</value></lt></and><product><value>-1</value><sin><toradians><property>ap/turn-delta-deg</property></toradians></sin></product><value>-1</value></ifthen></quotient>
       </function>
     </fcs_function>
     <fcs_function name="ap/turn-lead-ft">
@@ -2028,7 +2293,7 @@
     <fcs_function name="ap/final-trk-err-deg">
       <description>the ground track less the leg's course</description>
       <function>
-        <todegrees><atan2><sin><toradians><difference><property>ap/ground-track-deg</property><property>ap/leg-course-deg</property></difference></toradians></sin><cos><toradians><difference><property>ap/ground-track-deg</property><property>ap/leg-course-deg</property></difference></toradians></cos></atan2></todegrees>
+        <todegrees><atan2><sin><toradians><difference><property>ap/plane-track-deg</property><property>ap/leg-course-deg</property></difference></toradians></sin><cos><toradians><difference><property>ap/plane-track-deg</property><property>ap/leg-course-deg</property></difference></toradians></cos></atan2></todegrees>
       </function>
     </fcs_function>
     <fcs_function name="ap/final-xt-rate-fps">
@@ -2037,22 +2302,66 @@
 <product><max><property>velocities/vg-fps</property><value>60</value></max><sin><toradians><property>ap/final-trk-err-deg</property></toradians></sin></product>
       </function>
     </fcs_function>
-    <fcs_function name="ap/final-want-rate-fps">
-      <description>the cross-track rate the line asks for: the cross-track over 25 s, at most vg sin(30 deg), towards the line</description>
+    <fcs_function name="ap/aim-wleft-raw-fps">
+      <description>the total wind blowing to the left of the leg's course, ft/s</description>
       <function>
-<product><value>-1</value><max><product><value>-1</value><product><max><property>velocities/vg-fps</property><value>60</value></max><value>0.5</value></product></product><min><product><max><property>velocities/vg-fps</property><value>60</value></max><value>0.5</value></product><quotient><property>ap/leg-xt-ft</property><value>25</value></quotient></min></max></product>
+<difference><product><property>atmosphere/total-wind-north-fps</property><sin><toradians><property>ap/leg-course-deg</property></toradians></sin></product><product><property>atmosphere/total-wind-east-fps</property><cos><toradians><property>ap/leg-course-deg</property></toradians></cos></product></difference>
+      </function>
+    </fcs_function>
+    <lag_filter name="ap/aim-wleft-fps">
+      <input>ap/aim-wleft-raw-fps</input>
+      <c1>0.1</c1>
+    </lag_filter>
+    <fcs_function name="ap/final-aim-ft">
+      <description>the aim point's offset from the line, right positive: upwind by 2 ft per knot of the crosswind component, from 1000 to 700 ft of wheel height</description>
+      <function>
+<ifthen><and><eq><property>ap/final-aim</property><value>1</value></eq><eq><property>ap/roll-mode</property><value>3</value></eq></and><product><value>1.18497</value><property>ap/aim-wleft-fps</property><max><value>0</value><min><value>1</value><quotient><difference><value>1000</value><property>aero/wheel-height-ft</property></difference><value>300</value></quotient></min></max></product><value>0</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/final-xt-aimed-ft">
+      <description>the cross-track from the aim point, right positive</description>
+      <function>
+<difference><property>ap/leg-xt-ft</property><property>ap/final-aim-ft</property></difference>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/final-t-outer-s">
+      <description>the position loop's time: the cross-track over this is the rate the line asks for, s</description>
+      <function>
+<ifthen><eq><property>ap/roll-mode</property><value>3</value></eq>          <table><independentVar lookup="row">aero/wheel-height-ft</independentVar><tableData>
+              0 8
+              300 8
+              800 25
+              1000 25
+          </tableData></table><value>25</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/final-t-inner-s">
+      <description>the rate loop's time: the rate error over this is the lateral acceleration asked for, s</description>
+      <function>
+<ifthen><eq><property>ap/roll-mode</property><value>3</value></eq>          <table><independentVar lookup="row">aero/wheel-height-ft</independentVar><tableData>
+              0 2
+              300 2
+              800 6
+              1000 6
+          </tableData></table><value>6</value></ifthen>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/final-want-rate-fps">
+      <description>the cross-track rate the line asks for: the cross-track over the position loop's time, at most vg sin(30 deg), towards the line</description>
+      <function>
+<product><value>-1</value><max><product><value>-1</value><product><max><property>velocities/vg-fps</property><value>60</value></max><value>0.5</value></product></product><min><product><max><property>velocities/vg-fps</property><value>60</value></max><value>0.5</value></product><quotient><property>ap/final-xt-aimed-ft</property><property>ap/final-t-outer-s</property></quotient></min></max></product>
       </function>
     </fcs_function>
     <fcs_function name="ap/final-bank-p-deg">
-      <description>the bank the lateral acceleration asked for takes: the rate wanted less the rate there is, over 6 s</description>
+      <description>the bank the lateral acceleration asked for takes: the rate wanted less the rate there is, over the rate loop's time</description>
       <function>
-<todegrees><atan><quotient><quotient><difference><property>ap/final-want-rate-fps</property><property>ap/final-xt-rate-fps</property></difference><value>6</value></quotient><value>32.174</value></quotient></atan></todegrees>
+<todegrees><atan><quotient><quotient><difference><property>ap/final-want-rate-fps</property><property>ap/final-xt-rate-fps</property></difference><property>ap/final-t-inner-s</property></quotient><value>32.174</value></quotient></atan></todegrees>
       </function>
     </fcs_function>
     <fcs_function name="ap/final-xt-neg-ft">
       <description>the integral's input: towards the line</description>
       <function>
-<product><value>-1</value><property>ap/leg-xt-ft</property></product>
+<product><value>-1</value><property>ap/final-xt-aimed-ft</property></product>
       </function>
     </fcs_function>
     <switch name="ap/trig-final">
@@ -2072,10 +2381,82 @@
       <trigger>ap/trig-final</trigger>
       <clipto><min>-2</min><max>2</max></clipto>
     </pid>
+    <fcs_function name="ap/final-xt-far">
+      <description>the cross-track is beyond the old integral's band and within the wide one's</description>
+      <function>
+<ifthen><and><gt><abs><property>ap/leg-xt-ft</property></abs><value>30</value></gt><lt><abs><property>ap/leg-xt-ft</property></abs><value>300</value></lt></and><value>1</value><value>0</value></ifthen>
+      </function>
+    </fcs_function>
+    <switch name="ap/trig-final-wide">
+      <default value="-1"/>
+      <test logic="AND" value="0">
+        ap/engaged == 1
+        ap/final-wide == 1
+        ap/roll-mode gt 1
+        ap/final-xt-far == 1
+        ap/final-xt-rate-fps lt 1
+        ap/final-xt-rate-fps gt -1
+        aero/wheel-height-ft lt 100000
+      </test>
+    </switch>
+    <pid name="ap/final-i-wide-deg">
+      <input>ap/final-xt-neg-ft</input>
+      <kp>0.0</kp>
+      <ki>0.0006</ki>
+      <kd>0</kd>
+      <trigger>ap/trig-final-wide</trigger>
+      <clipto><min>-3</min><max>3</max></clipto>
+    </pid>
+    <fcs_function name="ap/ff-wleft-fps">
+      <description>the total wind blowing to the left of the leg's course, ft/s</description>
+      <function>
+<difference><product><property>atmosphere/total-wind-north-fps</property><sin><toradians><property>ap/leg-course-deg</property></toradians></sin></product><product><property>atmosphere/total-wind-east-fps</property><cos><toradians><property>ap/leg-course-deg</property></toradians></cos></product></difference>
+      </function>
+    </fcs_function>
+    <lag_filter name="ap/ff-wleft-s-fps">
+      <input>ap/ff-wleft-fps</input>
+      <c1>0.333333</c1>
+    </lag_filter>
+    <washout_filter name="ap/ff-wleft-wash-fps">
+      <input>ap/ff-wleft-s-fps</input>
+      <c1>0.2</c1>
+    </washout_filter>
+    <fcs_function name="ap/final-ff-bank-deg">
+      <description>the bank that takes out the drift the crosswind's change is about to cause, deg (right positive)</description>
+      <function>
+<ifthen><and><eq><property>ap/final-ff</property><value>1</value></eq><eq><property>ap/roll-mode</property><value>3</value></eq><lt><property>aero/wheel-height-ft</property><value>500</value></lt></and><todegrees><atan><quotient><product><value>-0.4</value><sqrt><quotient><property>inertia/weight-lbs</property><value>26750</value></quotient></sqrt><property>ap/ff-wleft-wash-fps</property></product><value>96.522</value></quotient></atan></todegrees><value>0</value></ifthen>
+      </function>
+      <clipto><min>-3</min><max>3</max></clipto>
+    </fcs_function>
+    <fcs_function name="ap/final-rate-err-fps">
+      <description>the rate wanted less the rate there is, towards the line positive, ft/s</description>
+      <function>
+<difference><property>ap/final-want-rate-fps</property><property>ap/final-xt-rate-fps</property></difference>
+      </function>
+    </fcs_function>
+    <switch name="ap/trig-final-ri">
+      <default value="-1"/>
+      <test logic="AND" value="0">
+        ap/engaged == 1
+        ap/final-ri == 1
+        ap/roll-mode == 3
+        ap/leg-xt-ft lt 60
+        ap/leg-xt-ft gt -60
+        aero/wheel-height-ft lt 990
+      </test>
+    </switch>
+    <pid name="ap/final-i-rate-deg">
+      <input>ap/final-rate-err-fps</input>
+      <kp>0.0</kp>
+      <ki>0.02</ki>
+      <kd>0</kd>
+      <trigger>ap/trig-final-ri</trigger>
+      <clipto><min>-3</min><max>3</max></clipto>
+    </pid>
     <fcs_function name="ap/bank-final-deg">
       <description>the bank on the final: the lateral law of the landing task (roll mode 3)</description>
       <function>
-<sum><property>ap/final-bank-p-deg</property><property>ap/final-i-deg</property></sum>
+<sum><property>ap/final-bank-p-deg</property><property>ap/final-ff-bank-deg</property><property>ap/final-i-rate-deg</property><ifthen><eq><property>ap/final-wide</property><value>1</value></eq><sum><property>ap/final-i-deg</property><property>ap/final-i-wide-deg</property></sum><property>ap/final-i-deg</property></ifthen></sum>
       </function>
       <clipto><min>-12</min><max>12</max></clipto>
     </fcs_function>
@@ -4352,16 +4733,86 @@
 <ifthen><and><eq><property>ap/ld-on</property><value>1</value></eq><eq><property>ap/ld-captured</property><value>1</value></eq><eq><property>ap/rollout</property><value>1</value></eq><lt><property>ap/ground-speed-kt</property><value>15</value></lt></and><value>1</value><value>0</value></ifthen>
       </function>
     </fcs_function>
-    <fcs_function name="ap/ci-dn-ft">
-      <description>feet north of the centre</description>
+    <fcs_function name="ap/g-cic-sp">
       <function>
-<product><difference><property>position/lat-geod-deg</property><property>ap/ci-lat</property></difference><value>364567</value></product>
+<sin><toradians><property>ap/ci-lat</property></toradians></sin>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-cic-cp">
+      <function>
+<cos><toradians><property>ap/ci-lat</property></toradians></cos>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-cic-sl">
+      <function>
+<sin><toradians><property>ap/ci-lon</property></toradians></sin>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-cic-cl">
+      <function>
+<cos><toradians><property>ap/ci-lon</property></toradians></cos>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-cic-x">
+      <function>
+        <product><quotient><value>6.37814e+06</value><sqrt><difference><value>1</value><product><value>0.00669438</value><property>ap/g-cic-sp</property><property>ap/g-cic-sp</property></product></difference></sqrt></quotient><property>ap/g-cic-cp</property><property>ap/g-cic-cl</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-cic-y">
+      <function>
+        <product><quotient><value>6.37814e+06</value><sqrt><difference><value>1</value><product><value>0.00669438</value><property>ap/g-cic-sp</property><property>ap/g-cic-sp</property></product></difference></sqrt></quotient><property>ap/g-cic-cp</property><property>ap/g-cic-sl</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-cic-z">
+      <function>
+        <product><quotient><value>6.37814e+06</value><sqrt><difference><value>1</value><product><value>0.00669438</value><property>ap/g-cic-sp</property><property>ap/g-cic-sp</property></product></difference></sqrt></quotient><value>0.993306</value><property>ap/g-cic-sp</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-cia-sp">
+      <function>
+<sin><toradians><property>position/lat-geod-deg</property></toradians></sin>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-cia-cp">
+      <function>
+<cos><toradians><property>position/lat-geod-deg</property></toradians></cos>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-cia-sl">
+      <function>
+<sin><toradians><property>position/long-gc-deg</property></toradians></sin>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-cia-cl">
+      <function>
+<cos><toradians><property>position/long-gc-deg</property></toradians></cos>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-cia-x">
+      <function>
+        <product><quotient><value>6.37814e+06</value><sqrt><difference><value>1</value><product><value>0.00669438</value><property>ap/g-cia-sp</property><property>ap/g-cia-sp</property></product></difference></sqrt></quotient><property>ap/g-cia-cp</property><property>ap/g-cia-cl</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-cia-y">
+      <function>
+        <product><quotient><value>6.37814e+06</value><sqrt><difference><value>1</value><product><value>0.00669438</value><property>ap/g-cia-sp</property><property>ap/g-cia-sp</property></product></difference></sqrt></quotient><property>ap/g-cia-cp</property><property>ap/g-cia-sl</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/g-cia-z">
+      <function>
+        <product><quotient><value>6.37814e+06</value><sqrt><difference><value>1</value><product><value>0.00669438</value><property>ap/g-cia-sp</property><property>ap/g-cia-sp</property></product></difference></sqrt></quotient><value>0.993306</value><property>ap/g-cia-sp</property></product>
+      </function>
+    </fcs_function>
+    <fcs_function name="ap/ci-dn-ft">
+      <description>feet north of the origin of the aircraft, in the tangent plane at the circle's centre</description>
+      <function>
+        <product><value>3.28084</value>        <sum>        <product><value>-1</value><property>ap/g-cic-sp</property><property>ap/g-cic-cl</property><difference><property>ap/g-cia-x</property><property>ap/g-cic-x</property></difference></product>        <product><value>-1</value><property>ap/g-cic-sp</property><property>ap/g-cic-sl</property><difference><property>ap/g-cia-y</property><property>ap/g-cic-y</property></difference></product>        <product><property>ap/g-cic-cp</property><difference><property>ap/g-cia-z</property><property>ap/g-cic-z</property></difference></product></sum></product>
       </function>
     </fcs_function>
     <fcs_function name="ap/ci-de-ft">
-      <description>feet east of the centre</description>
+      <description>feet east of the origin of the aircraft, in the tangent plane at the circle's centre</description>
       <function>
-<product><difference><property>position/long-gc-deg</property><property>ap/ci-lon</property></difference><value>364567</value><cos><toradians><property>ap/ci-lat</property></toradians></cos></product>
+        <product><value>3.28084</value>        <sum>        <product><value>-1</value><property>ap/g-cic-sl</property><difference><property>ap/g-cia-x</property><property>ap/g-cic-x</property></difference></product>        <product><property>ap/g-cic-cl</property><difference><property>ap/g-cia-y</property><property>ap/g-cic-y</property></difference></product></sum></product>
       </function>
     </fcs_function>
     <fcs_function name="ap/ci-out-deg">

@@ -12,7 +12,6 @@
   'use strict';
   const node = typeof module !== 'undefined' && module.exports;
   const geo = node ? require('./geo.js') : root.GCS.geo;
-  const FT = geo.FT_PER_DEG;
   const rad = (d) => (d * Math.PI) / 180;
   const RUNWAY_ARC = /^\d\d[LRC]?\/\d\d[LRC]?$/; // how the groundnet names the arcs that lie on a runway
   const MIN_SPOT_RADIUS_M = 20; // the aircraft's wings are 116 ft (35 m) across: a stand of less than 20 m radius is marked as too small
@@ -41,9 +40,9 @@
   const TAKEOFF_REACH_FT = 12000; // a takeoff begins anywhere along its runway (an intersection takeoff at EFHK 33 begins 4,400 ft down it): the runway is found within this reach
   const AIM_PAST_FT = 800; // the landing's aiming point past the (displaced) threshold: as geo.localPlan lays it
 
-  /** Distance in feet; the longitude scaled at the first point's latitude, as fdm/groundplan.py does (so that routes agree to the node). */
+  /** Distance in feet, in the tangent plane at the first point (geo.course), as fdm/groundplan.py does (so that routes agree to the node). */
   function dist(p, q) {
-    return Math.hypot((q[0] - p[0]) * FT, (q[1] - p[1]) * FT * Math.cos(rad(p[0])));
+    return geo.course(p, q).ft;
   }
 
   /** Feet along a runway's heading from its threshold and to the right of it, and back to latitude and longitude. */
@@ -55,15 +54,14 @@
     }
 
     to(p) {
-      const n = (p[0] - this.thr[0]) * FT;
-      const e = (p[1] - this.thr[1]) * FT * Math.cos(rad(this.thr[0]));
+      const [n, e] = geo.enu(this.thr, p);
       return [n * Math.cos(this.h) + e * Math.sin(this.h), -n * Math.sin(this.h) + e * Math.cos(this.h)];
     }
 
     ll(a, l) {
       const n = a * Math.cos(this.h) - l * Math.sin(this.h);
       const e = a * Math.sin(this.h) + l * Math.cos(this.h);
-      return [this.thr[0] + n / FT, this.thr[1] + e / (FT * Math.cos(rad(this.thr[0])))];
+      return geo.fromEnu(this.thr, n, e);
     }
   }
 
@@ -358,8 +356,8 @@
       if (net.isRw[k] || !net.names[k]) continue;
       const q = net.nodes[a];
       const r = net.nodes[b];
-      const n = [(r[0] - q[0]) * FT, (r[1] - q[1]) * FT * Math.cos(rad(q[0]))];
-      const m = [(p[0] - q[0]) * FT, (p[1] - q[1]) * FT * Math.cos(rad(q[0]))];
+      const n = geo.enu(q, r);
+      const m = geo.enu(q, p);
       const w = Math.max(0, Math.min(1, (m[0] * n[0] + m[1] * n[1]) / Math.max(n[0] * n[0] + n[1] * n[1], 1e-9)));
       const d = Math.hypot(m[0] - w * n[0], m[1] - w * n[1]);
       if (d < bd) {
@@ -696,8 +694,8 @@
     for (let k = 0; k + 1 < it.points.length; k++) {
       const a = it.points[k];
       const b = it.points[k + 1];
-      const v = [(b[0] - a[0]) * FT, (b[1] - a[1]) * FT * Math.cos(rad(a[0]))];
-      const m = [(at[0] - a[0]) * FT, (at[1] - a[1]) * FT * Math.cos(rad(a[0]))];
+      const v = geo.enu(a, b);
+      const m = geo.enu(a, at);
       const w = Math.max(0, Math.min(1, (m[0] * v[0] + m[1] * v[1]) / Math.max(v[0] * v[0] + v[1] * v[1], 1e-9)));
       const d = Math.hypot(m[0] - w * v[0], m[1] - w * v[1]);
       if (!best || d < best.d) best = { k, w, d };

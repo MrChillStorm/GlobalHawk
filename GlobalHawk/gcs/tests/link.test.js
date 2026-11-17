@@ -214,3 +214,29 @@ console.log('link OK');
   assert.strictEqual(a.state, 'accepted', 'a late answer still counts');
 }
 console.log('link messages OK');
+
+// a heartbeat that went late is recorded (the browser slowing the page, a stall of the machine), and a normal one is not
+{
+  const r = rig();
+  r.link.start([]);
+  r.advance(5000);
+  assert.strictEqual(r.link.stalls.length, 0, 'beats on time: no stall');
+  // the page stops for 20 s: the next tick finds the gap
+  r.link.beating = false;
+  r.advance(20000);
+  r.link.beating = true;
+  r.link.lastTick = r.link.lastTick; // unchanged: the gap is measured against the last tick
+  r.advance(1500);
+  r.link.start([]);
+  assert.ok(r.link.stalls.length >= 1 && r.link.stalls[0].gapMs >= 19000, 'a gap of 20 s is recorded: ' + JSON.stringify(r.link.stalls));
+}
+// without workers (node) the default timer is the page's own setTimeout and the link works
+{
+  const sent = [];
+  const link = new Link({ transport: { send: (p, v) => sent.push(p), listen: () => {} }, station: 'T' });
+  assert.strictEqual(typeof link.timer, 'function');
+  link.start([]);
+  link.stop();
+  assert.ok(sent.some((p) => p === '/gcs/up/heartbeat'), 'it beats at once');
+}
+console.log('link stalls: ok');

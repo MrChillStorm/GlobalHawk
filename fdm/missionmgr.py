@@ -21,7 +21,8 @@ import math
 
 import numpy as np
 
-FT_PER_DEG = 364567.2
+import wgs84 as WG             # the one earth model of the aircraft, the station and the checks: WGS84's tangent plane (fdm/wgs84.py)
+
 KT = 1.6878099
 RATE = 12                      # frames between the manager's looks: 10 a second
 NM = 6076.1
@@ -73,22 +74,26 @@ GA_MAX = 2                     # missed approaches the manager flies; the next o
 
 
 class Field:
-    """A flat patch of earth: feet north and east of an origin to latitude and longitude and back."""
+    """A patch of earth: feet north and east of an origin to latitude and longitude and back, in the WGS84 tangent plane at the origin."""
 
     def __init__(self, lat, lon, elev):
         self.lat, self.lon, self.elev = lat, lon, elev
 
     def ll(self, n, e):
-        return self.lat + n / FT_PER_DEG, self.lon + e / (FT_PER_DEG * math.cos(math.radians(self.lat)))
+        return tuple(WG.from_enu((self.lat, self.lon), n, e))
 
     def ne(self, lat, lon):
-        return (lat - self.lat) * FT_PER_DEG, (lon - self.lon) * FT_PER_DEG * math.cos(math.radians(self.lat))
+        return WG.enu((self.lat, self.lon), (lat, lon))
 
 
 def course(a, b):
-    dn = (b[0] - a[0]) * FT_PER_DEG
-    de = (b[1] - a[1]) * FT_PER_DEG * math.cos(math.radians(a[0]))
-    return math.degrees(math.atan2(de, dn)) % 360.0, math.hypot(dn, de)
+    """(deg true, ft) from a to b: the bearing at a and the distance, in WGS84's tangent plane at a"""
+    return WG.course(a, b)
+
+
+def along(p, deg, ft):
+    """the point ft along the course deg from p (a tuple, as the plan's points are)"""
+    return tuple(WG.along(p, deg, ft))
 
 
 def turn(c0, c1):
@@ -230,8 +235,7 @@ class Manager:
     def entry(self, site):
         """The entry point: on the extended centreline where the glide path is ENTRY_HEIGHT above the runway."""
         d = ENTRY_HEIGHT / GLIDE_TAN
-        c = math.radians(site['course'])
-        return (site['aim'][0] - d * math.cos(c) / FT_PER_DEG, site['aim'][1] - d * math.sin(c) / (FT_PER_DEG * math.cos(math.radians(site['aim'][0]))))
+        return along(site['aim'], site['course'] + 180.0, d)
 
     def reach(self, site):
         """Height left over at a site's entry point, by the planner's book: what there is less what is needed."""
@@ -277,8 +281,7 @@ class Manager:
                     'right' if side > 0 else 'left', above, it['expected']))
         if it['task'] == 'circle':
             side = it['side']
-            c = math.radians(site['course'] + 90.0 * side)
-            centre = (ent[0] + radius * math.cos(c) / FT_PER_DEG, ent[1] + radius * math.sin(c) / (FT_PER_DEG * math.cos(math.radians(ent[0]))))
+            centre = along(ent, site['course'] + 90.0 * side, radius)
             out, d = course(centre, self.here())                    # bearing from the centre to the aircraft
             tangent = out + 90.0 * side
             f['ap/heading-cmd-deg'] = (tangent + side * float(np.clip(60.0 * (d - radius) / radius, -45.0, 80.0))) % 360.0
@@ -329,7 +332,7 @@ class Manager:
             a, b = pts[self.k], pts[self.k + 1]
             c, d = course(a, b)
             back = min(NOSE_FT, d / 2.0)                    # the leg is shortened by the nose's reach: it is the nose that stops short of the hold point, not the centre of gravity
-            self.leg(a, (b[0] - back * math.cos(math.radians(c)) / FT_PER_DEG, b[1] - back * math.sin(math.radians(c)) / (FT_PER_DEG * math.cos(math.radians(b[0])))))
+            self.leg(a, along(b, c + 180.0, back))
         f['ap/tx-last'] = 1 if last else 0
         f['ap/tx-stop'] = 1 if hold or it.get('stop', True) else 0
         if not last:
@@ -356,8 +359,7 @@ class Manager:
         fix, aim = land['fix'], land['aim']
         fc, d = course(fix, aim)
         r = self.hold_radius()
-        centre = (fix[0] + r * math.cos(math.radians(fc + 90.0)) / FT_PER_DEG,
-                  fix[1] + r * math.sin(math.radians(fc + 90.0)) / (FT_PER_DEG * math.cos(math.radians(fix[0]))))
+        centre = along(fix, fc + 90.0, r)
         alt = land['elev'] + max(GO_AROUND_MIN_AGL, math.floor((5.3 + GLIDE_TAN * d - LAND_FIX_GAP_FT) / 100.0) * 100.0)
         Manager.go_arounds += 1
         self.note('LANDING NOT COMMITTED: %.0f ft above the glide path; go-around, circling over the fix to %.0f ft' % (above, alt))

@@ -13,6 +13,7 @@ What the number means: the engine data (fdm/data/engine.json) go to 70,000 ft an
 """
 import json
 import math
+import wgs84 as WG                 # the one earth model: WGS84's tangent plane (fdm/wgs84.py)
 import os
 import sys
 import tempfile
@@ -93,8 +94,7 @@ def main():
         after = np.nonzero((col('ap/on-mains') > 0) & (np.arange(len(t)) > iout))[0]
         if len(after):
             td = int(after[0])
-            ft = 364567.2
-            far = math.hypot((col('position/lat-geod-deg')[iout] - col('position/lat-geod-deg')[td]) * ft, (col('position/long-gc-deg')[iout] - col('position/long-gc-deg')[td]) * ft * math.cos(math.radians(col('position/lat-geod-deg')[td]))) / 6076.1
+            far = WG.distance((col('position/lat-geod-deg')[td], col('position/long-gc-deg')[td]), (col('position/lat-geod-deg')[iout], col('position/long-gc-deg')[iout])) / 6076.1
             print('landing: the engine out at %.0f ft, %.0f nmi from the field; touchdown %.0f min later, %.1f ft off the line, the rollout at most %.1f ft off it' % (
                 alt[iout], far, (t[td] - t[iout]) / 60, col('ap/leg-xt-ft')[td], float(np.nanmax(np.abs(col('ap/leg-xt-ft')[after])))))
     else:

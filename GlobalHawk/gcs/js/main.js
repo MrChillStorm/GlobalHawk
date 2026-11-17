@@ -551,12 +551,14 @@
     status('Fetching the winds and the airports…');
     const notes = [];
     try {
-      const span = Math.max(Math.abs(goal.fix[0] - st.pos[0]), Math.abs(goal.fix[1] - st.pos[1]) * Math.cos((st.pos[0] * Math.PI) / 180));
+      const [kn0, ke0] = geo.ftPerDeg(st.pos[0]);
+      const span = Math.max(Math.abs(goal.fix[0] - st.pos[0]), (Math.abs(goal.fix[1] - st.pos[1]) * ke0) / kn0); // degrees of latitude the route spans at most, either way
       const m = Math.max(1.5, 0.35 * span) + 0.5;
-      const c = Math.cos((((st.pos[0] + goal.fix[0]) / 2) * Math.PI) / 180);
+      const [knm, kem] = geo.ftPerDeg((st.pos[0] + goal.fix[0]) / 2);
+      const c = kem / knm; // a degree of longitude in degrees of latitude's length, mid-route
       const box = [Math.max(-85, Math.min(st.pos[0], goal.fix[0]) - m), Math.min(st.pos[1], goal.fix[1]) - m / c, Math.min(85, Math.max(st.pos[0], goal.fix[0]) + m), Math.max(st.pos[1], goal.fix[1]) + m / c];
       if (!ov.prefs.offline && !demo) {
-        if (siteMode !== 'off') await ov.airports.ensure([(st.pos[0] + goal.fix[0]) / 2, (st.pos[1] + goal.fix[1]) / 2], Math.max(500, (span * 60) / 2 + 250));
+        if (siteMode !== 'off') await ov.airports.ensure([(st.pos[0] + goal.fix[0]) / 2, (st.pos[1] + goal.fix[1]) / 2], Math.max(500, (span * kn0) / geo.NM / 2 + 250));
         if (useWind && ov.wind.prefetch) {
           const levels = [...new Set((altitudes || G.router.ALTITUDES).map((a) => G.weather.levelFor(a)))];
           const r = await ov.wind.prefetch(box, levels);
@@ -1372,7 +1374,7 @@
     $('link-note').textContent = count
       ? G.linkinfo.countdownText(count, link.station)
       : live
-        ? `${link.latency ? link.latency / 1000 + ' s delay · ' : ''}if lost: route home after ${timeout} s`
+        ? `${link.latency ? link.latency / 1000 + ' s delay · ' : ''}if lost: route home after ${timeout} s` + (link.stalls.length && Date.now() - link.stalls[link.stalls.length - 1].at < 120000 ? ` · this page's heartbeat stalled ${Math.round(link.stalls[link.stalls.length - 1].gapMs / 1000)} s ${Math.round((Date.now() - link.stalls[link.stalls.length - 1].at) / 1000)} s ago (the browser slowed it?)` : '')
         : s && s.started ? `the aircraft goes home by itself ${timeout} s after the last contact` : '';
     const comeBack = restored.update(sending, Date.now());
     renderStation(live);
@@ -1488,7 +1490,7 @@
     map.data.lostLabel = `if the link is lost: after ${timeout} s`;
     const cam = G.camera.state(link.values);
     map.data.camera = live ? cam.target : null;
-    $('cam-state').textContent = demo ? 'the stand-in aircraft of the demo has no camera' : !live ? '' : cam.text + (cam.level ? '; horizon kept level' : '');
+    $('cam-state').textContent = demo ? 'the stand-in aircraft of the demo has no camera' : !live ? '' : cam.text + (cam.level ? '; horizon kept level' : '') + (cam.target && !ov.layers.shown('camera') ? ' (the marker is hidden: Layers, Camera target)' : '');
     $('cam-level').classList.toggle('on', cam.level);
     document.querySelectorAll('#camera button').forEach((b) => (b.disabled = demo || !live));
     map.draw();

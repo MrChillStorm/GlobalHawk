@@ -28,13 +28,49 @@
   const CHAT_KEPT = 50;
   const SLEW_MS = 170;
 
+  /**
+   * A setTimeout that a browser does not slow when the page is behind another window. A page's own timers are cut to one a second after it has been hidden for ten, and to one a minute after five
+   * minutes (Chrome, Brave, Edge; a window another one covers counts as hidden), and the aircraft counts the silence of the station's heartbeat in its own seconds: with FlightGear's speed-up on, a
+   * few real seconds of silence are the link's 30 s and it flies its lost-link route home (2026-11-17: "I don't know why it loses the link so easily"). A dedicated worker's timers are not slowed.
+   * Made from a Blob so that it works from a page opened as a file; null where there are no workers, and the plain setTimeout is used.
+   */
+  function backgroundTimer() {
+    try {
+      if (typeof Worker === 'undefined' || typeof Blob === 'undefined' || typeof URL === 'undefined' || !URL.createObjectURL) return null;
+      const w = new Worker(URL.createObjectURL(new Blob(['onmessage=function(e){var id=e.data[0];setTimeout(function(){postMessage(id)},e.data[1])}'], { type: 'text/javascript' })));
+      const pending = new Map();
+      let n = 0;
+      let broken = false;
+      w.onmessage = (e) => {
+        const f = pending.get(e.data);
+        pending.delete(e.data);
+        if (f) f();
+      };
+      w.onerror = () => {
+        broken = true; // the worker died: what it held is run by the page's own timer, late rather than never
+        for (const f of pending.values()) setTimeout(f, 0);
+        pending.clear();
+      };
+      return (fn, ms) => {
+        if (broken) return setTimeout(fn, ms);
+        n += 1;
+        pending.set(n, fn);
+        w.postMessage([n, ms]);
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
   class Link {
     constructor(o) {
       this.t = o.transport;
       this.station = o.station || 'LRE';
       this.latency = o.latency || 0;
       this.now = o.now || (() => Date.now());
-      this.timer = o.setTimeout || ((fn, ms) => setTimeout(fn, ms));
+      this.timer = o.setTimeout || backgroundTimer() || ((fn, ms) => setTimeout(fn, ms));
+      this.lastTick = null; // when the heartbeat last went, and the late ones: { at, gapMs }, the last ten
+      this.stalls = [];
       this.seq = o.firstSeq !== undefined ? o.firstSeq : Math.floor(this.now() / 1000) % 1000000000; // never reused after a reload
       this.beat = Math.floor(this.now() / 1000) % 1000000;
       this.commands = []; // newest last: { seq, name, args, state, reason, sentAt, answeredAt }
@@ -71,8 +107,20 @@
     start(paths) {
       this.t.listen(['/gcs/down/ack', '/gcs/down/status', '/gcs/down/plan', '/gcs/down/airport', CHAT].concat(paths || []));
       this.beating = true;
+      try {
+        // a page that holds a lock is not frozen by the browser when it is in the background
+        if (typeof navigator !== 'undefined' && navigator.locks && navigator.locks.request) navigator.locks.request('gcs-link', () => new Promise(() => {})).catch(() => {});
+      } catch (e) {
+        /* no locks here */
+      }
       const tick = () => {
         if (!this.beating) return;
+        const t = this.now();
+        if (this.lastTick !== null && t - this.lastTick > 3000 + 2 * this.beatMs) {
+          this.stalls.push({ at: t, gapMs: t - this.lastTick });
+          if (this.stalls.length > 10) this.stalls.shift();
+        }
+        this.lastTick = t;
         this.beat += 1;
         const b = `${this.station}:${this.beat}`;
         this.later(() => this.t.send('/gcs/up/heartbeat', b));

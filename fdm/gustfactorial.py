@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The effect of the approach speed's addition and of the gust system, alone and together, with its uncertainty (docs/PLAN.md, "Gusts: find out first", "Protocol for the report's comparison").
 
-    python3 fdm/gustfactorial.py [--set test|train] [--dir fdm/out/gust] [--out fdm/report/results/gust_factorial.json]
+    python3 fdm/gustfactorial.py [--set test|train|rules|crazy] [--dir fdm/out/gust] [--out fdm/report/results/gust_factorial.json]
 
 Four arms of the same cases: neither; the speed alone (the aircraft's own pick of the addition, ap/approach-add-auto 1); the stabilisation alone (the gust system, ap/gust-sys 1); both. For the discrete gusts,
 in which the pick is nothing (calm air), a fixed +10 kt is flown as well, alone and with the system (arms `fixed`, `fixedboth`), as a supplement. The cases are the bench's (fdm/gustbench.py: the landing
@@ -32,8 +32,12 @@ if '--out' in sys.argv:
 if '--set' in sys.argv:
     SET = sys.argv[sys.argv.index('--set') + 1]
 
-ARMS = (('neither', 'neither'), ('speed', 'the speed alone'), ('stab', 'the stabilisation alone'), ('both', 'both'), ('fixed', 'fixed +10 kt alone'), ('fixedboth', 'fixed +10 kt and the system'))
-CONTRASTS = (('speed', 'neither'), ('stab', 'neither'), ('both', 'neither'), ('both', 'speed'), ('both', 'stab'), ('fixed', 'neither'), ('fixedboth', 'stab'))
+ARMS = (('neither', 'neither'), ('speed', 'the speed alone'), ('stab', 'the stabilisation alone'), ('both', 'both'), ('fixed', 'fixed +10 kt alone'), ('fixedboth', 'fixed +10 kt and the system'),
+        ('boeing', "Boeing's rule alone"), ('boeingstab', "Boeing's rule and the system"), ('airbus', "Airbus's rule alone"), ('airbusstab', "Airbus's rule and the system"),
+        ('airbusfull', "Airbus's rule and the ground-speed minimum"), ('airbusfullstab', "Airbus's rule, the minimum and the system"))
+CONTRASTS = (('speed', 'neither'), ('stab', 'neither'), ('both', 'neither'), ('both', 'speed'), ('both', 'stab'), ('fixed', 'neither'), ('fixedboth', 'stab'),
+             ('boeing', 'neither'), ('airbus', 'neither'), ('airbusfull', 'neither'), ('boeingstab', 'stab'), ('airbusstab', 'stab'), ('airbusfullstab', 'stab'), ('boeing', 'speed'), ('airbus', 'speed'),
+             ('airbusfull', 'airbus'), ('airbusfullstab', 'airbusstab'))
 BOOT = 10000
 
 
@@ -73,8 +77,9 @@ def boot(d, rng):
 
 def contrast(ra, rb, rng):
     """arm A against arm B, paired by case name"""
-    a = {r['name'].replace(' gs=1', '').replace(' auto=1', '').replace(' add=10', '').strip(): r for r in ra}
-    b = {r['name'].replace(' gs=1', '').replace(' auto=1', '').replace(' add=10', '').strip(): r for r in rb}
+    key = lambda r: re.sub(r'(^| )(gs=1|auto=1|add=[\d.]+|rule=\w+)(?= |$)', '', r['name']).strip()
+    a = {key(r): r for r in ra}
+    b = {key(r): r for r in rb}
     names = [n for n in a if n in b]
     ba = sum(1 for n in names if hard(a[n]) and not hard(b[n]))
     bb = sum(1 for n in names if hard(b[n]) and not hard(a[n]))
@@ -87,7 +92,22 @@ def contrast(ra, rb, rng):
 def weathers():
     """[(name, {arm: [records]})]"""
     out = []
-    if SET == 'test':
+    if SET == 'crazy':
+        t = {k: rows(os.path.join(D, 'crazy_t.%s.jsonl' % k)) for k, _ in ARMS}
+        for tag, key in (('the FlightGear scenario: 28 kt abeam (wind from 310; headwind 4, crosswind 28), turbulence at a wind at 20 ft of 28 kt', 'xw=28 '), ('the FlightGear scenario: 36 kt abeam with the shear to 85 kt at 500 ft, turbulence at 36 kt', 'xw=36 ')):
+            sub = {k: [r for r in v if key in r['name'] + ' '] for k, v in t.items()}
+            if sub['neither']:
+                out.append(('%s (%d sequences, 26,750 lb)' % (tag, len(sub['neither'])), sub))
+    elif SET == 'rules':
+        t = {k: rows(os.path.join(D, 'rules_t.%s.jsonl' % k)) for k, _ in ARMS}
+        if t['neither']:
+            out.append(('all seven weathers pooled (%d sequences)' % len(t['neither']), {k: list(v) for k, v in t.items()}))
+        for steady, label in ((False, 'turbulence'), (True, 'turbulence with a steady wind at 45 deg')):
+            for w20 in (20, 30, 40, 50, 60) if not steady else (30, 40, 50):
+                sub = {k: [r for r in v if ('hw=' in r['name']) == steady and re.search(r'(?:lo|tu)=%d[: ]' % w20, r['name'] + ' ')] for k, v in t.items()}
+                if sub['neither']:
+                    out.append(('%s, a wind at 20 ft of %d kt (%d sequences)' % (label, w20, len(sub['neither'])), sub))
+    elif SET == 'test':
         arms_of = lambda base: {k: rows(os.path.join(D, '%s.%s.jsonl' % (base, k))) for k, _ in ARMS}
         d = arms_of('test_d')
         for kind, tag in (('a', 'a lost or gained headwind'), ('v', 'a downdraught'), ('x', 'a gust across')):
@@ -96,19 +116,34 @@ def weathers():
                 out.append(('discrete: %s (%d cases)' % (tag, len(sub['neither'])), sub))
         t = arms_of('test_t')
         for steady, label in ((False, 'turbulence'), (True, 'turbulence with a steady wind at 45 deg')):
-            for w20 in (30, 40, 50, 60) if not steady else (30, 40, 50):
-                sub = {k: [r for r in v if ('hw=' in r['name']) == steady and re.search(r'lo=%d ' % w20, r['name'] + ' ')] for k, v in t.items()}
+            for w20 in (20, 30, 40, 50, 60) if not steady else (30, 40, 50):
+                sub = {k: [r for r in v if ('hw=' in r['name']) == steady and re.search(r'(?:lo|tu)=%d[: ]' % w20, r['name'] + ' ')] for k, v in t.items()}
                 if sub['neither']:
                     out.append(('%s, a wind at 20 ft of %d kt (%d sequences)' % (label, w20, len(sub['neither'])), sub))
     else:
         for steady, label in ((False, 'turbulence'), (True, 'turbulence with a steady wind at 45 deg')):
-            for w20 in (30, 40, 50, 60) if not steady else (30, 40, 50):
+            for w20 in (20, 30, 40, 50, 60) if not steady else (30, 40, 50):
                 def pick(f):
-                    return [r for r in rows(os.path.join(D, f)) if ('hw=' in r['name']) == steady and re.search(r'lo=%d ' % w20, r['name'] + ' ')]
+                    return [r for r in rows(os.path.join(D, f)) if ('hw=' in r['name']) == steady and re.search(r'(?:lo|tu)=%d[: ]' % w20, r['name'] + ' ')]
                 sub = {'neither': pick('opt.add0.off.jsonl'), 'stab': pick('opt.add0.on.jsonl'), 'speed': pick('opt.auto.off.jsonl'), 'both': pick('opt.auto.on.jsonl')}
                 if sub['neither']:
                     out.append(('%s, a wind at 20 ft of %d kt (%d sequences; fitting set)' % (label, w20, len(sub['neither'])), sub))
     return out
+
+
+def manager_summary():
+    """the same weathers flown by the mission manager (crazy_m.<arm>.jsonl: the stabilised-approach gate and the missed approach): per arm and weather, the flights that landed, those with a missed approach, those
+    that were abandoned, the hard landings (a sink over 2 m/s or no touchdown) and the sink's median"""
+    print('\nthe manager flies the same weathers (24 sequences each): landed / with a missed approach / abandoned / landed hard (over 2 m/s) / median sink m/s')
+    for tag, key in (('28 kt abeam', 'xw=28 '), ('36 kt abeam with the shear', 'xw=36 ')):
+        for arm, label in (('neither', 'neither'), ('stab', 'the stabilisation'), ('both', 'the pick and the stabilisation')):
+            rs = [r for r in rows(os.path.join(D, 'crazy_m.%s.jsonl' % arm)) if key in r['name'] + ' ']
+            if not rs:
+                continue
+            landed = [r for r in rs if r.get('touchdown')]
+            sinks = sorted(r['touchdown']['sink'] for r in landed)
+            print('  %-28s %-32s %2d / %2d / %2d / %2d / %s' % (tag, label, len(landed), sum(1 for r in rs if r['missed']), sum(1 for r in rs if r['abandoned']), sum(1 for r in rs if (not r.get('touchdown')) or r['touchdown']['sink'] > 2.0),
+                                                              ('%.2f' % sinks[len(sinks) // 2]) if sinks else '-'))
 
 
 def main():
@@ -131,9 +166,22 @@ def main():
                 entry['contrasts']['%s-%s' % (a, b)] = c
                 print('    %-18s hard %3d vs %3d (only %d / only %d, p %.3f)   d sink %+.2f [%+.2f, %+.2f] m/s   d line %+.1f [%+.1f, %+.1f] ft   d landing %+.0f [%+.0f, %+.0f] ft' % (
                     '%s - %s' % (a, b), c['hard_a'], c['hard_b'], c['only_a'], c['only_b'], c['p_hard'], *c['d_sink'], *c['d_line'], *c['d_total']))
+        if SET == 'rules' and name.startswith('all seven'):
+            # the arms no other arm beats on all of events, hard landings, sink (95th percentile) and landing's length
+            keys = [k for k in entry['arms']]
+            front = []
+            for a in keys:
+                ma = entry['arms'][a]
+                dominated = any(all(entry['arms'][b][m] <= ma[m] for m in ('events', 'hard', 'sink95', 'total')) and any(entry['arms'][b][m] < ma[m] for m in ('events', 'hard', 'sink95', 'total')) for b in keys if b != a)
+                if not dominated:
+                    front.append(a)
+            entry['non_dominated'] = front
+            print('  not beaten on events, hard landings, sink 95 %% and landing length by any other arm: %s' % ', '.join(front))
         result.append(entry)
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     json.dump(result, open(OUT, 'w'), indent=1)
+    if SET == 'crazy':
+        manager_summary()
     print('\nwritten', OUT)
 
 

@@ -396,9 +396,8 @@ class Onboard:
         m = self.mgr
         # the circle starts where the aircraft is: its centre one radius to the right
         r = m.hold_radius()
-        c = math.radians(f['attitude/psi-deg'] + 90.0)
         here = m.here()
-        centre = (here[0] + r * math.cos(c) / MM.FT_PER_DEG, here[1] + r * math.sin(c) / (MM.FT_PER_DEG * math.cos(math.radians(here[0]))))
+        centre = MM.along(here, f['attitude/psi-deg'] + 90.0, r)
         self.leave([dict(kind='hold', centre=centre, alt=float(f['ap/alt-cmd-ft']), radius=r)], 'hold')
         return None
 

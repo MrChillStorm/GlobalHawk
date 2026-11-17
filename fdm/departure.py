@@ -30,8 +30,7 @@ DELTAS = (0.0, 10.0, 20.0, 30.0, 45.0, 60.0, 90.0, 120.0)
 
 
 def along(p, brg, ft):
-    c = math.radians(brg)
-    return [p[0] + ft * math.cos(c) / MM.FT_PER_DEG, p[1] + ft * math.sin(c) / (MM.FT_PER_DEG * math.cos(math.radians(p[0])))]
+    return list(MM.along(p, brg, ft))
 
 
 def case(demo, fld, hdg, delta):

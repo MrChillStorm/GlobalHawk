@@ -522,7 +522,7 @@ var Onboard = {
             var m = me.mgr;
             # the circle starts where the aircraft is: its centre one radius to the right
             var r = m.hold_radius();
-            var centre = offset(m.here(), fget("attitude/psi-deg") + 90.0, r);
+            var centre = along(m.here(), fget("attitude/psi-deg") + 90.0, r);
             me.leave([{ kind: "hold", centre: centre, alt: fget("ap/alt-cmd-ft"), radius: r }], "hold");
             return nil;
         },

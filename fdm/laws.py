@@ -60,6 +60,18 @@ GLIDE_SPOILER_RATE = 0            # per second: the most the spoilers' selection
 GLIDE_ALPHA_LEAD_S = 3.5         # s: in the glide before the flare the angle-of-attack protection looks this far ahead on a rising angle of attack, as it does by hand (0: not)
 GA_SPEED_ADD_KT = 0.0            # the go-around task (ap/ga-on, set by the manager's missed approach) holds the approach speed plus this where it begins (swept: +10 kt put the nose down 7 deg and 149 ft under the 300 ft it was begun from: the speed law pitches for a speed it does not have; none loses 35 ft) ...
 GA_SPEED_RAMP = 0.06             # ... and asks for this much more per foot of height gained, up to the schedule's speed (the schedule's 150 KCAS asked of an aircraft at 105 pitched it down 20 deg)
+# ---- the smarter go-around (ap/ga-smart 1; docs/PLAN.md, "The go-around chases the airspeed in turbulence"): in the go-around's climb-out (ap/ga-on, pitch mode 1) the pitch holds the attitude that the thrust and the
+# weight give (the path the thrust can climb at, plus the angle of attack), the speed's error, filtered, moving it only beyond a dead band and only within a limited range, and a slow integral taking out what is left
+GA_LD = 30.0                     # the lift-to-drag ratio the scheduled attitude is worked out for (1 / L/D is the drag's share of the weight)
+GA_THRUST_LBF = 5400.0           # lb: the thrust the climb is worked out for (full thrust at 150 KCAS low down: 5,450 measured)
+GA_ALPHA_DEG = 1.0               # deg: the angle of attack in the climb (0.4 to 1.5 measured)
+GA_SPEED_FILT_S = 4.0            # s: the speed's error is filtered over this: a gust is not an energy change
+GA_BAND_KT = 8.0                 # kt: no pitch change for a speed error inside this
+GA_KP = 0.25                     # deg of pitch per kt beyond the band
+GA_AUTH_DEG = 4.0                # deg: the most the speed moves the attitude from the scheduled one
+GA_KI = 0.02                     # deg per kt beyond the band per second: the slow integral ...
+GA_I_MAX = 3.0                   # deg: ... and its limit
+GA_THETA_MIN, GA_THETA_MAX = 0.0, 16.0      # deg: the attitude range of the climb-out
 GA_THROTTLE_RATE = 3.0           # deg/s: the throttle goes up this fast in the go-around, in the climb's path-angle rate (THROTTLE_PATH_RATE is 0.9: 14 s to full thrust from the glide's)
 GA_SPOILER_SLEW = 0.3            # per second at SPOILER_SLEW_LB: the spoilers come in this fast in the go-around (0.06: 16 s from the glide's 0.97)
 THROTTLE_SLEW_LAND = 1          # the throttle's rate limit goes on in the landing until the flare (the landing law's idle was a step of 0.43 at the start of the glide: Nz 0.86)
@@ -105,7 +117,9 @@ LEVEL_I_GAIN_X = 4.0            # times the altitude integral's gain
 LEVEL_A_FPS2 = 2.6              # ft/s^2: 0.08 g of vertical acceleration at the level-off
 BANK_COMMAND = 0.86            # of the bank limit: 21.5 deg low down (Pastor: 21), 13 deg at height (ATTREX: 15)
 # part B (docs/FLIGHT-LAWS.md section 5)
-FT_PER_DEG = 364567.2            # feet in a degree of latitude
+WGS84_A = 6378137.0             # m: the semi-major axis of the ellipsoid GPS, FlightGear and JSBSim fly on (fdm/wgs84.py is the reference; the same formulas are in the Python and Nasal managers, the HUD and the station's geo.js)
+WGS84_E2 = 0.00669437999014      # the first eccentricity squared
+FT_PER_M = 1.0 / 0.3048
 GLIDE_TAN = 0.07782              # tan of 4.45 deg: the measured approaches
 APPROACH_CL = 0.645              # the measured approaches
 SPOILER_BASE = 0.667             # 30 of 45 deg
@@ -187,9 +201,52 @@ TAKEOFF_BLEND_K = 3.0             # the same gain for the ground term's fade-out
 DECRAB = 1                       # 1: the landing task owns the yaw axis in its last seconds and on the runway (the sideslip law is faded out by the weight)
 FINAL_T_OUTER_S = 25.0           # s: the landing task's lateral law (roll mode 3): the cross-track rate the line asks for is the cross-track over this ...
 FINAL_T_INNER_S = 6.0            # s: ... and the lateral acceleration is the difference from the rate there is, over this (four times faster: no overshoot)
+FINAL_SCHED = 1                  # 1: the landing task's loop times shorten with the height (the four numbers below; on from 2026-11-17), 0: FINAL_T_OUTER_S and FINAL_T_INNER_S at every height. A scan of the times against FlightGear-like turbulence (docs/PLAN.md, "The lateral law's loop times") cut the cross-track at the wheels from sd 44 ft to 17 ft at 10 s and 2.5 s; the legs and the join share the law, so the short times apply only in the landing task (roll mode 3) and only low
+FINAL_T_OUTER_LAND_S = 8.0       # s: the position loop's time at and under FINAL_SCHED_LO_FT of wheel height (8 s and 2 s are the edge: faster rings in turbulence) ...
+FINAL_T_INNER_LAND_S = 2.0       # s: ... and the rate loop's
+FINAL_SCHED_LO_FT = 300.0        # ft of wheel height: the short times apply at and under this ...
+FINAL_SCHED_HI_FT = 800.0        # ft: ... and the long ones (FINAL_T_OUTER_S, FINAL_T_INNER_S) at and over this, linearly between (the wheel height reads 1,000 above 1,000 ft)
 FINAL_ANGLE_MAX_DEG = 30.0       # the intercept angle at the most: the rate asked for is at most vg sin of it
 FINAL_BANK_MAX_DEG = 12.0        # the bank of the final's lateral law, at the most (swept: 8 deg makes a 30 deg intercept from 2,000 ft cross the line by 62 to 304 ft, 12 deg by 7 to 9 ft; 15 deg adds nothing on course)
 FINAL_KI = 0.0002                # deg of bank per ft of cross-track and second: the slow integral that takes out the bias between the track and the leg's course (swept: 0 leaves 5 ft, 0.0005 over a 100 ft band overshoots 33 ft)
+# ---- the final's integral for an offset that is not closing (ap/final-wide 1; docs/PLAN.md, "The landing in a strong crosswind from the right ends left of the centreline"): the lateral law is a position loop (the
+# rate the line asks for, the cross-track over FINAL_T_OUTER_S) around a velocity loop with no integral, and the old cross-track integral runs only within 30 ft of the line at 0.0002 deg of bank per ft and second:
+# a lack of bank of 0.5 deg (the roll loop's own accuracy) leaves 60 to 80 ft that nothing takes out (FlightGear, a 30 kt crosswind from the right). The position loop asks a closing rate of at least
+# FINAL_I_FAR_FT / FINAL_T_OUTER_S = 1.2 ft/s beyond FINAL_I_FAR_FT, so a cross-track beyond it with a rate under FINAL_I_RATE_FPS is an offset that is not closing: this integral runs only then (and under
+# FINAL_I_BELOW_FT of wheel height, within FINAL_I_BAND_WIDE_FT of the line). An intercept, whose rate follows what the loop asks, never meets the condition; three first versions that integrated
+# the cross-track or the rate error whenever they were near the line or low overshot an intercept from 1,000 and 2,000 ft by 18 to 67 ft
+FINAL_KI_WIDE = 0.0006           # deg of bank per ft of cross-track and second
+FINAL_I_FAR_FT = 30.0            # ft: beyond this (the old integral's band) ...
+FINAL_I_BAND_WIDE_FT = 300.0     # ft: ... and within this of the line ...
+FINAL_I_RATE_FPS = 1.0           # ft/s: ... while the cross-track rate is under this ...
+FINAL_I_BELOW_FT = 100000.0      # ft of wheel height: ... and under this height (the whole approach: legs and final; the wheel height reads 1,000 above 1,000 ft)
+FINAL_I_WIDE_CLIP_DEG = 3.0      # deg of bank: its limit
+# ---- the final's wind feed-forward (ap/final-ff 1; docs/PLAN.md, "The drift in the flare"): in the last 100 ft of FlightGear's 36 kt flights the crosswind fell by 7 kt (1.5 ft/s^2) and the aircraft, whose lateral
+# velocity follows the wind with a lag of a few seconds, drifted away from the line at 2 to 5 ft/s before the position and rate loops (25 s and 6 s) could answer. The crosswind (the total wind across the leg's
+# course) is smoothed (FF_SMOOTH_S) and differentiated (a washout over FF_DERIV_S: its output is FF_DERIV_S times the rate of change), the drift the change is about to cause is FF_TAU_S times the rate, and the bank
+# that takes that rate out over FF_T_S is added to the lateral law's, within FF_CLIP_DEG, under FF_BELOW_FT of wheel height in the landing's roll mode
+# ---- the final's rate-error integral (ap/final-ri 1): the position loop asks a rate and the velocity loop takes the bank for the rate error over FINAL_T_INNER_S, with no integral, so a wind that changes steadily
+# (the nose follows the relative wind and turns the track off at a steady rate: 0.36 deg/s of heading in FlightGear's last 40 ft, against the 0.14 deg/s a bank of 1 deg turns) leaves a steady rate error and an offset
+# that grows for as long as the wind changes. The integral of the rate error takes it out whatever the cause (no model of the wind), only close to the line (FINAL_RI_BAND_FT) and low (FINAL_RI_BELOW_FT)
+FINAL_KI_RI = 0.02               # deg of bank per ft/s of rate error and second
+FINAL_RI_BAND_FT = 60.0          # ft: within this of the line ...
+FINAL_RI_BELOW_FT = 990.0        # ft of wheel height: ... and under this height
+FINAL_RI_CLIP_DEG = 3.0          # deg of bank: its limit
+FF_SMOOTH_S = 3.0                # s: the crosswind is smoothed over this before it is differentiated (turbulence is not a change of the wind)
+FF_DERIV_S = 5.0                 # s: the washout's time constant
+FF_TAU_S = 2.0                   # s: the lag with which the aircraft's lateral velocity follows the wind (an estimate)
+FF_TAU_WEIGHT_LB = 26750.0       # lb: the weight FF_TAU_S was tuned at; the lag goes with the square root of the weight (the lift coefficient is held, so the speed goes with its root and the side force with the weight)
+FF_T_S = 3.0                     # s: the time the bank takes the predicted rate out over
+# ---- the aim offset (ap/final-aim 1; the user, 2026-11-17: the 36 kt wind from the side is what puts the touchdown left of the line, so aim upwind by an amount that goes with it): the line the position loop and the
+# integral steer to is moved upwind by FINAL_AIM_FT_PER_KT feet for each knot of the crosswind component (the total wind, smoothed over FINAL_AIM_FILT_S, across the leg's course), from FINAL_AIM_FROM_FT of wheel
+# height (0) to FINAL_AIM_FULL_FT (all of it), in the landing's roll mode only (the rollout's steering still reads the real line). The coefficient is the offset the FlightGear flights show: 1.3 to 2.4 ft per knot
+# (28 kt: -68 and -73 ft at the wheels, 36 kt: -49 and -80 ft); the bench's steady wind shows 0.12 ft per knot (the decrab alone), so this is for the wind FlightGear blows and has to be judged against both
+FINAL_AIM_FT_PER_KT = 2.0        # ft of aim point per kt of crosswind component
+FINAL_AIM_FILT_S = 10.0          # s: the crosswind is smoothed over this (the aim does not follow the gusts)
+FINAL_AIM_FROM_FT = 1000.0       # ft of wheel height: the aim begins ...
+FINAL_AIM_FULL_FT = 700.0        # ft of wheel height: ... and is all there at this height
+FF_CLIP_DEG = 3.0                # deg of bank: the most the feed-forward adds
+FF_BELOW_FT = 500.0              # ft of wheel height: it runs under this
 FINAL_I_BAND_FT = 30.0           # the integral runs only this close to the line and is held at zero outside it (JSBSim's clip limits the output, not the state)
 FINAL_LAW = 1                    # 1: the landing item flies roll mode 3 (the manager sets it)
                                  # than about 21 ft/s makes the flare earlier (a first version, with no slack, floated 300-600 ft further in light turbulence)
@@ -589,10 +646,9 @@ def _mission_phases():
     RAD = lambda a: X('toradians', a)
     DEG = lambda a: X('todegrees', a)
     on_ci = EQ(P('ap/ci-on'), V(1))
-    dn = M(D(P('position/lat-geod-deg'), P('ap/ci-lat')), V(FT_PER_DEG))
-    de = M(D(P('position/long-gc-deg'), P('ap/ci-lon')), V(FT_PER_DEG), X('cos', RAD(P('ap/ci-lat'))))
-    ch.append(_fn('ap/ci-dn-ft', dn, 'feet north of the centre'))
-    ch.append(_fn('ap/ci-de-ft', de, 'feet east of the centre'))
+    ch.extend(_g_point('cic', 'ap/ci-lat', 'ap/ci-lon'))
+    ch.extend(_g_point('cia', 'position/lat-geod-deg', 'position/long-gc-deg'))
+    ch.extend(_g_enu('cic', 'cia', 'ap/ci-dn-ft', 'ap/ci-de-ft', 'aircraft, in the tangent plane at the circle\'s centre'))
     ch.append(_fn('ap/ci-out-deg', DEG(X('atan2', P('ap/ci-de-ft'), P('ap/ci-dn-ft'))), 'the bearing from the centre to the aircraft, -180 to 180'))
     ch.append(_fn('ap/ci-dist-ft', X('sqrt', S(M(P('ap/ci-dn-ft'), P('ap/ci-dn-ft')), M(P('ap/ci-de-ft'), P('ap/ci-de-ft')))), 'the distance from the centre'))
     radius, side = P('ap/ci-radius-ft'), P('ap/ci-side')
@@ -604,6 +660,81 @@ def _mission_phases():
                                           S(DEG(X('atan2', X('sin', RAD(raw)), X('cos', RAD(raw)))), V(360))), 'the heading that flies the circle, 0 to 360'))
     ch.append(_fn('ap/heading-cmd-next', IF(on_ci, P('ap/ci-heading-deg'), P('ap/heading-cmd-deg')), out='ap/heading-cmd-deg'))
     return ch
+
+
+def _ga_smart():
+    """The smarter go-around's pitch (see GA_*): active while ap/ga-smart is 1, the go-around task is on (ap/ga-on), the pitch mode is 1 and the aircraft is in the air and not flaring."""
+    X = lambda tag, *a: '<%s>%s</%s>' % (tag, ''.join(a), tag)
+    P, V = _p, _v
+    M = lambda *a: X('product', *a)
+    S = lambda *a: X('sum', *a)
+    D = lambda a, b: X('difference', a, b)
+    Q = lambda a, b: X('quotient', a, b)
+    MAX = lambda *a: X('max', *a)
+    MIN = lambda *a: X('min', *a)
+    ABS = lambda a: X('abs', a)
+    IF = lambda c, a, b: X('ifthen', c, a, b)
+    AND = lambda *a: X('and', *a)
+    GT = lambda a, b: X('gt', a, b)
+    EQ = lambda a, b: X('eq', a, b)
+    ch = []
+    # the climb-out is flown for the whole missed approach, not only the first GA_FREE_FT of height gained that the go-around task (ap/ga-on) lasts: latched when the task begins, held while the pitch mode is the
+    # speed's and the aircraft climbs (not landing, not on the ground), released at the level-off (pitch mode 2), when the landing begins or when the laws are off
+    ch.append(_fn('ap/ga-latch-next', IF(AND(EQ(P('ap/ga-smart'), V(1)), EQ(P('ap/ga-on'), V(1))), V(1),
+                                         IF(AND(EQ(P('ap/ga-latch'), V(1)), EQ(P('ap/pitch-mode'), V(1)), EQ(P('ap/land-mode'), V(0)), EQ(P('ap/on-mains'), V(0)), EQ(P('ap/engaged'), V(1))), V(1), V(0))),
+                  'the missed approach\'s climb-out is on (latched from the go-around task to the level-off)', out='ap/ga-latch'))
+    ch.append(_fn('ap/ga-smart-active', IF(AND(EQ(P('ap/ga-smart'), V(1)), EQ(P('ap/ga-latch'), V(1)), EQ(P('ap/pitch-mode'), V(1)), EQ(P('ap/flare'), V(0)), EQ(P('ap/on-mains'), V(0))), V(1), V(0)),
+                  'the smarter go-around holds the pitch'))
+    ch.append(_fn('ap/ga-verr-kt', D(P('velocities/vc-kts'), P('ap/speed-target-kcas')), 'the climb-out\'s speed error, kt (fast is positive): the go-around speed while the task is on, then the speed the route asks'))
+    ch.append('''    <lag_filter name="ap/ga-verr-f-kt">
+      <input>ap/ga-verr-kt</input>
+      <c1>%g</c1>
+    </lag_filter>''' % (1.0 / GA_SPEED_FILT_S))
+    ch.append(_fn('ap/ga-vband-kt', IF(GT(ABS(P('ap/ga-verr-f-kt')), V(GA_BAND_KT)), D(P('ap/ga-verr-f-kt'), M(IF(GT(P('ap/ga-verr-f-kt'), V(0)), V(1), V(-1)), V(GA_BAND_KT))), V(0)),
+                  'the filtered speed error beyond the dead band, kt'))
+    ch.append(_fn('ap/ga-theta-ref-deg', S(M(V(57.29578), X('asin', MIN(V(0.5), MAX(V(0), D(Q(V(GA_THRUST_LBF), MAX(V(5000), P('inertia/weight-lbs'))), V(1.0 / GA_LD)))))), V(GA_ALPHA_DEG)),
+                  'the attitude the thrust and the weight give a climb at: the path (thrust over weight less the drag\'s share) and the angle of attack'))
+    ch.append(_fn('ap/ga-theta-i-next', IF(EQ(P('ap/ga-smart-active'), V(1)), MAX(V(-GA_I_MAX), MIN(V(GA_I_MAX), S(P('ap/ga-theta-i-deg'), M(V(-GA_KI), P('ap/ga-vband-kt'), P('simulation/dt'))))), V(0)),
+                  'the slow integral of the speed error beyond the band (fast pitches down), deg', out='ap/ga-theta-i-deg'))
+    ch.append(_fn('ap/theta-ga-deg', D(MAX(V(GA_THETA_MIN), MIN(V(GA_THETA_MAX), S(P('ap/ga-theta-ref-deg'), MAX(V(-GA_AUTH_DEG), MIN(V(GA_AUTH_DEG), M(V(-GA_KP), P('ap/ga-vband-kt')))), P('ap/ga-theta-i-deg')))), P('ap/theta-latched-deg')),
+                  'the go-around\'s attitude as a change from the latched one'))
+    return ch
+
+
+def _g_point(tag, lat, lon):
+    """channels for a point on the ellipsoid: sin and cos of its latitude and longitude, and its ECEF coordinates in metres (x to 0 N 0 E, y to 0 N 90 E, z to the pole)"""
+    la, lo = '<toradians>%s</toradians>' % _p(lat), '<toradians>%s</toradians>' % _p(lon)
+    out = [_fn('ap/g-%s-sp' % tag, '<sin>%s</sin>' % la), _fn('ap/g-%s-cp' % tag, '<cos>%s</cos>' % la),
+           _fn('ap/g-%s-sl' % tag, '<sin>%s</sin>' % lo), _fn('ap/g-%s-cl' % tag, '<cos>%s</cos>' % lo)]
+    sp, cp, sl, cl = [_p('ap/g-%s-%s' % (tag, k)) for k in ('sp', 'cp', 'sl', 'cl')]
+    rn = '<quotient>%s<sqrt><difference>%s<product>%s%s%s</product></difference></sqrt></quotient>' % (_v(WGS84_A), _v(1), _v(WGS84_E2), sp, sp)
+    out.append(_fn('ap/g-%s-x' % tag, _op('product', rn, cp, cl)))
+    out.append(_fn('ap/g-%s-y' % tag, _op('product', rn, cp, sl)))
+    out.append(_fn('ap/g-%s-z' % tag, _op('product', rn, _v(1.0 - WGS84_E2), sp)))
+    return out
+
+
+def _g_enu(org, pt, out_n, out_e, desc):
+    """channels: the point's feet north and east in the tangent plane at the origin (through the ECEF coordinates: exact, no scale factors)"""
+    sp, cp, sl, cl = [_p('ap/g-%s-%s' % (org, k)) for k in ('sp', 'cp', 'sl', 'cl')]
+    d = lambda k: '<difference>%s%s</difference>' % (_p('ap/g-%s-%s' % (pt, k)), _p('ap/g-%s-%s' % (org, k)))
+    e = _op('product', _v(FT_PER_M), _op('sum', _op('product', _v(-1), sl, d('x')), _op('product', cl, d('y'))))
+    n = _op('product', _v(FT_PER_M), _op('sum', _op('product', _v(-1), sp, cl, d('x')), _op('product', _v(-1), sp, sl, d('y')), _op('product', cp, d('z'))))
+    return [_fn(out_n, n, 'feet north of the %s of the %s' % ('origin', desc)), _fn(out_e, e, 'feet east of the origin of the %s' % desc)]
+
+
+def _g_track(org, ac, out, desc, vel=None):
+    """a channel: the ground track in the tangent plane at the origin: the aircraft's velocity (north, east, down at where it is) turned into the origin's north and east.
+    With vel = (north, east, down) given as expressions, the same for that vector: (1, 0, 0) gives the turn of the origin's north against the local north at the aircraft."""
+    s = lambda t, k: _p('ap/g-%s-%s' % (t, k))
+    vn, ve, vd = vel if vel else (_p('velocities/v-north-fps'), _p('velocities/v-east-fps'), _p('velocities/v-down-fps'))
+    m1 = _v(-1)
+    vx = _op('sum', _op('product', m1, s(ac, 'sp'), s(ac, 'cl'), vn), _op('product', m1, s(ac, 'sl'), ve), _op('product', m1, s(ac, 'cp'), s(ac, 'cl'), vd))
+    vy = _op('sum', _op('product', m1, s(ac, 'sp'), s(ac, 'sl'), vn), _op('product', s(ac, 'cl'), ve), _op('product', m1, s(ac, 'cp'), s(ac, 'sl'), vd))
+    vz = _op('sum', _op('product', s(ac, 'cp'), vn), _op('product', m1, s(ac, 'sp'), vd))
+    ve2 = _op('sum', _op('product', m1, s(org, 'sl'), vx), _op('product', s(org, 'cl'), vy))
+    vn2 = _op('sum', _op('product', m1, s(org, 'sp'), s(org, 'cl'), vx), _op('product', m1, s(org, 'sp'), s(org, 'sl'), vy), _op('product', s(org, 'cp'), vz))
+    return _fn(out, '        <todegrees><atan2>%s%s</atan2></todegrees>' % (ve2, vn2), desc)
 
 
 def _gust_picker():
@@ -647,7 +778,14 @@ def _gust_picker():
     ch.append(_fn('ap/gs-add-cross', _table(GS_AUTO_CROSS, 'ap/gs-xw-kt'), 'the share of it the crosswind leaves'))
     ch.append(_fn('ap/gs-add-now', M(V(GS_AUTO_MAX_KT), P('ap/gs-add-gust'), P('ap/gs-add-cross')), 'the addition the air asks for now, kt'))
     ch.append(_fn('ap/gs-add-lat-next', IF(GT(P('aero/wheel-height-ft'), V(GS_PICK_H_FT - 1.0)), P('ap/gs-add-now'), P('ap/gs-add-lat')), 'followed above GS_PICK_H_FT of wheel height (the wheel height reads 1,000 ft above 1,000: it is clipped there), held under it', out='ap/gs-add-lat'))
-    ch.append(_fn('ap/approach-add-used', IF(EQ(P('ap/approach-add-auto'), V(1)), P('ap/gs-add-lat'), P('ap/approach-add-kt')), 'the addition the approach speed carries: the aircraft\'s own pick, or the one set'))
+    # the ground-speed minimum, as the A320 family's FMGC has it (Nasal/FMGC/FMGC.nas: gsMini = Vapp - max(10, the entered wind's component); the target = max(Vapp, gsMini + the live headwind)): the target
+    # is Vapp plus how far the live headwind (the filtered wind along the final's course) is over the entered one (the tower's, ap/tower-hw-kt, at least 10 kt): a gust's extra speed is kept, so that
+    # when it ends the airspeed falls back to Vapp and not under it. Switch ap/gsmini-on (0 by default)
+    k = math.pi / 180.0
+    ch.append(_fn('ap/gs-hw-live-kt', Q(M(V(-1), S(M(P('ap/gs-wind-north-filt-fps'), X('cos', M(P('ap/leg-course-deg'), V(k)))), M(P('ap/gs-wind-east-filt-fps'), X('sin', M(P('ap/leg-course-deg'), V(k)))))), V(1.68781)),
+                  'the live headwind along the leg\'s course, kt (positive: into the wind)'))
+    ch.append(_fn('ap/gs-gsmini-add', IF(EQ(P('ap/gsmini-on'), V(1)), MAX(V(0), D(P('ap/gs-hw-live-kt'), MAX(V(10), P('ap/tower-hw-kt')))), V(0)), 'what the ground-speed minimum adds to the approach speed, kt'))
+    ch.append(_fn('ap/approach-add-used', S(IF(EQ(P('ap/approach-add-auto'), V(1)), P('ap/gs-add-lat'), P('ap/approach-add-kt')), P('ap/gs-gsmini-add')), 'the addition the approach speed carries: the aircraft\'s own pick, or the one set, and the ground-speed minimum\'s'))
     return ch
 
 
@@ -708,7 +846,7 @@ def laws_file():
         ('next-lat-deg', 0), ('next-lon-deg', 0), ('next-valid', 0), ('turn-phase', 0), ('turn-done', 0), ('yaw-air-w', 1), ('rollout-w', 0), ('turn-ack', 0), ('decrab-w', 0),
         ('tk-on', 0), ('tk-done', 0), ('tx-on', 0), ('tx-fast', 15), ('tx-slow', 8), ('tx-bend-deg', 0), ('tx-last', 0), ('tx-stop', 1), ('ld-on', 0), ('ld-captured', 0),
         ('ci-on', 0), ('ci-lat', 0), ('ci-lon', 0), ('ci-radius-ft', 1000), ('ci-side', 1), ('ci-out-max', 30), ('ci-lead', 1),
-        ('ga-on', 0), ('ga-h0-ft', 0), ('vt-on', 0), ('vt-sp-end', 0), ('v-sp-i', 0), ('vt-ft', 0), ('vt-path', 0), ('sp-ext', -1), ('vmode', 0), ('v-level-alt', 0), ('v-level-from', 0), ('v-level-span', LEVEL_GATE_FT), ('v-level-sp0', 0), ('gust-sys', 0), ('approach-add-kt', 0), ('approach-add-auto', 0), ('approach-add-used', 0), ('gs-add-lat', 0), ('gs-on', 0), ('gs-throttle', 0), ('gs-detect', 0), ('gs-detect-t', -1000), ('gust-alert', 0), ('gs-flare-extra-deg', 0), ('gs-glide-extra-deg', 0), ('theta-speed-gs-deg', 0)))
+        ('ga-on', 0), ('ga-h0-ft', 0), ('ga-smart', 0), ('ga-latch', 0), ('final-wide', 0), ('final-i-wide-deg', 0), ('final-ff', 0), ('final-ri', 0), ('final-aim', 0), ('final-aim-ft', 0), ('final-i-rate-deg', 0), ('final-ff-bank-deg', 0), ('ga-smart-active', 0), ('ga-theta-i-deg', 0), ('vt-on', 0), ('vt-sp-end', 0), ('v-sp-i', 0), ('vt-ft', 0), ('vt-path', 0), ('sp-ext', -1), ('vmode', 0), ('v-level-alt', 0), ('v-level-from', 0), ('v-level-span', LEVEL_GATE_FT), ('v-level-sp0', 0), ('gust-sys', 0), ('approach-add-kt', 0), ('approach-add-auto', 0), ('gsmini-on', 0), ('tower-hw-kt', 0), ('gs-gsmini-add', 0), ('gs-hw-live-kt', 0), ('approach-add-used', 0), ('gs-add-lat', 0), ('gs-on', 0), ('gs-throttle', 0), ('gs-detect', 0), ('gs-detect-t', -1000), ('gust-alert', 0), ('gs-flare-extra-deg', 0), ('gs-glide-extra-deg', 0), ('theta-speed-gs-deg', 0)))
     props += ''.join('  <property value="0">limits/%s</property>\n' % k for k in ('overstress', 'failed', 'reset'))
     ch = []
     # ---- part C: navigators and the link, ahead of everything that uses them
@@ -756,22 +894,25 @@ def laws_file():
         'the speed of the go-around: the approach speed plus GA_SPEED_ADD_KT where it began, more with the height gained, at the schedule\'s at the most'))
     ch.append(_fn('ap/alpha-limit-deg', _table(ALPHA_LIMIT, 'velocities/mach'), 'angle-of-attack limit: the lift break less a margin'))
     ch.append(_fn('ap/bank-limit-deg', _table(BANK_LIMIT, 'engine/pressure-altitude-ft'), 'bank limit'))
-    # ---- part B: the leg, on a flat earth about its start
+    # ---- part B: the leg, in the WGS84 tangent plane at its end (the same ellipsoid as everything else: docs/PLAN.md, "One earth")
     lat, lon = 'position/lat-geod-deg', 'position/long-gc-deg'
-    coslat = '<cos><toradians>%s</toradians></cos>' % _p('ap/leg-lat0-deg')
-    ch.append(_fn('ap/leg-dn-ft', _op('product', _v(FT_PER_DEG), '<difference>%s%s</difference>' % (_p('ap/leg-lat1-deg'), _p('ap/leg-lat0-deg')))))
-    ch.append(_fn('ap/leg-de-ft', _op('product', _v(FT_PER_DEG), coslat, '<difference>%s%s</difference>' % (_p('ap/leg-lon1-deg'), _p('ap/leg-lon0-deg')))))
+    for _tag, _la, _lo in (('start', 'ap/leg-lat0-deg', 'ap/leg-lon0-deg'), ('end', 'ap/leg-lat1-deg', 'ap/leg-lon1-deg'), ('ac', lat, lon)):
+        ch.extend(_g_point(_tag, _la, _lo))
+    ch.extend(_g_enu('end', 'start', 'ap/leg-sn-ft', 'ap/leg-se-ft', 'leg\'s start, in the tangent plane at its end (the plane is at the end: the turn, the descent and the landing all happen there, so that is where it has to be exact; a plane at the start of a 200 nmi leg makes the distance to go 0.17 % short at its end)'))
+    ch.append(_fn('ap/leg-dn-ft', _op('product', _v(-1), _p('ap/leg-sn-ft')), 'the leg\'s length north (the end less the start), ft'))
+    ch.append(_fn('ap/leg-de-ft', _op('product', _v(-1), _p('ap/leg-se-ft')), 'the leg\'s length east, ft'))
     ch.append(_fn('ap/leg-length-ft', '        <max>%s<pow><sum><product>%s%s</product><product>%s%s</product></sum>%s</pow></max>' % (
         _v(1), _p('ap/leg-dn-ft'), _p('ap/leg-dn-ft'), _p('ap/leg-de-ft'), _p('ap/leg-de-ft'), _v(0.5))))
     ch.append(_fn('ap/leg-course-deg', '        <todegrees><atan2>%s%s</atan2></todegrees>' % (_p('ap/leg-de-ft'), _p('ap/leg-dn-ft')), 'the leg\'s course, east of north'))
-    ch.append(_fn('ap/pos-n-ft', _op('product', _v(FT_PER_DEG), '<difference>%s%s</difference>' % (_p(lat), _p('ap/leg-lat0-deg')))))
-    ch.append(_fn('ap/pos-e-ft', _op('product', _v(FT_PER_DEG), coslat, '<difference>%s%s</difference>' % (_p(lon), _p('ap/leg-lon0-deg')))))
+    ch.extend(_g_enu('end', 'ac', 'ap/pos-n-ft', 'ap/pos-e-ft', 'aircraft, in the tangent plane at the leg\'s end'))
     ch.append(_fn('ap/leg-togo-ft', '        <difference>%s<quotient><sum><product>%s%s</product><product>%s%s</product></sum>%s</quotient></difference>' % (
-        _p('ap/leg-length-ft'), _p('ap/pos-n-ft'), _p('ap/leg-dn-ft'), _p('ap/pos-e-ft'), _p('ap/leg-de-ft'), _p('ap/leg-length-ft')), 'distance to the end of the leg'))
+        _v(0), _p('ap/pos-n-ft'), _p('ap/leg-dn-ft'), _p('ap/pos-e-ft'), _p('ap/leg-de-ft'), _p('ap/leg-length-ft')), 'distance to the end of the leg'))
     ch.append(_fn('ap/leg-xt-ft', '        <quotient><difference><product>%s%s</product><product>%s%s</product></difference>%s</quotient>' % (
         _p('ap/pos-e-ft'), _p('ap/leg-dn-ft'), _p('ap/pos-n-ft'), _p('ap/leg-de-ft'), _p('ap/leg-length-ft')), 'cross-track error, right of the leg positive'))
     ch.append(_fn('ap/ground-speed-kt', _op('product', _v(1 / 1.6878099), _p('velocities/vg-fps'))))
     ch.append(_fn('ap/ground-track-deg', '        <todegrees><atan2>%s%s</atan2></todegrees>' % (_p('velocities/v-east-fps'), _p('velocities/v-north-fps'))))
+    # the ground track in the plane the leg is worked out in: the aircraft's velocity turned into the leg end's north and east (the local frames differ by the meridians' convergence, dlon x sin(lat))
+    ch.append(_g_track('end', 'ac', 'ap/plane-track-deg', 'the ground track in the tangent plane at the leg\'s end, deg east of north'))
 
     def intercept(name, per_second, least):
         """the wanted course: the leg's, turned towards the leg by atan(cross-track / lookahead), 45 deg at most"""
@@ -787,9 +928,11 @@ def laws_file():
         d = '<toradians><difference>%s%s</difference></toradians>' % (_p(a), _p(b))
         return _fn(name, '        <todegrees><atan2><sin>%s</sin><cos>%s</cos></atan2></todegrees>' % (d, d), desc)
     ch.append(intercept('ap/track-cmd-deg', 15.0, 3000.0))
-    ch.append(wrapped('ap/track-error-deg', 'ap/track-cmd-deg', 'ap/ground-track-deg', 'wanted course less ground track'))
+    ch.append(wrapped('ap/track-error-deg', 'ap/track-cmd-deg', 'ap/plane-track-deg', 'wanted course less ground track'))
+    ch.append(_g_track('end', 'ac', 'ap/plane-conv-deg', 'the angle the local north at the aircraft is turned from the north of the leg\'s plane, deg (the meridians\' convergence: 0.35 deg 12 nmi from the end at 60 N)', vel=(_v(1), _v(0), _v(0))))
+    ch.append(_fn('ap/psi-plane-deg', _op('sum', _p('attitude/psi-deg'), _p('ap/plane-conv-deg')), 'the heading in the leg\'s plane (the leg\'s courses are in that plane; the heading is in the local frame)'))
     ch.append(intercept('ap/ground-course-cmd-deg', 4.0, 60.0))
-    ch.append(wrapped('ap/ground-error-deg', 'ap/ground-course-cmd-deg', 'attitude/psi-deg', 'wanted course less heading, on the ground'))
+    ch.append(wrapped('ap/ground-error-deg', 'ap/ground-course-cmd-deg', 'ap/psi-plane-deg', 'wanted course less heading, on the ground'))
     # ---- part B: landing phases
     ch.append(_fn('ap/on-mains', _op('sum', _p('gear/unit[1]/WOW'), _p('gear/unit[2]/WOW'))))
     ch.append('''    <switch name="ap/latch-rollout">
@@ -827,6 +970,7 @@ def laws_file():
       </test>
     </switch>''' % (FLARE_HEIGHT, FLARE_TTG, FLARE_SLACK, FLARE_HEIGHT))
     ch += _gust_picker()
+    ch += _ga_smart()
     ch.append(_fn('ap/approach-keas', '        <sum><quotient><pow><quotient>%s%s</quotient>%s</pow>%s</quotient>%s</sum>' % (
         _p('inertia/weight-lbs'), _v(APPROACH_CL * WING_AREA * 0.5 * 0.0023769), _v(0.5), _v(1.6878099), _p('ap/approach-add-used')),
         'the speed for a lift coefficient of %g at this weight, and ap/approach-add-kt more (0: as it was; the gusty-wind addition of docs/PLAN.md, "Gusts: find out first")' % APPROACH_CL))
@@ -849,7 +993,7 @@ def laws_file():
     ch.append(_latch('theta-latched-deg', 'nav/pitch-deg', 'pitch attitude at engagement'))
     # ---- autopilot: the pitch attitude command
     ch.append(_fn('ap/speed-error-kt', _op('difference', _p('velocities/vc-kts'), _p('ap/speed-target-kcas')), 'fast is positive'))
-    ch.append(_trigger('speed', 'ap/pitch-mode == 1'))
+    ch.append(_trigger('speed', 'ap/pitch-mode == 1', 'ap/ga-smart-active == 0'))          # the smarter go-around holds the pitch: the speed law's integral is held at nothing meanwhile (and its bias follows the command, below)
     # the integral holds still while the angle-of-attack limit is what keeps the speed up: the governor won't let
     # the nose rise, and an integral that went on asking would be wound up when the limit lets go (it was: the
     # first glide without the engine came down final 15 kt slow, on the speed floor)
@@ -876,8 +1020,9 @@ def laws_file():
       <test value="%s">ap/pitch-mode ne 1</test>
       <test value="%s">ap/pitch-mode-prev ne 1</test>
       <test value="%s">ap/engaged == 0</test>
+      <test value="%s">ap/ga-smart-active == 1</test>
       <output>ap/theta-speed-bias-deg</output>
-    </switch>''' % (('ap/theta-speed-entry-deg',) * 3 if SPEED_BUMPLESS else ('ap/theta-delta-deg',) * 3))
+    </switch>''' % (('ap/theta-speed-entry-deg',) * 4 if SPEED_BUMPLESS else ('ap/theta-delta-deg',) * 4))
     # the thrust the engine gave when the speed mode took over: followed in any other mode, held from the frame this one takes over (as the bias above)
     ch.append('''    <switch name="ap/latch-thrust-entry-lbf">
       <description>the engine thrust as it was when the speed mode took over</description>
@@ -1031,6 +1176,7 @@ def laws_file():
       <test value="ap/theta-manual-deg">ap/manual == 1</test>
       <test value="ap/theta-flare-deg">ap/flare == 1</test>
       <test value="ap/theta-takeoff-deg">ap/pitch-mode == 3</test>
+      <test value="ap/theta-ga-deg">ap/ga-smart-active == 1</test>
       <test value="ap/theta-speed-gs-deg">ap/pitch-mode == 1</test>
       <test value="ap/theta-alt-deg">ap/pitch-mode == 2</test>
     </switch>''')
@@ -1194,11 +1340,12 @@ def laws_file():
     DEG = lambda a: X('todegrees', a)
     RAD = lambda a: X('toradians', a)
     TAN = lambda a: X('tan', RAD(a))
-    n2 = M(V(FT_PER_DEG), D(P('ap/next-lat-deg'), P('ap/leg-lat1-deg')))
-    e2 = M(V(FT_PER_DEG), coslat, D(P('ap/next-lon-deg'), P('ap/leg-lon1-deg')))
+    ch.extend(_g_point('next', 'ap/next-lat-deg', 'ap/next-lon-deg'))
+    ch.extend(_g_enu('end', 'next', 'ap/next-dn-ft', 'ap/next-de-ft', 'next waypoint, in the tangent plane at the end of this leg'))
+    n2, e2 = P('ap/next-dn-ft'), P('ap/next-de-ft')
     ch.append(_fn('ap/next-course-deg', DEG(X('atan2', e2, n2)), 'the next leg\'s course, from the end of this one to the next waypoint'))
     ch.append(wrapped('ap/turn-delta-deg', 'ap/next-course-deg', 'ap/leg-course-deg', 'the turn at the end of the leg, right positive'))
-    ch.append(wrapped('ap/turn-err-deg', 'ap/next-course-deg', 'ap/ground-track-deg', 'the next leg\'s course less the ground track'))
+    ch.append(wrapped('ap/turn-err-deg', 'ap/next-course-deg', 'ap/plane-track-deg', 'the next leg\'s course less the ground track'))
     # the bank an angle-of-attack margin allows: the load factor at which the angle reaches its limit less a margin, the lift's slope
     # taken from where the aircraft is (its angle above the zero-lift angle, per g)
     nz = MAX(P('accelerations/Nz'), V(0.5))
@@ -1288,10 +1435,10 @@ def laws_file():
     # the speed the arc is flown at: the airspeed now and the speed the speed law is taking it to (calibrated, so the same ratio holds for the true airspeed at this height), half and half
     tgt = MAX(V(1 - TURN_SPEED_CLIP), MIN(V(1 + TURN_SPEED_CLIP), Q(P('ap/speed-target-kcas'), MAX(V(50), P('velocities/vc-kts')))))
     vta = IF(V(TURN_SPEED_PRED), M(vt_now, S(V(0.5), M(V(0.5), tgt))), vt_now)
-    c1d, psi0 = P('ap/next-course-deg'), P('attitude/psi-deg')
+    c1d, psi0 = P('ap/next-course-deg'), P('ap/psi-plane-deg')
     ch.append(_fn('ap/turn-wind-cross-fps', S(M(V(-1), wn, SINd(c1d)), M(we, COSd(c1d))), 'the wind across the new leg, towards its right, ft/s'))
     ch.append(_fn('ap/turn-psi1-deg', D(c1d, DEG(X('asin', MAX(V(-0.5), MIN(V(0.5), Q(P('ap/turn-wind-cross-fps'), vta)))))), 'the heading on the new leg: its course less the crab the wind needs'))
-    ch.append(wrapped('ap/turn-dpsi-raw-deg', 'ap/turn-psi1-deg', 'attitude/psi-deg', 'the heading change to the new leg\'s heading'))
+    ch.append(wrapped('ap/turn-dpsi-raw-deg', 'ap/turn-psi1-deg', 'ap/psi-plane-deg', 'the heading change to the new leg\'s heading'))
     ch.append(_fn('ap/turn-dpsi-rad', RAD(MAX(V(0), M(ds, P('ap/turn-dpsi-raw-deg')))), 'the heading change in the turn\'s direction, rad'))
     ch.append(_fn('ap/turn-radius-air-ft', Q(M(vta, vta), M(V(32.174), TAN(limf))), 'the radius of the turn in the air'))
     ch.append(_fn('ap/turn-time-s', M(P('ap/turn-dpsi-rad'), Q(P('ap/turn-radius-air-ft'), vta)), 'the time the turn takes'))
@@ -1415,18 +1562,53 @@ def laws_file():
     # ---- the landing task's lateral law (roll mode 3): the final's line, a velocity loop inside a position loop (docs/PLAN.md, "The final wobbles across its line").
     # The cruise law (the leg's course turned toward the line by atan(cross-track / a 15 s lookahead), into a proportional bank) crosses the line on the final:
     # 44 to 671 ft past it for offsets of 300 to 4,000 ft, and stays 6 to 8 ft off it for ever (a bias between the track and the leg's course).
-    ch.append(wrapped('ap/final-trk-err-deg', 'ap/ground-track-deg', 'ap/leg-course-deg', 'the ground track less the leg\'s course'))
+    ch.append(wrapped('ap/final-trk-err-deg', 'ap/plane-track-deg', 'ap/leg-course-deg', 'the ground track less the leg\'s course'))
     vgf = MAX(P('velocities/vg-fps'), V(60))
     ch.append(_fn('ap/final-xt-rate-fps', M(vgf, X('sin', RAD(P('ap/final-trk-err-deg')))), 'the rate the cross-track grows at, right positive'))
+    cca = RAD(P('ap/leg-course-deg'))
+    ch.append(_fn('ap/aim-wleft-raw-fps', D(M(P('atmosphere/total-wind-north-fps'), X('sin', cca)), M(P('atmosphere/total-wind-east-fps'), X('cos', cca))), 'the total wind blowing to the left of the leg\'s course, ft/s'))
+    ch.append('''    <lag_filter name="ap/aim-wleft-fps">
+      <input>ap/aim-wleft-raw-fps</input>
+      <c1>%g</c1>
+    </lag_filter>''' % (1.0 / FINAL_AIM_FILT_S))
+    aim_w = MAX(V(0), MIN(V(1), Q(D(V(FINAL_AIM_FROM_FT), P('aero/wheel-height-ft')), V(FINAL_AIM_FROM_FT - FINAL_AIM_FULL_FT))))
+    ch.append(_fn('ap/final-aim-ft', IF(AND(EQ(P('ap/final-aim'), V(1)), EQ(P('ap/roll-mode'), V(3))), M(V(FINAL_AIM_FT_PER_KT / 1.68781), P('ap/aim-wleft-fps'), aim_w), V(0)),
+                  'the aim point\'s offset from the line, right positive: upwind by %g ft per knot of the crosswind component, from %g to %g ft of wheel height' % (FINAL_AIM_FT_PER_KT, FINAL_AIM_FROM_FT, FINAL_AIM_FULL_FT)))
+    ch.append(_fn('ap/final-xt-aimed-ft', D(P('ap/leg-xt-ft'), P('ap/final-aim-ft')), 'the cross-track from the aim point, right positive'))
     vmax = M(vgf, V(math.sin(math.radians(FINAL_ANGLE_MAX_DEG))))
-    ch.append(_fn('ap/final-want-rate-fps', M(V(-1), MAX(M(V(-1), vmax), MIN(vmax, Q(P('ap/leg-xt-ft'), V(FINAL_T_OUTER_S))))),
-                  'the cross-track rate the line asks for: the cross-track over %g s, at most vg sin(%g deg), towards the line' % (FINAL_T_OUTER_S, FINAL_ANGLE_MAX_DEG)))
-    ch.append(_fn('ap/final-bank-p-deg', DEG(X('atan', Q(Q(D(P('ap/final-want-rate-fps'), P('ap/final-xt-rate-fps')), V(FINAL_T_INNER_S)), V(32.174)))),
-                  'the bank the lateral acceleration asked for takes: the rate wanted less the rate there is, over %g s' % FINAL_T_INNER_S))
-    ch.append(_fn('ap/final-xt-neg-ft', M(V(-1), P('ap/leg-xt-ft')), 'the integral\'s input: towards the line'))
+    t_sched = lambda base, land: (IF(EQ(P('ap/roll-mode'), V(3)), _table([(0.0, land), (FINAL_SCHED_LO_FT, land), (FINAL_SCHED_HI_FT, base), (1000.0, base)], 'aero/wheel-height-ft'), V(base))
+                                  if FINAL_SCHED else V(base))
+    ch.append(_fn('ap/final-t-outer-s', t_sched(FINAL_T_OUTER_S, FINAL_T_OUTER_LAND_S), 'the position loop\'s time: the cross-track over this is the rate the line asks for, s'))
+    ch.append(_fn('ap/final-t-inner-s', t_sched(FINAL_T_INNER_S, FINAL_T_INNER_LAND_S), 'the rate loop\'s time: the rate error over this is the lateral acceleration asked for, s'))
+    ch.append(_fn('ap/final-want-rate-fps', M(V(-1), MAX(M(V(-1), vmax), MIN(vmax, Q(P('ap/final-xt-aimed-ft'), P('ap/final-t-outer-s'))))),
+                  'the cross-track rate the line asks for: the cross-track over the position loop\'s time, at most vg sin(%g deg), towards the line' % FINAL_ANGLE_MAX_DEG))
+    ch.append(_fn('ap/final-bank-p-deg', DEG(X('atan', Q(Q(D(P('ap/final-want-rate-fps'), P('ap/final-xt-rate-fps')), P('ap/final-t-inner-s')), V(32.174)))),
+                  'the bank the lateral acceleration asked for takes: the rate wanted less the rate there is, over the rate loop\'s time'))
+    ch.append(_fn('ap/final-xt-neg-ft', M(V(-1), P('ap/final-xt-aimed-ft')), 'the integral\'s input: towards the line'))
     ch.append(_trigger('final', 'ap/roll-mode gt %d' % (1 if TURN_LEG_I else 2), 'ap/leg-xt-ft lt %g' % FINAL_I_BAND_FT, 'ap/leg-xt-ft gt %g' % -FINAL_I_BAND_FT))
     ch.append(_pid('ap/final-i-deg', 'ap/final-xt-neg-ft', 0.0, FINAL_KI, 'final', clip=('-2', '2')))
-    ch.append(_fn('ap/bank-final-deg', S(P('ap/final-bank-p-deg'), P('ap/final-i-deg')), 'the bank on the final: the lateral law of the landing task (roll mode 3)', clip=('%g' % -FINAL_BANK_MAX_DEG, '%g' % FINAL_BANK_MAX_DEG)))
+    ch.append(_fn('ap/final-xt-far', IF(AND(GT(ABS(P('ap/leg-xt-ft')), V(FINAL_I_FAR_FT)), LT(ABS(P('ap/leg-xt-ft')), V(FINAL_I_BAND_WIDE_FT))), V(1), V(0)), 'the cross-track is beyond the old integral\'s band and within the wide one\'s'))
+    ch.append(_trigger('final-wide', 'ap/final-wide == 1', 'ap/roll-mode gt 1', 'ap/final-xt-far == 1', 'ap/final-xt-rate-fps lt %g' % FINAL_I_RATE_FPS, 'ap/final-xt-rate-fps gt %g' % -FINAL_I_RATE_FPS,
+                       'aero/wheel-height-ft lt %g' % FINAL_I_BELOW_FT))
+    ch.append(_pid('ap/final-i-wide-deg', 'ap/final-xt-neg-ft', 0.0, FINAL_KI_WIDE, 'final-wide', clip=('-%g' % FINAL_I_WIDE_CLIP_DEG, '%g' % FINAL_I_WIDE_CLIP_DEG)))
+    cc = RAD(P('ap/leg-course-deg'))
+    ch.append(_fn('ap/ff-wleft-fps', D(M(P('atmosphere/total-wind-north-fps'), X('sin', cc)), M(P('atmosphere/total-wind-east-fps'), X('cos', cc))), 'the total wind blowing to the left of the leg\'s course, ft/s'))
+    ch.append('''    <lag_filter name="ap/ff-wleft-s-fps">
+      <input>ap/ff-wleft-fps</input>
+      <c1>%g</c1>
+    </lag_filter>''' % (1.0 / FF_SMOOTH_S))
+    ch.append('''    <washout_filter name="ap/ff-wleft-wash-fps">
+      <input>ap/ff-wleft-s-fps</input>
+      <c1>%g</c1>
+    </washout_filter>''' % (1.0 / FF_DERIV_S))
+    ch.append(_fn('ap/final-ff-bank-deg', IF(AND(EQ(P('ap/final-ff'), V(1)), EQ(P('ap/roll-mode'), V(3)), LT(P('aero/wheel-height-ft'), V(FF_BELOW_FT))),
+                                             DEG(X('atan', Q(M(V(-FF_TAU_S / FF_DERIV_S), X('sqrt', Q(P('inertia/weight-lbs'), V(FF_TAU_WEIGHT_LB))), P('ap/ff-wleft-wash-fps')), V(FF_T_S * 32.174)))), V(0)),
+                  'the bank that takes out the drift the crosswind\'s change is about to cause, deg (right positive)', clip=('%g' % -FF_CLIP_DEG, '%g' % FF_CLIP_DEG)))
+    ch.append(_fn('ap/final-rate-err-fps', D(P('ap/final-want-rate-fps'), P('ap/final-xt-rate-fps')), 'the rate wanted less the rate there is, towards the line positive, ft/s'))
+    ch.append(_trigger('final-ri', 'ap/final-ri == 1', 'ap/roll-mode == 3', 'ap/leg-xt-ft lt %g' % FINAL_RI_BAND_FT, 'ap/leg-xt-ft gt %g' % -FINAL_RI_BAND_FT, 'aero/wheel-height-ft lt %g' % FINAL_RI_BELOW_FT))
+    ch.append(_pid('ap/final-i-rate-deg', 'ap/final-rate-err-fps', 0.0, FINAL_KI_RI, 'final-ri', clip=('-%g' % FINAL_RI_CLIP_DEG, '%g' % FINAL_RI_CLIP_DEG)))
+    ch.append(_fn('ap/bank-final-deg', S(P('ap/final-bank-p-deg'), P('ap/final-ff-bank-deg'), P('ap/final-i-rate-deg'), IF(EQ(P('ap/final-wide'), V(1)), S(P('ap/final-i-deg'), P('ap/final-i-wide-deg')), P('ap/final-i-deg'))),
+                  'the bank on the final: the lateral law of the landing task (roll mode 3)', clip=('%g' % -FINAL_BANK_MAX_DEG, '%g' % FINAL_BANK_MAX_DEG)))
     # ---- basic law: yaw
     ch.append('''    <washout_filter name="ap/yaw-rate-washed">
       <input>velocities/r-rad_sec</input>

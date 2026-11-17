@@ -2,27 +2,27 @@
 <groundnet>
 	<version>1</version>
 	<parkingList>
-		<Parking index="0" type="ramp_mil_cargo" name="S1" lat="N35 7.13416852" lon="W116 59.08448361" heading="-50" radius="30"/>
-		<Parking index="1" type="ramp_mil_cargo" name="S2" lat="N35 7.10783592" lon="W116 59.08448361" heading="-50" radius="30"/>
-		<Parking index="2" type="tie_down" name="S3" lat="N35 7.08150333" lon="W116 59.08448361" heading="-50" radius="15"/>
+		<Parking index="0" type="ramp_mil_cargo" name="S1" lat="N35 7.13406285" lon="W116 59.08424931" heading="-50" radius="30"/>
+		<Parking index="1" type="ramp_mil_cargo" name="S2" lat="N35 7.10768817" lon="W116 59.08424888" heading="-50" radius="30"/>
+		<Parking index="2" type="tie_down" name="S3" lat="N35 7.08131348" lon="W116 59.08424845" heading="-50" radius="15"/>
 	</parkingList>
 	<TaxiNodes>
-		<node index="30" lat="N35 7.15062639" lon="W116 59.08448361" isOnRunway="0" holdPointType="none"/>
-		<node index="31" lat="N35 7.15062639" lon="W116 58.99997582" isOnRunway="0" holdPointType="none"/>
-		<node index="32" lat="N35 7.15062639" lon="W116 58.17904300" isOnRunway="0" holdPointType="none"/>
-		<node index="33" lat="N35 7.15062639" lon="W116 57.72632269" isOnRunway="0" holdPointType="none"/>
-		<node index="34" lat="N35 7.15062639" lon="W116 57.06233291" isOnRunway="0" holdPointType="none"/>
-		<node index="35" lat="N35 7.15062639" lon="W116 56.50900809" isOnRunway="0" holdPointType="none"/>
-		<node index="36" lat="N35 7.19012528" lon="W116 58.99997582" isOnRunway="0" holdPointType="none"/>
-		<node index="37" lat="N35 7.20000000" lon="W116 58.96979447" isOnRunway="0" holdPointType="none"/>
-		<node index="40" lat="N35 7.20000000" lon="W116 58.94363729" isOnRunway="1" holdPointType="none"/>
-		<node index="41" lat="N35 7.20000000" lon="W116 58.19916390" isOnRunway="1" holdPointType="none"/>
-		<node index="42" lat="N35 7.20000000" lon="W116 57.79674585" isOnRunway="1" holdPointType="none"/>
-		<node index="43" lat="N35 7.20000000" lon="W116 57.09251426" isOnRunway="1" holdPointType="none"/>
-		<node index="44" lat="N35 7.20000000" lon="W116 56.58949170" isOnRunway="1" holdPointType="none"/>
-		<node index="50" lat="N35 7.16708426" lon="W116 58.17904300" isOnRunway="0" holdPointType="none"/>
-		<node index="51" lat="N35 7.19358143" lon="W116 57.76052822" isOnRunway="0" holdPointType="none"/>
-		<node index="52" lat="N35 7.16708426" lon="W116 57.06233291" isOnRunway="0" holdPointType="none"/>
+		<node index="30" lat="N35 7.15054703" lon="W116 59.08424958" isOnRunway="0" holdPointType="none"/>
+		<node index="31" lat="N35 7.15054747" lon="W116 58.99998752" isOnRunway="0" holdPointType="none"/>
+		<node index="32" lat="N35 7.15050096" lon="W116 58.18144178" isOnRunway="0" holdPointType="none"/>
+		<node index="33" lat="N35 7.15043590" lon="W116 57.73003788" isOnRunway="0" holdPointType="none"/>
+		<node index="34" lat="N35 7.15028979" lon="W116 57.06797883" isOnRunway="0" holdPointType="none"/>
+		<node index="35" lat="N35 7.15012200" lon="W116 56.51626295" isOnRunway="0" holdPointType="none"/>
+		<node index="36" lat="N35 7.19010949" lon="W116 58.99998749" isOnRunway="0" holdPointType="none"/>
+		<node index="37" lat="N35 7.19999992" lon="W116 58.96989358" isOnRunway="0" holdPointType="none"/>
+		<node index="40" lat="N35 7.19999975" lon="W116 58.94381221" isOnRunway="1" holdPointType="none"/>
+		<node index="41" lat="N35 7.19995573" lon="W116 58.20149610" isOnRunway="1" holdPointType="none"/>
+		<node index="42" lat="N35 7.19990038" lon="W116 57.80024414" isOnRunway="1" holdPointType="none"/>
+		<node index="43" lat="N35 7.19975026" lon="W116 57.09805323" isOnRunway="1" holdPointType="none"/>
+		<node index="44" lat="N35 7.19960153" lon="W116 56.59648828" isOnRunway="1" holdPointType="none"/>
+		<node index="50" lat="N35 7.16698513" lon="W116 58.18143902" isOnRunway="0" holdPointType="none"/>
+		<node index="51" lat="N35 7.19346549" lon="W116 57.76413309" isOnRunway="0" holdPointType="none"/>
+		<node index="52" lat="N35 7.16677396" lon="W116 57.06797233" isOnRunway="0" holdPointType="none"/>
 	</TaxiNodes>
 	<TaxiWaySegments>
 		<arc begin="30" end="31" isPushBackRoute="0" name="A"/>

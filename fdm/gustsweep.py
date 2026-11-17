@@ -68,6 +68,14 @@ SWEEPS = {
                for kt in sizes for h in (180, 130, 80, 40) for rise in (1.5, 3)],
     'test_t': ['w=20800 lo=%d seed=%d' % (w20, seed) for w20 in (30, 40, 50, 60) for seed in range(101, 149)]
               + ['w=20800 hw=%d xw=%d lo=%d seed=%d' % (round(w20 * 0.7), round(w20 * 0.7), w20, seed) for w20 in (30, 40, 50) for seed in range(101, 149)],
+    # (10) the airliners' rules, on fresh seeds (docs/PLAN.md, "Protocol addendum: the airliners' rules"): the seven weathers of the test set, seeds 201 to 248
+    'rules_t': ['w=20800 lo=%d seed=%d' % (w20, seed) for w20 in (30, 40, 50, 60) for seed in range(201, 249)]
+               + ['w=20800 hw=%d xw=%d lo=%d seed=%d' % (round(w20 * 0.7), round(w20 * 0.7), w20, seed) for w20 in (30, 40, 50) for seed in range(201, 249)],
+    # (11) the FlightGear scenario's weathers, offline (docs/PLAN.md, "The same flight in a gusty crosswind"): the wind from 310 at the surface, runway 22L (heading 227.5): 28 kt (hw 3.7, xw 27.8) and
+    # 36 kt (hw 4.8, xw 35.7) abeam, the milspec turbulence at W20 = the surface wind (FlightGear's GUSTS 0.85: 0.1 times the wind at 20 ft), and for the 36 kt the shear: 85 kt at 500 ft (shr 2.36).
+    # The landing task alone (48 seeds, the ten arms), and the same flown by the mission manager (mgr=1: the stabilised-approach gate and the missed approach; 24 seeds, three arms)
+    'crazy_t': ['w=26750 hw=4 xw=28 lo=28 tua=5 seed=%d' % seed for seed in range(201, 249)] + ['w=26750 hw=5 xw=36 lo=36 shr=2.36 tua=5 seed=%d' % seed for seed in range(201, 249)],
+    'crazy_m': ['w=26750 mgr=1 sec=1800 hw=4 xw=28 lo=28 tua=5 seed=%d' % seed for seed in range(201, 225)] + ['w=26750 mgr=1 sec=1800 hw=5 xw=36 lo=36 shr=2.36 tua=5 seed=%d' % seed for seed in range(201, 225)],
     'tu5x': ['w=20800 xw=%d tu=%d:%d seed=%d' % (xw, w20, 5, seed) for xw in (10, 20) for w20 in (25, 35, 45) for seed in range(1, 9)],
 }
 

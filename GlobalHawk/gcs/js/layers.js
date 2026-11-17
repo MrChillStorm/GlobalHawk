@@ -72,10 +72,12 @@
       this.declutter = !!on;
     }
 
-    /** The user's cross on a chip: away until the reason has gone and come back. Forced layers refuse. */
+    /** The user's cross on a chip: away until the reason has gone and come back. Forced layers refuse, and so do the layers that keep (def.keep: what the layer shows is the only sign of something the aircraft is
+     *  doing, the camera's lock: a cross cleared away with the chips a link loss brings up, with the lock still held, looked like a camera that no longer worked). */
     dismiss(id) {
       const t = this.track[id];
-      if (!t || t.forcedUp) return false;
+      const d = this.def(id);
+      if (!t || t.forcedUp || (d && d.keep)) return false;
       t.dismissed = true;
       return true;
     }
@@ -167,7 +169,7 @@
 
     /** The layers that are up because of a rule, not because the user asked: what the chips under the toolbar say. */
     chips() {
-      return this.defs.filter((d) => this.out[d.id] && (this.out[d.id].source === 'auto' || this.out[d.id].source === 'forced')).map((d) => ({ id: d.id, label: d.label, reason: this.out[d.id].reason, forced: this.out[d.id].forced }));
+      return this.defs.filter((d) => this.out[d.id] && (this.out[d.id].source === 'auto' || this.out[d.id].source === 'forced')).map((d) => ({ id: d.id, label: d.label, reason: this.out[d.id].reason, forced: this.out[d.id].forced, keep: !!d.keep }));
     }
 
     /** The layers whose rule holds but that wait for a place (the budget). */

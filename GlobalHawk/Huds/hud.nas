@@ -20,7 +20,60 @@ var FONT = "LiberationFonts/LiberationSansNarrow-Bold.ttf";
 var MONO = "LiberationFonts/LiberationMono-Bold.ttf";
 var BRIGHT = [1.0, 0.7, 0.45];
 var NM = 6076.1;
-var FT_PER_DEG = 364567.2;
+
+# The earth, WGS84, as the mission manager has it (Nasal/missionmgr.nas, fdm/wgs84.py, js/geo.js: docs/PLAN.md, "One earth"). This file is loaded by aircraft.HUD into a namespace of its own, apart from the
+# aircraft's, so what the HUD uses is a copy here: ecef, enu, ft_per_deg and from_enu, to the letter. Positions are [lat, lon]
+# in degrees; a local frame is the tangent plane at an origin, north and east in feet.
+var A_M = 6378137.0;                       # WGS84 semi-major axis, m
+var F_INV = 298.257223563;                 # WGS84 flattening: 1 / F_INV
+var E2 = (1.0 / F_INV) * (2.0 - 1.0 / F_INV);     # first eccentricity squared
+var FT_PER_M = 1.0 / 0.3048;
+
+# the point on the ellipsoid's surface, metres from the earth's centre
+var ecef = func(lat, lon) {
+    var p = lat * D2R;
+    var l = lon * D2R;
+    var sp = math.sin(p);
+    var n = A_M / math.sqrt(1.0 - E2 * sp * sp);
+    return [n * math.cos(p) * math.cos(l), n * math.cos(p) * math.sin(l), n * (1.0 - E2) * sp];
+};
+# [north, east] ft of the point p in the tangent plane at o
+var enu = func(o, p) {
+    var a = ecef(o[0], o[1]);
+    var b = ecef(p[0], p[1]);
+    var dx = b[0] - a[0];
+    var dy = b[1] - a[1];
+    var dz = b[2] - a[2];
+    var sp = math.sin(o[0] * D2R);
+    var cp = math.cos(o[0] * D2R);
+    var sl = math.sin(o[1] * D2R);
+    var cl = math.cos(o[1] * D2R);
+    var e = -sl * dx + cl * dy;
+    var n = -sp * cl * dx - sp * sl * dy + cp * dz;
+    return [n * FT_PER_M, e * FT_PER_M];
+};
+# feet in a degree of latitude and in a degree of longitude at the latitude (the meridian's and the parallel's radii of the ellipsoid)
+var ft_per_deg = func(lat) {
+    var s = math.sin(lat * D2R);
+    var w = math.sqrt(1.0 - E2 * s * s);
+    var m = A_M * (1.0 - E2) / (w * w * w);
+    var nn = A_M / w;
+    return [m * D2R * FT_PER_M, nn * math.cos(lat * D2R) * D2R * FT_PER_M];
+};
+# [lat, lon] of the surface point at (n, e) ft in the tangent plane at o: Newton steps on enu() from the local scale (at most 12, stopped when both residuals are under 0.00001 ft)
+var from_enu = func(o, n, e) {
+    var k = ft_per_deg(o[0]);
+    var lat = o[0] + n / k[0];
+    var lon = o[1] + e / k[1];
+    for (var i = 0; i < 12; i += 1) {
+        var c = enu(o, [lat, lon]);
+        if (math.abs(n - c[0]) < 0.00001 and math.abs(e - c[1]) < 0.00001) break;
+        k = ft_per_deg(lat);
+        lat += (n - c[0]) / k[0];
+        lon += (e - c[1]) / k[1];
+    }
+    return [lat, lon];
+};
 
 var jget = func(p, d = 0) { var v = getprop(J ~ p); return v == nil ? d : v; };
 var fgget = func(p, d = 0) { var v = getprop(p); return v == nil ? d : v; };
@@ -235,11 +288,12 @@ var HUD = {
         var tlat = 0;
         var tlon = 0;
         if (cam_el < -0.5 and agl > 1) {
-            # where the camera's line meets the ground, taken flat at the height under the aircraft
+            # where the camera's line meets the ground, taken level at the height under the aircraft, and found in the tangent plane at the aircraft
             var along = agl / tand(-cam_el);
             var slant = agl / math.sin(-cam_el * D2R);
-            tlat = lat + along * math.cos(cam_hdg * D2R) / FT_PER_DEG;
-            tlon = lon + along * math.sin(cam_hdg * D2R) / (FT_PER_DEG * math.cos(lat * D2R));
+            var t = from_enu([lat, lon], along * math.cos(cam_hdg * D2R), along * math.sin(cam_hdg * D2R));
+            tlat = t[0];
+            tlon = t[1];
             lines[0] = sprintf("%s %08.5f", tlat >= 0 ? "N" : "S", math.abs(tlat));
             lines[1] = sprintf("%s %09.5f", tlon >= 0 ? "E" : "W", math.abs(tlon));
             lines[2] = slant < 3 * NM ? sprintf("RNG %d FT", math.floor(slant / 10 + 0.5) * 10) : sprintf("RNG %.1f NM", slant / NM);
@@ -489,8 +543,9 @@ var HUD = {
         me.aim.setVisible(show);
         if (!show) return;
         var lat = jget("position/lat-geod-deg");
-        var dn = (jget("ap/leg-lat1-deg") - lat) * FT_PER_DEG;
-        var de = (jget("ap/leg-lon1-deg") - jget("position/long-gc-deg")) * FT_PER_DEG * math.cos(lat * D2R);
+        var ne = enu([lat, jget("position/long-gc-deg")], [jget("ap/leg-lat1-deg"), jget("ap/leg-lon1-deg")]);       # north and east of the aircraft to the end of the leg, in the tangent plane at the aircraft
+        var dn = ne[0];
+        var de = ne[1];
         var dist = math.sqrt(dn * dn + de * de);
         if (dist < 300) { me.aim.hide(); return; }
         var below = math.atan2(jget("position/h-sl-ft") - jget("ap/rwy-elev-ft"), dist) / D2R;

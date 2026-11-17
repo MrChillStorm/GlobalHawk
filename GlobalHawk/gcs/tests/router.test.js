@@ -61,16 +61,17 @@ const haz = (id, kind, lo, hi, ring) => ({ source: 'SIGMET', id, hazard: kind.to
   assert.ok(r.best.points[0][2] <= r.best.alt_ft, 'the heights climb');
 }
 
-// R3 wind: a band of westerly wind from 36 to 38 N
+// R3 wind: a band of westerly wind from 35.6 to 37.6 N (the goal 600 nmi due east in the tangent plane is 0.6 deg south of the start's parallel on the ellipsoid: the band is 0.4 deg south of where it was
+// laid on the flat earth, 36 to 38, so that it lies the same distance off the direct route)
 {
-  const band = (dir) => (la) => (la >= 36 && la <= 38 ? { spd: 70, dir } : null);
+  const band = (dir) => (la) => (la >= 35.6 && la <= 37.6 ? { spd: 70, dir } : null);
   let r = R.plan(mk(600, { wind: band(270) }));
   assert.ok(r.ok, r.error);
-  assert.ok(r.best.points.some((p) => p[0] >= 36), 'the route enters the band');
+  assert.ok(r.best.points.some((p) => p[0] >= 35.6), 'the route enters the band');
   assert.ok(r.best.fuel_lb < r.direct.fuel_lb * 0.97, `tailwind band: ${r.best.fuel_lb.toFixed(0)} against the direct route's ${r.direct.fuel_lb.toFixed(0)} lb`);
   r = R.plan(mk(600, { wind: band(90) }));
   assert.ok(r.best.fuel_lb <= r.direct.fuel_lb * (1 + 1e-9), 'a headwind band: no worse than the direct route');
-  assert.ok(r.best.points.every((p) => p[0] < 36), 'and not through it');
+  assert.ok(r.best.points.every((p) => p[0] < 35.6), 'and not through it');
 }
 
 // R4, R5, R6 blocked areas: a property test, the buffers of NASA's rules, and the other code agreeing

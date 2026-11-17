@@ -767,7 +767,7 @@
       if (!vb || !ctx) return;
       const st = ctx.own ? { weight_lb: this.weightNow || 25600, fuel_lb: this.fuelNow || 14150 } : { weight_lb: 25600, fuel_lb: 14150 };
       const all = this.layers.mode('airports') === 'on';
-      const across = (vb[3] - vb[1]) * 60 * Math.cos((m.centre[0] * Math.PI) / 180);
+      const across = ((vb[3] - vb[1]) * geo.ftPerDeg(m.centre[0])[1]) / geo.NM; // nmi across the view at its centre
       const max = across < 60 ? 40 : across < 200 ? 20 : 10;
       const fc = this.forecast;
       const list = AP.inBox(this.airports.list, vb, 400);
@@ -923,7 +923,7 @@
       // the chips under the toolbar: what came up by itself, and why
       const chips = L.chips().filter((c) => c.id !== 'trail');
       const waiting = L.waiting();
-      const chipHtml = chips.map((c) => `<span class="chip-l ${c.forced ? 'forced' : ''}" title="${esc(c.reason)}"><b>${esc(c.label)}</b> ${esc(c.reason)}${c.forced ? ' <i>forced</i>' : ` <button data-dismiss="${c.id}" title="put it away until its reason has gone and come back">✕</button>`}</span>`).join('') + (waiting.length ? `<span class="chip-l waiting">+${waiting.length} waiting</span>` : '') + (this.prefs.offline ? '<span class="chip-l offline">offline</span>' : '');
+      const chipHtml = chips.map((c) => `<span class="chip-l ${c.forced ? 'forced' : ''}" title="${esc(c.reason)}"><b>${esc(c.label)}</b> ${esc(c.reason)}${c.forced ? ' <i>forced</i>' : c.keep ? '' : ` <button data-dismiss="${c.id}" title="put it away until its reason has gone and come back">✕</button>`}</span>`).join('') + (waiting.length ? `<span class="chip-l waiting">+${waiting.length} waiting</span>` : '') + (this.prefs.offline ? '<span class="chip-l offline">offline</span>' : '');
       if (d.chips.dataset.html !== chipHtml) {
         d.chips.innerHTML = chipHtml;
         d.chips.dataset.html = chipHtml;

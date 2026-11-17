@@ -228,8 +228,8 @@
       auto: (c) => rule(c.areas > 0, `${c.areas} loaded`),
     });
     L.define({
-      id: 'camera', group: 'Mission', label: 'Camera target', rank: 18, budget: false,
-      tip: 'The cross and sight line of the belly camera\'s lock. Auto: while it is locked.',
+      id: 'camera', group: 'Mission', label: 'Camera target', rank: 18, budget: false, keep: true,
+      tip: 'The cross and sight line of the belly camera\'s lock. Auto: while it is locked; its chip has no cross (it is the only sign of what the camera is on). Off hides it.',
       auto: (c) => rule(c.cameraLocked, 'the camera is locked'),
     });
     L.define({

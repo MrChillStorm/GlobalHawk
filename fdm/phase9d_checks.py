@@ -89,8 +89,7 @@ def main():
         hdg = get('/orientation/heading-deg')
 
         # ---- K1 a point 3 nmi ahead and to the right, through a turn
-        c, s = math.cos(math.radians(hdg + 50)), math.sin(math.radians(hdg + 50))
-        target = (lat + 3 * MM.NM * c / MM.FT_PER_DEG, lon + 3 * MM.NM * s / (MM.FT_PER_DEG * math.cos(math.radians(lat))), ground)
+        target = tuple(MM.along((lat, lon), hdg + 50, 3 * MM.NM)) + (ground,)
         post(CAM + 'command', 'point %.6f %.6f %.1f' % target)
         time.sleep(2)
         errs, hd = [], []
@@ -115,8 +114,7 @@ def main():
         # ---- K2 a ship at 20 kt, and a second one further from the cross
         lat, lon, alt = here()
         hdg = get('/orientation/heading-deg')
-        c, s = math.cos(math.radians(hdg + 40)), math.sin(math.radians(hdg + 40))
-        s_lat, s_lon = lat + 2.5 * MM.NM * c / MM.FT_PER_DEG, lon + 2.5 * MM.NM * s / (MM.FT_PER_DEG * math.cos(math.radians(lat)))
+        s_lat, s_lon = MM.along((lat, lon), hdg + 40, 2.5 * MM.NM)
         base = ship(7, s_lat, s_lon, 'Made-up ship')
         ship(8, s_lat + 0.012, s_lon + 0.03, 'Other ship')
         post(CAM + 'command', 'point %.6f %.6f 0' % (s_lat, s_lon))          # look at it first
@@ -129,7 +127,7 @@ def main():
         t0 = time.time()
         while time.time() - t0 < 60:
             moved = 20 * 1.6878 * (time.time() - t0)                           # ft northwards
-            cur = (s_lat + moved / MM.FT_PER_DEG, s_lon, 0.0)
+            cur = tuple(MM.along((s_lat, s_lon), 0.0, moved)) + (0.0,)
             post(base + 'position/latitude-deg', cur[0])
             time.sleep(0.25)
             errs.append(error(cur))

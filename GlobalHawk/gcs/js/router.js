@@ -23,7 +23,6 @@
   const A = node ? require('./airspace.js') : root.GCS.airspace;
   const FM = node ? require('./flightmath.js') : root.GCS.flightmath;
   const NM = geo.NM;
-  const RAD = Math.PI / 180;
   const HARD_KINDS = ['restricted', 'prohibited', 'danger', 'tfr'];
   const SOFT_KINDS = ['moa', 'warning', 'alert'];
   const SOFT_FACTOR = 1.25;
@@ -44,7 +43,7 @@
   const JOIN_AT_FIX_DEG = 20; // a corner at the fix over this is moved out onto the final's extension: the aircraft is back on the line before the fix, and the height asked for over the fix counts no way for the turn; mine
   const JOIN_DEG = 90; // the corner the join onto the final may have (the aircraft's own limit is 120: this leaves room for wind); mine
 
-  const flatNm = (a, b) => geo.course(a, b).ft / NM;
+  const distNm = (a, b) => geo.distance(a, b) / NM; // nmi in the tangent plane at a (WGS84, js/geo.js)
   // a number for each 1/40 degree cell (1.5 nmi): a Map keyed by numbers is several times quicker than one keyed by strings, and these are looked up half a million times
   const cellKey3 = (lat, lon) => (Math.round(lat * 20) + 1750) * 7250 + (Math.round(lon * 20) + 3625); // coverage changes slowly: 3 nmi cells
   const cellKey = (lat, lon) => (Math.round(lat * 40) + 3500) * 14500 + (Math.round(lon * 40) + 7250);
@@ -83,11 +82,15 @@
       const z = A.make({ name: h.id, kind: 'other', rings: h.rings, lower: { ft: 0, ref: 'MSL' }, upper: { ft: 99999, ref: 'MSL' } });
       hard.push({ z, buffer, why: `${h.id} ${h.kind === 'convective' ? 'convection' : h.kind === 'turb' ? 'turbulence' : 'icing'}` });
     }
-    const near = (z, lat, lon, nm) => {
-      const pad = nm / 60 + 0.01;
-      return z.bbox && lat >= z.bbox[0] - pad && lat <= z.bbox[2] + pad && lon >= z.bbox[1] - pad / Math.max(0.2, Math.cos(lat * RAD)) && lon <= z.bbox[3] + pad / Math.max(0.2, Math.cos(lat * RAD));
+    const near = (z, lat, lon, nm, sc) => { // sc: geo.ftPerDeg(lat)
+      const [kn, ke] = sc;
+      const pad = (nm * NM) / kn + 0.01;
+      const padLon = (pad * kn) / Math.max(0.2 * kn, ke); // a degree of longitude is never taken as less than a fifth of one of latitude
+      return z.bbox && lat >= z.bbox[0] - pad && lat <= z.bbox[2] + pad && lon >= z.bbox[1] - padLon && lon <= z.bbox[3] + padLon;
     };
     const memo = new Map();
+    const fStart = geo.prep(start);
+    const fGoal = geo.prep(goal);
     return {
       hard,
       soft,
@@ -96,23 +99,25 @@
         const m = memo.get(key);
         if (m) return m;
         let r = { hard: null, soft: false };
-        if (flatNm(start, [lat, lon]) <= HOME_RADIUS_NM || flatNm(goal, [lat, lon]) <= HOME_RADIUS_NM) r = { hard: null, soft: false };
+        const fp = geo.prep([lat, lon]);
+        if (geo.distancePrep(fStart, fp) / NM <= HOME_RADIUS_NM || geo.distancePrep(fGoal, fp) / NM <= HOME_RADIUS_NM) r = { hard: null, soft: false };
         else {
+          const sc = geo.ftPerDeg(lat);
           for (const b of hard) {
-            if (!near(b.z, lat, lon, b.buffer)) continue;
+            if (!near(b.z, lat, lon, b.buffer, sc)) continue;
             if (A.contains(b.z, lat, lon) || (b.buffer > 0 && A.edge(b.z, lat, lon).nm <= b.buffer)) {
               r.hard = b.why;
               break;
             }
           }
-          if (!r.hard) r.soft = soft.some((z) => near(z, lat, lon, 0) && A.contains(z, lat, lon));
+          if (!r.hard) r.soft = soft.some((z) => near(z, lat, lon, 0, sc) && A.contains(z, lat, lon));
         }
         memo.set(key, r);
         return r;
       },
       /** The first hard-blocked place along a straight run, sampled every `step` nmi, or null. */
       along(a, b, step) {
-        const n = Math.max(1, Math.ceil(flatNm(a, b) / (step || SAMPLE_NM)));
+        const n = Math.max(1, Math.ceil(distNm(a, b) / (step || SAMPLE_NM)));
         for (let k = 0; k <= n; k++) {
           const f = k / n;
           const r = this.at(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f);
@@ -161,19 +166,15 @@
     };
     const list = (lat, lon) => {
       const alt = altAt(lat, lon);
-      const k = Math.cos(lat * RAD);
+      const here = [lat, lon];
+      const kn = geo.ftPerDeg(lat)[0] / NM; // nmi in a degree of latitude here
       const out = [];
-      const band = rmax / 60;
+      const band = (1.01 * rmax) / kn; // 1% over, for the plane's curvature and the scale's change over the radius
       for (let i = lo(lat - band); i < use.length && use[i].lat <= lat + band; i++) {
         const x = use[i];
         const r = radiusAt(x, alt);
-        const dn = (x.lat - lat) * 60;
-        if (Math.abs(dn) > r) continue;
-        let dl = x.lon - lon;
-        if (dl > 180) dl -= 360;
-        if (dl < -180) dl += 360;
-        const de = dl * 60 * k;
-        if (dn * dn + de * de <= r * r) out.push(x);
+        if (Math.abs(x.lat - lat) * kn > 1.01 * r) continue;
+        if (distNm(here, [x.lat, x.lon]) <= r) out.push(x);
       }
       return out;
     };
@@ -223,7 +224,7 @@
     let run = null;
     for (const q of smp) {
       let n = 0;
-      for (const x of use) if (flatNm([q.lat, q.lon], [x.lat, x.lon]) <= Math.max(NEAR_SITE_NM, REACH_FACTOR * glide(q.alt_ft, x.elev_ft || 0) - ENTRY_NM)) n++;
+      for (const x of use) if (distNm([q.lat, q.lon], [x.lat, x.lon]) <= Math.max(NEAR_SITE_NM, REACH_FACTOR * glide(q.alt_ft, x.elev_ft || 0) - ENTRY_NM)) n++;
       fewest = Math.min(fewest, n);
       if (n > 0) {
         covered++;
@@ -341,26 +342,28 @@
    */
   function solve(o) {
     const { start, goal, alt_ft, fc, perf } = o;
-    const direct = flatNm(start, goal);
+    const direct = distNm(start, goal);
     const lat0 = Math.min(start[0], goal[0]);
     const lat1 = Math.max(start[0], goal[0]);
     const lon0 = Math.min(start[1], goal[1]);
     const lon1 = Math.max(start[1], goal[1]);
-    const margin = Math.max(1.5, 0.35 * (Math.max(lat1 - lat0, (lon1 - lon0) * Math.cos(((lat0 + lat1) / 2) * RAD)) || 0));
+    const [knMean, keMean] = geo.ftPerDeg((lat0 + lat1) / 2);
+    const margin = Math.max(1.5, 0.35 * (Math.max(lat1 - lat0, ((lon1 - lon0) * keMean) / knMean) || 0)); // degrees of latitude
     const bLat0 = Math.max(-85, lat0 - margin);
     const bLat1 = Math.min(85, lat1 + margin);
     const midLat = (bLat0 + bLat1) / 2;
-    const cosMid = Math.max(0.2, Math.cos(midLat * RAD));
-    const bLon0 = lon0 - margin / cosMid;
-    const bLon1 = lon1 + margin / cosMid;
+    const [knMid, keMid] = geo.ftPerDeg(midLat);
+    const lonPerLat = Math.min(5, knMid / keMid); // degrees of longitude to as long as a degree of latitude at the lattice's middle (at most 5: the lattice does not go to the pole)
+    const bLon0 = lon0 - margin * lonPerLat;
+    const bLon1 = lon1 + margin * lonPerLat;
     let step = o.stepDeg || 0.25;
     for (;;) {
       const rows = Math.floor((bLat1 - bLat0) / step) + 1;
-      const cols = Math.floor((bLon1 - bLon0) / (step / cosMid)) + 1;
+      const cols = Math.floor((bLon1 - bLon0) / (step * lonPerLat)) + 1;
       if (rows * cols <= MAX_NODES) break;
       step *= 1.15;
     }
-    const stepLon = step / cosMid;
+    const stepLon = step * lonPerLat;
     const rows = Math.floor((bLat1 - bLat0) / step) + 1;
     const cols = Math.floor((bLon1 - bLon0) / stepLon) + 1;
     const N = rows * cols;
@@ -381,13 +384,14 @@
     const w0 = o.weight_lb;
     const byTime = o.objective === 'time';
     const mode = o.cover && o.siteMode ? o.siteMode : 'off';
-    const radius = Math.max(3 * step * 60, 30); // nmi round the start and the goal that join the lattice
+    const radius = Math.max((3 * step * knMid) / NM, 30); // nmi round the start and the goal that join the lattice
     let flowFail = false;
     const comp = (w, course) => (w ? w.spd * Math.cos(((w.dir + 180 - course) * Math.PI) / 180) : 0);
     // a join between two places at a weight: { fuel, time_h, obj, soft } or null (blocked, or out of reach of every site when that is required).
     // tailOf(course) is the wind along it. obj is what is minimised: the fuel or the time, dearer in a soft zone and where no site is in reach.
-    const join = (pa, pb, weight, tailOf) => {
-      const dist = flatNm(pa, pb);
+    const join = (pa, pb, weight, tailOf, known) => {
+      const run = known || geo.course(pa, pb);
+      const dist = run.ft / NM;
       let softN = 0;
       let outN = 0;
       const n = Math.max(1, Math.ceil(dist / SAMPLE_NM));
@@ -403,7 +407,7 @@
           outN++;
         }
       }
-      const course = geo.course(pa, pb).deg;
+      const course = run.deg;
       const gs = Math.max(tas + tailOf(course), MIN_GS_KT);
       const timeH = dist / gs;
       const flow = fc.look(perf.level_pph, alt_ft, weight);
@@ -417,7 +421,13 @@
       const fuel = flow * timeH * (1 + (SOFT_FACTOR - 1) * softFrac);
       return { fuel, time_h: timeH, obj: (byTime ? timeH * (1 + (SOFT_FACTOR - 1) * softFrac) : flow * timeH * (1 + (SOFT_FACTOR - 1) * softFrac)) * (mode === 'prefer' ? 1 + PREFER_PENALTY * outFrac : 1), soft: softFrac * dist, mult };
     };
-    const cost = (a, b, weight) => join(pos(a), pos(b), weight, (course) => (comp(windOf(a), course) + comp(windOf(b), course)) / 2);
+    const prepared = new Map(); // each lattice place's ECEF frame, made once: every join between two of them asks
+    const prepOf = (k) => {
+      let f = prepared.get(k);
+      if (!f) prepared.set(k, (f = geo.prep(pos(k))));
+      return f;
+    };
+    const cost = (a, b, weight) => join(pos(a), pos(b), weight, (course) => (comp(windOf(a), course) + comp(windOf(b), course)) / 2, geo.coursePrep(prepOf(a), prepOf(b)));
     // a straight run between any two places (the shortcut pass after the path is found): the wind at five places along it
     const chordCost = (pa, pb, weight) => join(pa, pb, weight, (course) => {
       if (!o.wind) return 0;
@@ -432,7 +442,7 @@
     const neighbours = (k) => {
       const out = [];
       if (k === S) {
-        for (let m = 0; m < N; m++) if (flatNm(start, pos(m)) <= radius) out.push(m);
+        for (let m = 0; m < N; m++) if (distNm(start, pos(m)) <= radius) out.push(m);
         return out;
       }
       const i = Math.floor(k / cols);
@@ -442,7 +452,7 @@
         const jj = j + dj;
         if (ii >= 0 && ii < rows && jj >= 0 && jj < cols) out.push(ii * cols + jj);
       }
-      if (flatNm(pos(k), goal) <= radius) out.push(G);
+      if (distNm(pos(k), goal) <= radius) out.push(G);
       return out;
     };
     const g = new Map([[S, 0]]);
@@ -490,18 +500,13 @@
   }
 
   /* ------------------------------------------------------------------ thinning */
-  /** The distance (nmi) of p from the chord a-b, flat. */
+  /** The distance (nmi) of p from the chord a-b, in the tangent plane at a. */
   function offChord(p, a, b) {
-    const k = Math.cos(((a[0] + b[0]) / 2) * RAD);
-    const ax = 0;
-    const ay = 0;
-    const bx = (b[1] - a[1]) * k * 60;
-    const by = (b[0] - a[0]) * 60;
-    const px = (p[1] - a[1]) * k * 60;
-    const py = (p[0] - a[0]) * 60;
+    const [by, bx] = geo.enu(a, b); // north, east: ft
+    const [py, px] = geo.enu(a, p);
     const l2 = bx * bx + by * by;
     const t = l2 ? Math.max(0, Math.min(1, (px * bx + py * by) / l2)) : 0;
-    return Math.hypot(px - (ax + t * bx), py - (ay + t * by));
+    return Math.hypot(px - t * bx, py - t * by) / NM;
   }
 
   /** Keep the points where the path turns: a chord replaces a stretch when it is free and the stretch is within tol nmi of it. */
@@ -569,7 +574,7 @@
   function alongLine(line, nm) {
     let left = nm;
     for (let i = 0; i + 1 < line.length; i++) {
-      const d = flatNm(line[i], line[i + 1]);
+      const d = distNm(line[i], line[i + 1]);
       if (left <= d) {
         const f = d > 0 ? left / d : 0;
         return { p: [line[i][0] + (line[i + 1][0] - line[i][0]) * f, line[i][1] + (line[i + 1][1] - line[i][1]) * f], index: i };
@@ -720,7 +725,7 @@
 
   function withHeights(path, cruise, fixAlt, climb, descent, margin) {
     const mk_ = margin || { k: 1.05, extra: 3 };
-    const total = path.slice(1).reduce((s, p, i) => s + flatNm(path[i], p), 0);
+    const total = path.slice(1).reduce((s, p, i) => s + distNm(path[i], p), 0);
     const pts = path.slice();
     // the top of the descent: on the path, as far before the fix as the descent needs (and 5 % over, and 3 nmi)
     const dTod = descent ? descent[descent.length - 1].d_nm * mk_.k + mk_.extra : 0;
@@ -734,7 +739,7 @@
     let run = 0;
     const out = [];
     for (let i = 1; i < pts.length; i++) {
-      run += flatNm(pts[i - 1], pts[i]);
+      run += distNm(pts[i - 1], pts[i]);
       const toFix = total - run;
       let alt = Math.min(cruise, interp(climb, run));
       // the height the descent allows this far from the fix: counted down from the top of the descent
@@ -747,7 +752,7 @@
 
   /** The least distance (nmi) from a zone to a straight line a-b, sampled every 10 nmi (0 when the line goes through it). */
   function zoneToLine(z, a, b) {
-    const n = Math.max(2, Math.ceil(flatNm(a, b) / 10));
+    const n = Math.max(2, Math.ceil(distNm(a, b) / 10));
     let best = Infinity;
     for (let k = 0; k <= n; k++) {
       const f = k / n;
@@ -771,7 +776,7 @@
     const perf = o.perf;
     const notes = [];
     const altitudes = (o.altitudes && o.altitudes.length ? o.altitudes : ALTITUDES).slice();
-    const direct = flatNm(o.start, o.goal);
+    const direct = distNm(o.start, o.goal);
     if (direct < 5) return { ok: false, error: 'the start and the landing fix are less than 5 nmi apart: there is nothing to plan' };
     const mode = o.sites && o.glide && o.siteMode ? o.siteMode : 'off';
     const byTime = o.objective === 'time';
@@ -805,9 +810,13 @@
       const need = climb[climb.length - 1].d_nm + first[first.length - 1].d_nm * 1.05 + 3;
       // the height the aircraft has at a place (never more than the climb allows this far from the start, or the descent this far from the fix): sites are judged at that
       const dTod0 = first[first.length - 1].d_nm * 1.05 + 3;
-      const kc = Math.cos(((o.start[0] + o.goal[0]) / 2) * RAD);
-      const near = (a, la, lo) => Math.hypot((la - a[0]) * 60, (lo - a[1]) * 60 * kc); // flat nmi: good over a route's length for a height that changes this slowly
-      const altFn = (la, lo) => Math.min(alt, interp(climb, near(o.start, la, lo)), interp(first, Math.max(0, dTod0 - near(o.goal, la, lo))));
+      const fStart = geo.prep(o.start);
+      const fGoal = geo.prep(o.goal);
+      // nmi in the tangent plane at the start and at the goal: good over a route's length for a height that changes this slowly
+      const altFn = (la, lo) => {
+        const fp = geo.prep([la, lo]);
+        return Math.min(alt, interp(climb, geo.distancePrep(fStart, fp) / NM), interp(first, Math.max(0, dTod0 - geo.distancePrep(fGoal, fp) / NM)));
+      };
       const cover = useCover && mode !== 'off' ? coverage(o.sites, o.glide, altFn, { short: o.shortStrips, maxAlt: alt }) : null;
       if (need > direct * 1.02) {
         if (!quiet) errors.push(`${alt} ft: the climb and the descent take ${Math.round(need)} nmi and the route is ${Math.round(direct)} nmi`);
@@ -929,7 +938,7 @@
   /** Is every sampled place of the straight run a-b in reach of a site? (for the thinning under Require) */
   function sampleCovered(cover, a, b) {
     if (!cover) return true;
-    const n = Math.max(1, Math.ceil(flatNm(a, b) / 2));
+    const n = Math.max(1, Math.ceil(distNm(a, b) / 2));
     for (let k = 0; k <= n; k++) {
       const f = k / n;
       if (cover.at(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f) === 0) return false;

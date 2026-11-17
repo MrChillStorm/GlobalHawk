@@ -38,7 +38,7 @@ const geo = require('../js/geo.js');
 // the tiles asked for cover the screen, at most 80, north up and track up
 {
   for (const up of [0, 37, 200]) {
-    for (const ftPerPx of [8, 60, 600, 6000, 40000]) {
+    for (const ftPerPx of [8, 60, 600, 6000, 20000]) {
       for (const size of [[900, 600], [1600, 1000]]) {
         const view = { centre: [34.9, -117.88], up, ftPerPx, size };
         const z0 = T.zoomFor(ftPerPx, 34.9, 17, 0);

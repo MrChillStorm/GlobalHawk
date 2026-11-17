@@ -17,7 +17,7 @@ import subprocess
 import sys
 import xml.etree.ElementTree as ET
 
-FT_PER_DEG = 364567.2
+import wgs84 as WG             # the one earth model: WGS84's tangent plane (fdm/wgs84.py)
 TERRASYNC = os.path.expanduser('~/Library/Application Support/FlightGear/TerraSync_WS3/Airports')
 # per airport and runway: the threshold and heading (the airport's threshold.xml), the node where a taxiway meets the runway's start (the taxi out follows the taxiway to it and turns
 # onto the centreline), how far down the runway the aircraft lines up, the node on the centreline the taxi in begins at (beyond where the rollout ends) and the exit it takes
@@ -56,7 +56,7 @@ class Net:
             self.adj.setdefault(v, set()).add(u)
 
     def dist(self, p, q):
-        return math.hypot((q[0] - p[0]) * FT_PER_DEG, (q[1] - p[1]) * FT_PER_DEG * math.cos(math.radians(p[0])))
+        return WG.distance(p, q)
 
     def nearest(self, p, among=None):
         return min((self.dist(p, self.node[i]), i) for i in (among or self.node))[1]
@@ -91,12 +91,12 @@ class Frame:
         self.thr, self.h = thr, math.radians(hdg)
 
     def to(self, p):
-        n, e = (p[0] - self.thr[0]) * FT_PER_DEG, (p[1] - self.thr[1]) * FT_PER_DEG * math.cos(math.radians(self.thr[0]))
+        n, e = WG.enu(self.thr, p)
         return n * math.cos(self.h) + e * math.sin(self.h), -n * math.sin(self.h) + e * math.cos(self.h)
 
     def ll(self, a, l):
         n, e = a * math.cos(self.h) - l * math.sin(self.h), a * math.sin(self.h) + l * math.cos(self.h)
-        return (self.thr[0] + n / FT_PER_DEG, self.thr[1] + e / (FT_PER_DEG * math.cos(math.radians(self.thr[0]))))
+        return tuple(WG.from_enu(self.thr, n, e))
 
 
 def pt(p):

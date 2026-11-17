@@ -37,7 +37,6 @@ var fset = func(p, v) {
     } else setprop(J ~ p, v);
 };
 
-var FT_PER_DEG = 364567.2;
 var NM = 6076.1;
 var D2R = math.pi / 180.0;
 var NOSE_FT = 24.6;                # ft: the aircraft's nose (FlightGear's position for it, and the station's) is this far ahead of the centre of gravity the laws steer (GlobalHawk.xml: VRP x 0, CG x 294.98 in)
@@ -100,17 +99,69 @@ var atan2d = func(y, x) { return math.atan2(y, x) / D2R; };
 var opt = func(h, k, d) { return (contains(h, k) and h[k] != nil) ? h[k] : d; };
 var copy = func(h) { var o = {}; foreach (var k; keys(h)) o[k] = h[k]; return o; };
 
-# course and distance (deg, ft) from a to b
+# ---- the earth: WGS84, the ellipsoid GPS, FlightGear and JSBSim fly on. The same formulas as fdm/wgs84.py (the reference, whose test vectors the checks run this against), the station's js/geo.js
+# and the head-up display's copy in Huds/hud.nas (docs/PLAN.md, "One earth"). Positions are [lat, lon] in degrees (geodetic latitude). A local frame is the tangent plane at an origin point:
+# north and east in feet.
+var A_M = 6378137.0;                       # WGS84 semi-major axis, m
+var F_INV = 298.257223563;                 # WGS84 flattening: 1 / F_INV
+var E2 = (1.0 / F_INV) * (2.0 - 1.0 / F_INV);     # first eccentricity squared
+var FT_PER_M = 1.0 / 0.3048;
+
+# the point on the ellipsoid's surface, metres from the earth's centre (x to 0 N 0 E, y to 0 N 90 E, z to the pole)
+var ecef = func(lat, lon) {
+    var p = lat * D2R;
+    var l = lon * D2R;
+    var sp = math.sin(p);
+    var n = A_M / math.sqrt(1.0 - E2 * sp * sp);
+    return [n * math.cos(p) * math.cos(l), n * math.cos(p) * math.sin(l), n * (1.0 - E2) * sp];
+};
+# [north, east] ft of the point p in the tangent plane at o
+var enu = func(o, p) {
+    var a = ecef(o[0], o[1]);
+    var b = ecef(p[0], p[1]);
+    var dx = b[0] - a[0];
+    var dy = b[1] - a[1];
+    var dz = b[2] - a[2];
+    var sp = math.sin(o[0] * D2R);
+    var cp = math.cos(o[0] * D2R);
+    var sl = math.sin(o[1] * D2R);
+    var cl = math.cos(o[1] * D2R);
+    var e = -sl * dx + cl * dy;
+    var n = -sp * cl * dx - sp * sl * dy + cp * dz;
+    return [n * FT_PER_M, e * FT_PER_M];
+};
+# feet in a degree of latitude and in a degree of longitude at the latitude (the meridian's and the parallel's radii of the ellipsoid)
+var ft_per_deg = func(lat) {
+    var s = math.sin(lat * D2R);
+    var w = math.sqrt(1.0 - E2 * s * s);
+    var m = A_M * (1.0 - E2) / (w * w * w);
+    var nn = A_M / w;
+    return [m * D2R * FT_PER_M, nn * math.cos(lat * D2R) * D2R * FT_PER_M];
+};
+# [lat, lon] of the surface point at (n, e) ft in the tangent plane at o: Newton steps on enu() from the local scale (at most 12, stopped when both residuals are under 0.00001 ft)
+var from_enu = func(o, n, e) {
+    var k = ft_per_deg(o[0]);
+    var lat = o[0] + n / k[0];
+    var lon = o[1] + e / k[1];
+    for (var i = 0; i < 12; i += 1) {
+        var c = enu(o, [lat, lon]);
+        if (absv(n - c[0]) < 0.00001 and absv(e - c[1]) < 0.00001) break;
+        k = ft_per_deg(lat);
+        lat += (n - c[0]) / k[0];
+        lon += (e - c[1]) / k[1];
+    }
+    return [lat, lon];
+};
+# course and distance (deg true, ft) from a to b: the bearing at a, and the distance in the tangent plane at a
 var course = func(a, b) {
-    var dn = (b[0] - a[0]) * FT_PER_DEG;
-    var de = (b[1] - a[1]) * FT_PER_DEG * math.cos(a[0] * D2R);
-    return [mod(atan2d(de, dn), 360.0), math.sqrt(dn * dn + de * de)];
+    var ne = enu(a, b);
+    return [mod(atan2d(ne[1], ne[0]), 360.0), math.sqrt(ne[0] * ne[0] + ne[1] * ne[1])];
+};
+var along = func(p, deg, ft) {              # the point ft along the course deg from p
+    var c = deg * D2R;
+    return from_enu(p, ft * math.cos(c), ft * math.sin(c));
 };
 var turn = func(c0, c1) { return mod(c1 - c0 + 180.0, 360.0) - 180.0; };
-var offset = func(p, brg_deg, dist) {       # the point a distance from p on a bearing
-    var c = brg_deg * D2R;
-    return [p[0] + dist * math.cos(c) / FT_PER_DEG, p[1] + dist * math.sin(c) / (FT_PER_DEG * math.cos(p[0] * D2R))];
-};
 
 var Manager = {
     new: func(plan, lost_link = nil, sites = nil) {
@@ -253,7 +304,7 @@ var Manager = {
         return 661.4786 * math.sqrt(5 * (math.pow(qc / 2116.2166 + 1, 2 / 7.0) - 1));
     },
     # the entry point: on the extended centreline where the glide path is ENTRY_HEIGHT above the runway
-    entry: func(site) { return offset(site.aim, site.course + 180.0, ENTRY_HEIGHT / GLIDE_TAN); },
+    entry: func(site) { return along(site.aim, site.course + 180.0, ENTRY_HEIGHT / GLIDE_TAN); },
     # height left over at a site's entry point, by the planner's book: what there is less what is needed
     reach: func(site) {
         var cd = course(me.here(), me.entry(site));
@@ -299,7 +350,7 @@ var Manager = {
         }
         if (it.task == "circle") {
             var side = it.side;
-            var centre = offset(ent, site.course + 90.0 * side, radius);
+            var centre = along(ent, site.course + 90.0 * side, radius);
             var od = course(centre, me.here());                     # bearing from the centre to the aircraft, and distance
             var tangent = od[0] + 90.0 * side;
             fset("ap/heading-cmd-deg", mod(tangent + side * clip(60.0 * (od[1] - radius) / radius, -45.0, 80.0), 360.0));
@@ -373,7 +424,7 @@ var Manager = {
             var b = pts[me.k + 1];
             var cd = course(a, b);
             var back = minv(NOSE_FT, cd[1] / 2.0);                    # the leg is shortened by the nose's reach: it is the nose that stops short of the hold point, not the centre of gravity
-            me.leg(a, [b[0] - back * math.cos(cd[0] * D2R) / FT_PER_DEG, b[1] - back * math.sin(cd[0] * D2R) / (FT_PER_DEG * math.cos(b[0] * D2R))]);
+            me.leg(a, along(b, cd[0] + 180.0, back));
         }
         fset("ap/tx-last", last ? 1 : 0);
         fset("ap/tx-stop", (hold or opt(it, "stop", 1)) ? 1 : 0);
@@ -404,7 +455,7 @@ var Manager = {
         var fix = land.fix;
         var cd = course(fix, land.aim);
         var r = me.hold_radius();
-        var centre = offset(fix, cd[0] + 90.0, r);
+        var centre = along(fix, cd[0] + 90.0, r);
         var alt = land.elev + maxv(GO_AROUND_MIN_AGL, math.floor((5.3 + GLIDE_TAN * cd[1] - LAND_FIX_GAP_FT) / 100.0) * 100.0);
         go_arounds += 1;
         me.note(sprintf("LANDING NOT COMMITTED: %.0f ft above the glide path; go-around, circling over the fix to %.0f ft", above, alt));
@@ -461,10 +512,10 @@ var Manager = {
         me.missed += 1;
         var alt = land.elev + maxv(GO_AROUND_MIN_AGL, math.floor((5.3 + GLIDE_TAN * d - LAND_FIX_GAP_FT) / 100.0) * 100.0);          # the height the final is begun from, as the entry contract's go-around has it
         var c = fc * D2R;
-        var at = func(a, b) {           # a feet along the final's course and b to the right of it from the aiming point, on a flat earth about it (as Field.ll)
+        var at = func(a, b) {           # a feet along the final's course and b to the right of it from the aiming point, in the tangent plane about it (as Field.ll)
             var n = a * math.cos(c) - b * math.sin(c);
             var e = a * math.sin(c) + b * math.cos(c);
-            return [aim[0] + n / FT_PER_DEG, aim[1] + e / (FT_PER_DEG * math.cos(aim[0] * D2R))];
+            return from_enu(aim, n, e);
         };
         var circuit = alt + GA_CIRCUIT_ABOVE_FT;
         if (me.missed > GA_MAX) {

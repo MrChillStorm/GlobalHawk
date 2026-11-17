@@ -22,6 +22,7 @@ GUST_SYS=1              the gust system on (ap/gust-sys, fdm/laws.py GS_*): swit
 FG_GUST=a:-15@100       one discrete 1-cosine gust on the final, by JSBSim's own cosine-gust model (/fdm/jsbsim/atmosphere/cosine-gust/*: FlightGear writes JSBSim's steady wind every frame and
                         leaves the gust alone; its /environment/wind-from-down-fps is overwritten, a first try with it did nothing): AXIS:KT@H as fdm/gustbench.py's g= (a along, positive more headwind;
                         x across, positive from the right; v vertical, positive an updraught), begun the first time the wheel height is under H ft; FG_GUST_RISE=2 s up and down, FG_GUST_HOLD=2 s at its size
+SETPROPS=a=1,b=2        flight model properties (under /fdm/jsbsim/) set once the plan has begun, comma separated: a development copy's switches (ap/ga-smart=1,ap/final-wide=1)
 METARWIND=31020KT       the wind at the field, from 310 at 20 kt (the METAR holds it); SPEEDUP=4 the sim's speed; DURATION the longest wait, s of real time
 FlightGear starts on the runway, the plan is sent as a station would, heartbeats go, and the telemetry is written as CSV when the flight ends. One FlightGear at a time:
 it refuses to start while one answers on port 5477. The screen must be unlocked.
@@ -29,6 +30,7 @@ it refuses to start while one answers on port 5477. The screen must be unlocked.
 import asyncio, json, math, os, sys, time
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+import wgs84 as WG                 # the one earth model: WGS84's tangent plane (fdm/wgs84.py)
 import phase9b_checks as B
 import phase9a_checks as P9
 
@@ -49,7 +51,7 @@ KEYS = dict(
     legc=J + 'ap/leg-course-deg', psi=J + 'attitude/psi-deg', steer=J + 'fcs/steer-pos-deg', slaw=J + 'ap/steer-law', slim=J + 'ap/steer-limit',
     yawg=J + 'ap/yaw-ground-deg', rud=J + 'fcs/rudder-cmd-norm', r=J + 'velocities/r-rad_sec', vg=J + 'velocities/vg-fps',
     kcas=J + 'velocities/vc-kts', wh=J + 'aero/wheel-height-ft', phi=J + 'attitude/phi-deg', theta=J + 'attitude/theta-deg',
-    wdown=J + 'atmosphere/total-wind-down-fps', wnorth=J + 'atmosphere/total-wind-north-fps', weast=J + 'atmosphere/total-wind-east-fps', gson=J + 'ap/gs-on', gsthr=J + 'ap/gs-throttle', gssys=J + 'ap/gust-sys',
+    wdown=J + 'atmosphere/total-wind-down-fps', bankfin=J + 'ap/bank-final-deg', bankp=J + 'ap/final-bank-p-deg', fini=J + 'ap/final-i-deg', wantrate=J + 'ap/final-want-rate-fps', xtrate=J + 'ap/final-xt-rate-fps', bcmd=J + 'ap/bank-cmd-deg', rmode=J + 'ap/roll-mode', rollcmd=J + 'ctl/roll-cmd-deg', yawcmd=J + 'ctl/yaw-deg', tk0=J + 'propulsion/tank[0]/contents-lbs', tk1=J + 'propulsion/tank[1]/contents-lbs', tk2=J + 'propulsion/tank[2]/contents-lbs', tk3=J + 'propulsion/tank[3]/contents-lbs', wnorth=J + 'atmosphere/total-wind-north-fps', weast=J + 'atmosphere/total-wind-east-fps', gson=J + 'ap/gs-on', gsthr=J + 'ap/gs-throttle', gssys=J + 'ap/gust-sys',
     thr=J + 'fcs/throttle-cmd-norm', thrust=J + 'engine/thrust-lbf', mains=J + 'ap/on-mains',
     wdir='/environment/wind-from-heading-deg', wspd='/environment/wind-speed-kt', lat='/position/latitude-deg', lon='/position/longitude-deg',
     hdg='/orientation/heading-deg', gtrk=J + 'ap/ground-track-deg', nz=J + 'accelerations/Nz', tm=J + 'ap/thrust-mode', thrn=J + 'ctl/throttle-norm', vscmd=J + 'ap/alt-vs-cmd-fps', altcmd=J + 'ap/alt-cmd-ft', spl=J + 'ap/spoiler-cmd', pred=J + 'ap/turn-bank-cmd-deg', xtnew=J + 'ap/turn-xt-new-ft',
@@ -95,7 +97,7 @@ async def main():
         elev = round(B.get('/position/altitude-ft') - B.get('/position/altitude-agl-ft'))
         if SCENARIO == 'taxibox':
             spot = groundplan.Net(airport).park[PARKING]
-            off = math.hypot((here[0] - spot['lat']) * 364567.2, (here[1] - spot['lon']) * 364567.2 * math.cos(math.radians(here[0])))
+            off = WG.distance(here, (spot['lat'], spot['lon']))
             print('FlightGear put the aircraft %.0f ft from parking spot %s, heading %.0f (the spot faces %.0f)' % (off, PARKING, hdg, spot['heading']), flush=True)
             if off > 80.0:
                 print('it is not at the spot: stopping', flush=True)
@@ -171,6 +173,11 @@ async def main():
         if os.environ.get('GUST_SYS', '0') == '1':
             B.post('/fdm/jsbsim/ap/gust-sys', 1)
             print('the gust system is on', flush=True)
+        for item in os.environ.get('SETPROPS', '').split(','):            # SETPROPS=ap/ga-smart=1,ap/final-wide=1: flight model properties set once the plan has begun (a development copy's switches)
+            if '=' in item:
+                k_, v_ = item.split('=')
+                B.post('/fdm/jsbsim/' + k_.strip(), float(v_))
+                print('set %s = %s' % (k_.strip(), v_), flush=True)
         fg_gust = os.environ.get('FG_GUST')
         gust_t0 = None
         if fg_gust:

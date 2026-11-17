@@ -10,6 +10,7 @@ as the scenery would have it.
 """
 import json
 import math
+import wgs84 as WG                 # the one earth model: WGS84's tangent plane (fdm/wgs84.py)
 import os
 import sys
 
@@ -19,7 +20,6 @@ import airportdata as AD            # noqa: E402
 import ground_checks as GC          # noqa: E402
 import hold_checks as HC            # noqa: E402
 
-FT = 364567.2
 rows = []
 
 
@@ -38,12 +38,11 @@ def fly(tag, name, plan, stand_end, elev_end):
         return
     land = next(i for i in plan['items'] if i['kind'] == 'land')
     la0, lo0 = land['fix']
-    c = math.cos(math.radians(la0))
-    ax, ay = (land['aim'][0] - la0) * FT, (land['aim'][1] - lo0) * FT * c
+    ax, ay = WG.enu(land['fix'], land['aim'])
     ln = math.hypot(ax, ay)
     ux, uy = ax / ln, ay / ln
-    lat_of = lambda lat, lon: ((lat - la0) * FT) * uy * -1 + ((lon - lo0) * FT * c) * ux          # feet to the right of the line from the fix to the aiming point
-    along_of = lambda lat, lon: ((lat - la0) * FT) * ux + ((lon - lo0) * FT * c) * uy
+    lat_of = lambda lat, lon: (lambda n, e: -n * uy + e * ux)(*WG.enu(land['fix'], (lat, lon)))          # feet to the right of the line from the fix to the aiming point
+    along_of = lambda lat, lon: (lambda n, e: n * ux + e * uy)(*WG.enu(land['fix'], (lat, lon)))
     t_end = f['simulation/sim-time-sec'] + 4 * 3600
     cleared, terrain, touch = [], False, None
     while f['simulation/sim-time-sec'] < t_end:
@@ -72,7 +71,7 @@ def fly(tag, name, plan, stand_end, elev_end):
     off = lat_of(touch[0], touch[1])
     add(tag + '.2', name + ': the landing is on the runway: within 20 ft of the centreline at touchdown', abs(off) <= 20.0, '%.1f ft off at %.0f kt, %.0f ft past the aiming point' % (off, touch[2], along_of(touch[0], touch[1]) - ln))
     pos = (f['position/lat-geod-deg'], f['position/long-gc-deg'])
-    d = math.hypot((pos[0] - stand_end[0]) * FT, (pos[1] - stand_end[1]) * FT * math.cos(math.radians(stand_end[0])))
+    d = WG.distance(stand_end, pos)
     add(tag + '.3', name + ': it is parked at the stand there: within 15 ft, under 0.5 kt', d <= 15.0 and f['ap/ground-speed-kt'] < 0.5, '%.1f ft from the stand point (the centre of gravity), %.2f kt' % (d, f['ap/ground-speed-kt']))
 
 

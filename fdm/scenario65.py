@@ -17,7 +17,7 @@ import math
 import os
 import sys
 
-FT_PER_DEG = 364567.2
+import wgs84 as WG             # the one earth model: WGS84's tangent plane (fdm/wgs84.py)
 NM = 6076.1
 TAKEOFF_LB, FUEL_LB = 25600.0, 14500.0
 CEILING_FT = 65000.0
@@ -30,9 +30,8 @@ HEADING, ELEV = 227.5, 171.0
 
 
 def along(p, brg, dist_ft):
-    """The point a distance from p on a bearing (flat earth about p: js/geo.js along)."""
-    c = math.radians(brg)
-    return [p[0] + dist_ft * math.cos(c) / FT_PER_DEG, p[1] + dist_ft * math.sin(c) / (FT_PER_DEG * math.cos(math.radians(p[0])))]
+    """The point a distance from p on a bearing (WGS84's tangent plane at p: js/geo.js along)."""
+    return WG.along(p, brg, dist_ft)
 
 
 def plan65(here=HERE, hdg=HEADING, elev=ELEV, ceiling=CEILING_FT, loops=LOOPS, fix_ft=None):

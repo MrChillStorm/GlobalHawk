@@ -9,6 +9,7 @@ runs. If it stalls in its start (it sometimes does: no answer for 4 minutes), th
 """
 import json
 import math
+import wgs84 as WG                 # the one earth model: WGS84's tangent plane (fdm/wgs84.py)
 import os
 import subprocess
 import sys
@@ -135,7 +136,7 @@ def ground():
     time.sleep(5)
     d, sim = watch(60, dict(lat='/position/latitude-deg', lon='/position/longitude-deg', pitch='/orientation/pitch-deg', roll='/orientation/roll-deg',
                             agl='/position/altitude-agl-ft', manual=J + 'ap/manual', engaged=J + 'ap/engaged', fps='/sim/frame-rate'))
-    moved = math.hypot((max(d['lat']) - min(d['lat'])) * 364567, (max(d['lon']) - min(d['lon'])) * 364567 * math.cos(math.radians(d['lat'][0])))
+    moved = WG.distance((min(d['lat']), min(d['lon'])), (max(d['lat']), max(d['lon'])))
     nan = any(math.isnan(v) for k in d for v in d[k])
     add('F2', 'on the runway for a minute', not nan and moved < 3 and max(abs(v) for v in d['pitch']) < 2 and max(abs(v) for v in d['roll']) < 2 and d['manual'][-1] == 1 and d['engaged'][-1] == 1,
         'no NaN: %s; moved %.2f ft; pitch %.2f to %.2f deg, bank within %.2f deg; wheels %.1f ft above the ground point; laws engaged %g in manual mode %g; %.0f s of flight time' % (

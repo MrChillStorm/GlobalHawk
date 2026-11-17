@@ -10,6 +10,7 @@ written up in docs/PLAN.md.)
 """
 import json
 import math
+import wgs84 as WG                 # the one earth model: WGS84's tangent plane (fdm/wgs84.py)
 import os
 import sys
 
@@ -20,7 +21,6 @@ import ground_checks as GC          # noqa: E402
 import hold_checks as HC            # noqa: E402
 import harness as H                 # noqa: E402
 
-FT = 364567.2
 rows = []
 
 
@@ -52,14 +52,13 @@ def case(tag, plan):
     # the runway's line, from the landing's fix to its aiming point (the plan's own)
     la0, lo0 = land['fix']
     la1, lo1 = land['aim']
-    c = math.cos(math.radians(la0))
-    ax, ay = (la1 - la0) * FT, (lo1 - lo0) * FT * c
+    ax, ay = WG.enu(land['fix'], land['aim'])
     ln = math.hypot(ax, ay)
     ux, uy = ax / ln, ay / ln
     rwy_hdg = math.degrees(math.atan2(uy, ux)) % 360
 
     def along_lat(lat, lon):
-        x, y = (lat - la0) * FT, (lon - lo0) * FT * c
+        x, y = WG.enu(land['fix'], (lat, lon))
         return x * ux + y * uy, x * uy - y * ux
     pos = lambda: (f['position/lat-geod-deg'], f['position/long-gc-deg'])
     t0 = f['simulation/sim-time-sec']

@@ -12,7 +12,6 @@
   const geo = typeof module !== 'undefined' && module.exports ? require('./geo.js') : root.GCS.geo;
   const NM = geo.NM;
   const FT_PER_M = 3.28084;
-  const RAD = Math.PI / 180;
 
   /** How each kind is drawn and how loudly it is advised. `drawn`: in Auto and by default (Class A and E are not drawn). */
   const KINDS = {
@@ -55,8 +54,9 @@
     const z = Object.assign({ id: 'z' + ++counter, name: '', kind: 'other', cls: '', lower: { ft: 0, ref: 'AGL' }, upper: { ft: 99999, ref: 'MSL' }, rings: [], holes: [], circle: null, times: '', src: '' }, o);
     const pts = z.circle ? [] : [].concat(...z.rings);
     if (z.circle) {
-      const dLat = z.circle.r_ft / (NM * 60);
-      const dLon = dLat / Math.max(0.01, Math.cos(z.circle.lat * RAD));
+      const [kn, ke] = geo.ftPerDeg(z.circle.lat);
+      const dLat = (1.005 * z.circle.r_ft) / kn; // a box to look in first: 0.5% over what the circle reaches (the plane's curvature and the scale's change over its radius)
+      const dLon = (1.005 * z.circle.r_ft) / Math.max(ke, 0.01 * kn);
       z.bbox = [z.circle.lat - dLat, z.circle.lon - dLon, z.circle.lat + dLat, z.circle.lon + dLon];
     } else if (pts.length) {
       z.bbox = [Math.min(...pts.map((p) => p[0])), Math.min(...pts.map((p) => p[1])), Math.max(...pts.map((p) => p[0])), Math.max(...pts.map((p) => p[1]))];
@@ -73,7 +73,7 @@
     return [lat, lon];
   }
 
-  /** The point at a bearing (deg) and distance (ft) from a, flat earth. */
+  /** The point at a bearing (deg) and distance (ft) from a (geo.along: in the tangent plane at a). */
   const at = (a, brg, ft) => geo.along(a, brg, ft);
 
   function oaKind(code, name) {
@@ -252,21 +252,27 @@
   }
 
   /* ------------------------------------------------------------------ geometry */
-  /** Flat metres east and north of an origin: good over the few hundred miles a zone is looked at across. */
-  function local(origin, p) {
-    let dLon = p[1] - origin[1];
-    if (dLon > 180) dLon -= 360;
-    if (dLon < -180) dLon += 360;
-    const k = Math.cos(((origin[0] + p[0]) / 2) * RAD);
-    return [dLon * geo.FT_PER_DEG * k, (p[0] - origin[0]) * geo.FT_PER_DEG];
+  // a ring's vertices prepared for geo.enuPrep, once: a ring is looked at from a great many places (a router asks a few hundred thousand times)
+  const prepared = new WeakMap();
+  const prepRing = (ring) => {
+    let a = prepared.get(ring);
+    if (!a) prepared.set(ring, (a = ring.map((p) => geo.prep(p))));
+    return a;
+  };
+
+  /** Feet east and north of the prepared origin o of a prepared vertex, in the tangent plane at o (geo.enuPrep; the longitude wraps by itself). */
+  function local(o, q) {
+    const [n, e] = geo.enuPrep(o, q);
+    return [e, n];
   }
 
   function inRing(ring, lat, lon) {
-    const o = [lat, lon];
+    const o = geo.prep([lat, lon]);
+    const pr = prepRing(ring);
     let inside = false;
     for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-      const a = local(o, ring[i]);
-      const b = local(o, ring[j]);
+      const a = local(o, pr[i]);
+      const b = local(o, pr[j]);
       if (a[1] > 0 !== b[1] > 0 && 0 < ((b[0] - a[0]) * (0 - a[1])) / (b[1] - a[1]) + a[0]) inside = !inside;
     }
     return inside;
@@ -291,11 +297,12 @@
     const inside = contains(z, lat, lon);
     if (z.circle) return { nm: Math.abs(geo.course([z.circle.lat, z.circle.lon], [lat, lon]).ft - z.circle.r_ft) / NM, inside };
     let best = Infinity;
-    const o = [lat, lon];
+    const o = geo.prep([lat, lon]);
     for (const ring of z.rings.concat(z.holes)) {
+      const pr = prepRing(ring);
       for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-        const a = local(o, ring[i]);
-        const b = local(o, ring[j]);
+        const a = local(o, pr[i]);
+        const b = local(o, pr[j]);
         best = Math.min(best, segDist(a[0], a[1], b[0], b[1]));
       }
     }

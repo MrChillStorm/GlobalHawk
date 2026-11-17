@@ -1,8 +1,8 @@
 /**
  * Map tiles: slippy-map (web mercator) arithmetic, a cache that asks for few tiles at a time, and the drawing of
- * a tile through the station's own projection (js/geo.js: flat, about the map's centre, turning with "track up").
+ * a tile through the station's own projection (js/geo.js: the tangent plane about the map's centre, turning with "track up").
  *
- * The station's projection is linear in latitude and longitude; a tile's rows are not (mercator). A tile is therefore
+ * The station's projection is nearly linear in latitude and longitude (a plane: it bends a little at the edge of a wide view); a tile's rows are not (mercator). A tile is therefore
  * drawn as a small mesh of sub-quads, each placed by three corners; the mesh is made as fine as needed for the
  * error to stay under MESH_PX of a pixel (checked in tests/tiles.test.js at several zooms and latitudes).
  *
@@ -46,7 +46,10 @@
   function visibleTiles(view, z, max) {
     max = max || MAX_TILES;
     const [w, h] = view.size;
-    const corners = [[0, 0], [w, 0], [0, h], [w, h]].map((c) => geo.fromScreen(c[0], c[1], view.centre, view.up, view.ftPerPx, view.size));
+    // a grid over the screen, not its four corners: the plane bends away from the centre, so an edge is a curve in latitude and longitude and its middle can lie beyond its ends
+    const grid = [];
+    for (let i = 0; i <= 16; i++) for (let j = 0; j <= 16; j++) grid.push([(i / 16) * w, (j / 16) * h]);
+    const corners = grid.map((c) => geo.fromScreen(c[0], c[1], view.centre, view.up, view.ftPerPx, view.size));
     for (let zz = z; zz >= 0; zz--) {
       const n = Math.pow(2, zz);
       const xy = corners.map((c) => tileXY(c[0], c[1], zz));

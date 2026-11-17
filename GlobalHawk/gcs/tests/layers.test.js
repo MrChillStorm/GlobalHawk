@@ -159,6 +159,22 @@ const rule = (key, reason, force) => (c) => (c[key] ? { on: true, reason: reason
   assert.strictEqual(r.shown('f'), false, '60 s after the cause');
 }
 
+// a layer that keeps (the camera's cross) cannot be put away with its chip's cross, and its chip says so
+{
+  t = 0;
+  const r = make(null);
+  r.define({ id: 'k', keep: true, auto: rule('k') });
+  const c = { k: true };
+  r.update(c);
+  t = 2000;
+  r.update(c);
+  assert.strictEqual(r.shown('k'), true);
+  assert.strictEqual(r.dismiss('k'), false, 'a layer that keeps cannot be dismissed');
+  r.update(c);
+  assert.strictEqual(r.shown('k'), true, 'and it stays up');
+  assert.strictEqual(r.chips().find((x) => x.id === 'k').keep, true, 'its chip is marked, so it gets no cross');
+}
+
 // dismiss holds until the rule has been false (10 s) and has come back (2 s)
 {
   t = 0;

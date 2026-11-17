@@ -99,8 +99,7 @@ def cases():
     for k, (bearing, dist, final) in enumerate([(30, 80, 40), (120, 140, 250), (210, 200, 100), (300, 120, 340), (75, 260, 215), (255, 300, 20)]):
         n, e = np.array([math.cos(math.radians(bearing)), math.sin(math.radians(bearing))]) * dist * NM
         aim = list(fld.ll(n, e))
-        fix = [aim[0] - 10 * NM * math.cos(math.radians(final)) / MM.FT_PER_DEG,
-               aim[1] - 10 * NM * math.sin(math.radians(final)) / (MM.FT_PER_DEG * math.cos(math.radians(aim[0])))]
+        fix = list(MM.along(aim, final + 180.0, 10 * NM))
         out.append(dict(start=start, hdg=hdg, fix=fix, aim=aim, elev=demo['field']['elev_ft'], weight=25600.0, fuel=14150.0, name='%d nmi at %d, final %d' % (dist, bearing, final)))
     return demo, out
 

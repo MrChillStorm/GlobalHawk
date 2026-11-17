@@ -13,6 +13,7 @@ among them; the third too small for the aircraft. Nothing here is a real place.
 """
 import json
 import math
+import wgs84 as WG                 # the one earth model: WGS84's tangent plane (fdm/wgs84.py)
 import os
 
 import airportdata as AD
@@ -25,14 +26,13 @@ HDG = 40.0
 THR2 = (35.12, -116.9834)          # XDM2 ("Demo East" of js/demodata.js, 3,100 ft): the threshold of 09, so that the field is about 48 nmi north-east of XDM1
 HDG2 = 90.0
 LEN = 12000.0
-FT = 364567.2
 
 
 def ll(a, l, thr=THR, hdg=HDG):
     """Feet along the runway's course from its threshold and to the right of it, as latitude and longitude."""
     h = math.radians(hdg)
     n, e = a * math.cos(h) - l * math.sin(h), a * math.sin(h) + l * math.cos(h)
-    return thr[0] + n / FT, thr[1] + e / (FT * math.cos(math.radians(thr[0])))
+    return tuple(WG.from_enu(thr, n, e))
 
 
 def dm(v, pos, neg):
