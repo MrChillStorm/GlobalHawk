@@ -53,6 +53,8 @@ payloads, so they are a sanity window, not a target; without the ceiling the mod
 tunnel, which one fitted exponent corrects, and with it the bare airframe's speed mode at the cruise becomes stable. The flight laws are the author's design and are held to their own requirements only: they fly a mission
 from stand to stand, the two recorded landings within 5\,KEAS and 0.5\,m/s of the records, a navigator failure of the kind that destroyed an RQ-4B in 2017, a
 lost link, and a landing without the engine. In FlightGear the aircraft is flown through the station's link by the same logic.
+Landings in gusts are flown in hundreds on a bench and in FlightGear: a stabilisation of the landing law lowers the hard landings where this aircraft lands hard, two airliners' rules of thumb for the
+approach speed buy margin to the stall limit and pay for it in sink, runway and, for one of them, the structural limits, and the low wing's tips, which bend, set the limit on the bank at touchdown.
 Limits were set before results and not moved: \Npass{} checks pass and \Nmiss{} miss. Only \NFpass{} of the passes are held to flight records, \Nfitted{} of them after
 a fit to the same record; \NDpass{} are the laws and the software against the author's own requirements. Every miss is listed with its cause.
 \end{abstract}
@@ -463,8 +465,8 @@ The landing law holds the glide path with the spoilers and the speed with the pi
 to it and whether two additions help: a \emph{stabilisation} (the switch \texttt{ap/gust-sys}; only in the landing, in the air, under 500\,ft: the speed law may not take the nose under
 $-1^\circ$ in the glide; the throttle follows the speed lost beyond 4\,kt, with its own rate limits and idle in the flare; the pitch goes up with the sink that the spoilers, at their
 floor, cannot take) and an \emph{addition} to the approach speed (\texttt{ap/approach-add-kt} by hand, or \texttt{ap/approach-add-auto}: the aircraft's own pick from the spread of the wind about its
-10\,s mean and the share of the wind across the final). Both switches are 0 in the aircraft as it ships, and with them at 0 the flights are those of the aircraft without them (99 flights flown
-again: no difference). A gust alert, raised whether the stabilisation is on or not, tells the station (\emph{caution}: 8\,kt of speed lost or 8\,ft/s more sink than the path asks, held 4\,s).
+10\,s mean and the share of the wind across the final). Both switches were 0 when these flights were flown, and with them at 0 the flights are those of the aircraft without them (99 flights flown
+again: no difference); the aircraft now ships with both at 1 (section~\ref{sec:rules}). A gust alert, raised whether the stabilisation is on or not, tells the station (\emph{caution}: 8\,kt of speed lost or 8\,ft/s more sink than the path asks, held 4\,s).
 \emph{Method.} The flights are the bench's (\texttt{fdm/gustbench.py}): the landing task alone from 5\,nmi out on the glide, calm trim, wind written into the model every frame in the runway's axes. Gusts
 are discrete 1-cosine gusts (along, vertical, across; sizes and heights as the table says) and the bench's own MIL-F-8785C low-altitude Dryden turbulence at a wind at 20\,ft of 30 to 60\,kt, alone and
 with that wind blowing steadily at 45$^\circ$ to the runway; JSBSim's own turbulence is not used, because in this harness it is the same at every height and for every wind at 20\,ft. The four arms (neither;
@@ -495,9 +497,128 @@ sink worse in a lost headwind (+1.0\,m/s) and a little better in a downdraught (
 across the runway it narrows the line (12.6 to 7.1\,ft). At a wind at 20\,ft of 50 and 60\,kt, 18 and 34 of 48 flights land hard in every arm: the landing law has no answer to turbulence of that strength, and this is open.
 In FlightGear the same final with a 15\,kt loss of headwind at 99\,ft (full fuel, 26\,750\,lb) touched down at 9.35\,m/s and 9.1\,g with a structural alert without the stabilisation, and at 0.33\,m/s and 1.1\,g with it.
 \emph{What it comes to.} The stabilisation is worth having for the shears and downdraughts and is not for turbulence; the speed addition has no demonstrated benefit in this model beyond the angle-of-attack margin in light turbulence,
-and costs runway; both stay at 0 until a limit is written for them. \emph{Two faults of mine.} The bench's turbulence was first 59\,\% as strong as its label (a unit error, and a check of it that used the same formula and so passed):
+and costs runway; the sections that follow put the addition beside the airliners' rules and say why both switches are now on. \emph{Two faults of mine.} The bench's turbulence was first 59\,\% as strong as its label (a unit error, and a check of it that used the same formula and so passed):
 every result before the fix was thrown away and flown again, and the fit above was made on the corrected flights, which supported a much smaller pick than the first. And the first small comparison I made (15 to 9 of 20) rested on 20 cases of a
 design grid; the table above has 96, 72 and 48.
+
+\subsection{The airliners' rules of thumb, and the aircraft's own laws}\label{sec:rules}
+The speed addition above is a rule of thumb, and airliners fly with two well-known ones. The question was whether either does for this aircraft what the stabilisation and the pick do.
+\emph{The rules} are my readings of them: the Boeing one from memory and not checked against a manual, the Airbus one from the open-source A320-family aircraft for FlightGear (its \texttt{FMGC.nas}),
+with the live headwind taken as a component, which that file does not do. Boeing's adds half the steady headwind component and the whole gust increment (twice the along-wind $\sigma$ of the turbulence at 30\,ft, the way a pilot
+would work it from a reported mean wind and gust), limited to 5 to 20\,kt; Airbus's adds a third of the headwind component, 5 to 15\,kt, with or without the ground-speed minimum (the approach speed raised by how far
+the live headwind exceeds the tower's). Each is flown alone and with the stabilisation, on the same cases as the arms above. \emph{The air} is now JSBSim's own MIL-F-8785C turbulence as FlightGear runs it, at the field's height,
+with the rotation of the gusts across the wings that the bench's Dryden lacks (a bench without it did not reproduce the lateral wander of the FlightGear flights): 336 sequences (seven weathers at 20\,800\,lb, seeds 601 to 648) and
+the two FlightGear weathers that went wrong in flight, 28\,kt abeam with turbulence and 36\,kt abeam with a shear to 85\,kt at 500\,ft (48 sequences each, 26\,750\,lb). The laws were frozen for these flights (version~2).
+The first reading of the table showed Boeing equal to Airbus in every turbulence-only weather: the bench took the Boeing rule's gust increment from the old turbulence's name and got zero from the new one. It was fixed
+and the Boeing arms were flown again; the first results are kept.
+
+\begin{table*}[t]\centering\footnotesize
+\input{tab/gust_rules.tex}
+\caption{The airliners' rules against the aircraft's own laws (the pick and the stabilisation), in JSBSim's own turbulence. Hard: sink over 2\,m/s, the structural flag or no touchdown; events: flights in which the angle-of-attack
+protection acted below 500\,ft (the margin under its limit below 0); line: the distance off the centreline at the first wheel (95th percentile); landing: the distance from the aiming point to the end of the rollout (mean).}\label{tab:rules}
+\end{table*}
+\begin{table*}[t]\centering\footnotesize
+\resizebox{\textwidth}{!}{\input{tab/gust_rules_contrasts.tex}}
+\caption{The contrasts that carry the argument, paired by case; columns as table~\ref{tab:gustc}. Differences are the first arm less the second, means with 95\,\% bootstrap intervals.}\label{tab:rulesc}
+\end{table*}
+
+\emph{What the rules buy.} What they are made for: room before the stall. The angle-of-attack protection acts below 500\,ft in all 336 flights with no addition and with the aircraft's own, in 144 with Boeing's rule and in 272 with Airbus's
+(199 and 279 with the stabilisation); the median room under its limit goes from $-1.9^\circ$ to $+0.2^\circ$ (Boeing) and $-1.0^\circ$ (Airbus), and the share of flights 2$^\circ$ or more over the limit from 42\,\% to 1 and 20\,\%.
+\emph{What they cost.} Sink: Boeing's rule adds 0.42\,m/s on average [$+0.14$, $+0.70$] and Airbus's 0.24 [$+0.02$, $+0.48$], and the sink's 95th percentile goes from 3.9 to 7.2 and 6.5\,m/s; the landing is 277 (Airbus) to 748\,ft (Boeing)
+longer; the hard landings are not fewer (105 and 88 against 92; $p=0.28$ and 0.75); and Boeing's rule crosses the assumed structural limits (2.5\,$g$ or 200\,KEAS in the air, a latched flag) in 36 flights and Airbus's in 20, against 8 with no addition. On top of the stabilisation they add nothing that can be seen in the sink (1.50, 1.51 and 1.50\,m/s) or in the hard landings (82 and 74 against 80),
+for 364 to 908\,ft of landing. The two FlightGear weathers say the same. At 28\,kt abeam Boeing's rule lands 15 of 48 flights hard against 4 ($p=0.013$). In the shear no rule touches the 47 hard landings of 48 (45, 47 and 48: an addition of
+5 to 16\,kt against a shear of 85\,kt), where the stabilisation takes them to 30 ($p<0.001$: 18 flights only without it, 1 only with).
+
+\emph{What the aircraft's own laws do.} The stabilisation lands softer where this aircraft lands hard: in a lost headwind or a downdraught (hard landings 73 to 42 of 96 and 46 to 31 of 72, $p<0.001$ in each; flown again in JSBSim's own turbulence on the version~2 laws, 72 to 42 and 44 to 31), and in the
+shear (47 to 30 of 48; the median sink from 13.9 to 1.8\,m/s). In turbulence the pooled count of the first run is 92 to 74 of 336 with the pick and the stabilisation ($-5.4$ points [$-9.7$, $-1.0$], $p=0.022$: above the level of 0.017 this report set for
+itself, so suggestive and not shown) and the sink 0.18\,m/s lower [$-0.30$, $-0.06$]. (The replicate below finds less: 101 to 92, and nothing at the light weight.) It buys no margin: the protection acts in the same 336 flights, up to 6.1$^\circ$ over its limit against 4.9$^\circ$ with no addition. So the two kinds of law
+protect against different things. The rules keep the angle of attack away from the lift break and pay in sink and runway; the stabilisation keeps the sink down at the touchdown and does nothing for the margin. For an aircraft with no one aboard a landing
+protected at the price of the margin is a calculated risk that a design can take, and this model cannot say how large it is: its lift curve at approach Mach numbers is still rising at the last point of its table (12$^\circ$), so it has no stall to be near, and the
+limit of 7$^\circ$ is the design's own number (the lift break less a margin). What can be said is the price of the margin: Airbus's rule with the stabilisation has the same 74 hard landings and 1.50\,m/s of sink as the aircraft's own pick, with 57 fewer flights over the
+limit, for 358\,ft of runway.
+
+\emph{The same flights again.} The arms the argument rests on were flown again on the laws as they now stand, with the stiffer roll loop of section~\ref{sec:tips}, at two other weights (12\,450 and 26\,750\,lb, 168 sequences each, the same seven weathers, seeds 801 to 824:
+2\,016 flights, the laws frozen for the run, and the comparisons of the aircraft's own system with each rule written down as a prediction before the flights were looked at; tables~\ref{tab:rulesv3} and~\ref{tab:rulesv3c}).
+\emph{Confirmed.} Against Boeing's rule alone the aircraft's own system has 92 hard landings against 157 ($p<0.001$), 0.66\,m/s less sink [$-0.99$, $-0.35$] and 368\,ft less landing, at both weights (59 against 76, $p=0.030$, at 12\,450\,lb; 33 against 81, $p<0.001$, at 26\,750\,lb); and the rules hold
+more margin: the protection acts in 193 (Boeing) and 270 (Airbus) flights against 328 with the aircraft's own, and the median room under its limit is $-0.3^\circ$ and $-1.3^\circ$ against $-1.9^\circ$.
+\emph{Half confirmed.} Against Airbus's rule alone the sink is lower (0.26\,m/s [$-0.48$, $-0.05$]) and the hard landings fewer, but not by a margin that can be told from chance (92 against 98, $p=0.54$; 74 against 88, $p=0.16$ in the first run).
+\emph{Not as predicted.} With the stabilisation on, Boeing's rule is far worse than the aircraft's own system (148 hard landings against 92, $p<0.001$), where in the first run they were level (82 against 74, $p=0.47$). The extra hard landings are structural: the flag that marks a crossing of the assumed limits is raised in 97 flights with that arm
+and 32 with the aircraft's own (102 and 27 for Boeing's rule alone and for no addition), against 13 and 7 at the one weight of the first run. Boeing's addition, 16\,kt on average here, makes the approach faster, and a gust loads the structure in proportion to the speed; the rule trades the stall limit for the structural one. Airbus's rule with the stabilisation is level
+with the aircraft's own (95 hard landings against 92, $p=0.82$, the sink the same) and lands 326\,ft longer. \emph{The aircraft's own benefit in turbulence is smaller than the first run said:} 101 to 92 hard landings ($p=0.28$, the sink 0.18\,m/s lower [$-0.36$, $-0.01$]); nothing at 12\,450\,lb (60 to 59) and 41 to 33 at 26\,750\,lb
+($p=0.19$, the sink 0.41\,m/s lower [$-0.68$, $-0.18$]). The two runs together, 672 pairs, give 193 against 166 hard landings in favour of the system (exact $p=0.013$).
+
+\begin{table*}[t]\centering\footnotesize
+\resizebox{\textwidth}{!}{\input{tab/gust_rules_v3.tex}}
+\caption{The replicate: the arms flown again on the present laws at two weights (seven turbulence weathers, seeds 801 to 824). Hard (flagged): flights that landed hard, of which flights that crossed the assumed structural limits (2.5\,$g$ or $-1\,g$, 200\,KEAS, Mach 0.7); room: the median distance under the angle-of-attack limit below 500\,ft,
+negative over it; other columns as table~\ref{tab:rules}.}\label{tab:rulesv3}
+\end{table*}
+\begin{table*}[t]\centering\footnotesize
+\resizebox{\textwidth}{!}{\input{tab/gust_rules_v3_contrasts.tex}}
+\caption{The replicate's contrasts, paired by case; rows four to seven, the aircraft's own system against each rule, are the prediction written before the flights were looked at. Columns as table~\ref{tab:rulesc}.}\label{tab:rulesv3c}
+\end{table*}
+
+\emph{What limits the claim.} The intervals are about $\pm6$ points on 336 pairs: ``no demonstrable benefit in the hard landings'' is what is shown, not ``none'' (Airbus's rule is at $-1.2$ points [$-6.7$, $+4.3$]). The rules are my readings, applied to an aircraft that holds its
+approach speed with the pitch and its path with the spoilers at idle thrust; an airliner holds speed with thrust, and the rules may do more good there. The first run has one weight and the laws before the roll-loop change of section~\ref{sec:tips}; the replicate has two weights on the present laws; and there are no real gust data in the sources to hold any of it to. Not diagnosed: why a larger addition raises the sink in turbulence. The protection acts in 144 of 336 flights with Boeing's rule, so margin is not what limits it;
+a longer float and a later flare are the suspects, and nothing here tests them. The aircraft ships with the pick and the stabilisation on, on these grounds and on the regression set flown with them on: of 24 scripts one (the capture matrix) needed a lead-in, because the pick's wind filters start at zero and read a wind
+present from the first frame as gusts for about 90\,s, adding up to 12\,kt; and two checks of the off-design set missed with them on, one of which is the subject of the next section.
+
+\subsection{The wing tips: a low wing that bends}\label{sec:tips}
+\emph{The geometry.} The wing is low and long. Its tips are 58.1\,ft either side of the centreline and 5.07\,ft above the plane under the wheels, and the main wheels are 5.4\,ft either side, so a rigid roll about the wheels puts a tip
+on the ground at $\arctan\,[5.07/(58.1-5.4)]=5.5^\circ$. Nothing hangs under the wing to touch first: the limit is the tip. JSBSim has no property for its structure contacts, so the tip's height is worked out from the centre of gravity's height,
+the attitude and the centre of gravity's place (checked on the main wheels, which read their own compression, $-0.5$ to $-0.65$\,ft, on the ground). \emph{How it turned up.} With the pick on, the off-design check W3 (a 10\,kt crosswind, light turbulence)
+missed its limit for the bank on the ground: 5.46$^\circ$ at the first touch, the right tip within 0.04\,ft of the ground (4.34$^\circ$ and 0.96\,ft clear with the pick off). That is one flight in one draw. The question became how often, and the
+answer on 216 flights of a confirmation set (three weights, 20\,kt at 60$^\circ$ and 28 and 36\,kt abeam from both sides, JSBSim's turbulence as FlightGear runs it, seeds nobody had used) was that with the landing law as it was a rigid tip was at or below the ground in 48
+(22\,\%) and within 6\,in in 68, and that the bank at the first wheel never passed 5.9$^\circ$: the tip is the ceiling on it.
+
+\emph{What did not work.} An aim offset upwind of 0.1 to 0.5\,ft per knot, early or late, left the tip contacts where they were (20 to 24 of 72 flights against 23): the bank is spent on correcting random drift, not the flare's. Slower loops in the flare brought the contacts down
+(8 to 13 of 72) and put the line 1.4 to 7\,ft further out. Washing the bank command out alone (zero by 1\,ft) halved them (17 to 9) at a line 0.5 to 5.5\,ft worse, and showed the real fault: with the command at $0.00\pm0.03^\circ$ the bank at the first wheel still had a spread of 2.7$^\circ$. The turbulence rolls the aircraft
+in the last seconds and the roll loop did not hold it level; the command was not what put the bank there, so a limiter on the command, the obvious remedy, would not have helped. \emph{What worked.} A stiffer roll loop in the landing's last 40\,ft (the bank gain $\times6$ and the rate gain
+$\times2.5$, all there at 40\,ft of wheel height and none at 100, in the landing task only) together with the washout of the bank command (full at 10\,ft, none at 1\,ft): the aircraft is steered by its aim and its heading and the bank is left to hold the wings level.
+On the confirmation set the rigid tips at or below the ground fell from 48 to 0, the lowest rigid clearance went from $-0.29$ to $+1.45$\,ft, the bank at the first wheel from 2.8 to 0.8$^\circ$ on average (at most 5.9 to 3.3), and the line at the wheels from 14.6 to 5.5\,ft on average
+(95th percentile 39 to 13\,ft, flights beyond 30\,ft 26 to 1), with the sink unchanged ($-0.03$\,m/s [$-0.08$, $+0.04$], paired) and the hard landings 25 to 18 (exact $p=0.14$). The two other sets agree (table~\ref{tab:roll}); in calm air the line is 2.2 against 1.1\,ft and nothing rings. These are the laws of version~3. The decrab change of version~4 (section~\ref{sec:drift}), flown on the same 432 flights, moves them little: the line by $+0.1$\,ft on average, the bank at the first wheel at most from 3.3 to 3.4$^\circ$, the hard landings by sink on the confirmation set from 18 to 20, and the bent tips at or below the ground from 65 to 61 of 216.
+
+\begin{table*}[t]\centering\footnotesize
+\resizebox{\textwidth}{!}{\input{tab/lat_roll_loop.tex}}
+\caption{The old landing law against the present one (the stiffer roll loop low and the washout of the bank), on the same flights: the design set, fresh seeds and the confirmation set. Tip at the ground: flights in which the lowest tip, from 15\,ft of wheel height to 3\,s after the first wheel,
+was at or below the ground, for the rigid wing and with the wing's bending; bank, line and hard landings as in table~\ref{tab:gust4}.}\label{tab:roll}
+\end{table*}
+\begin{figure*}[t]\centering
+\includegraphics[width=\textwidth]{wingtips.pdf}
+\caption{The confirmation set (216 flights a law): the lowest tip height from 15\,ft of wheel height to 3\,s after the first wheel for the rigid wing and with the wing's bending, and the bank at the first wheel, old landing law against present.
+The dashed line is the bank at which a rigid tip touches.}\label{fig:wingtips}
+\end{figure*}
+
+\emph{The wing's bending, which doubles the problem.} The numbers above treat the wing as rigid, as the model's own tip contacts do. It is not. The wing mode of section~\ref{sec:model} puts the tips up with the lift and down with the load factor times the wing's own weight and its
+fuel, so a heavy aircraft's tips are 4 ft up while it flies and droop when the lift goes. The same flights with the deflection added to the tips' height (a tip's place with the bending, not where the model's rigid contact is): at the first wheel the tips are still up (3.1 to 3.3\,ft on average), because the lift has not been dumped;
+then they fall as the spoilers take the lift and the gear takes the load, to $-2.5$\,ft at 12\,450\,lb, $-4.0$ at 20\,800 and $-5.1$ at 26\,750 (medians of the lowest deflection; $-7.9$ the lowest of all), and the rigid clearance of 4.6\,ft of a calm, level landing at 26\,750\,lb is 2.1\,ft. \emph{With the bending a tip is at or below the ground
+in 105 of the 216 flights under the old law and in 65 under the present one} (table~\ref{tab:roll}); by weight, 10, 39 and 56 of 72 against 1, 22 and 42 at 12\,450, 20\,800 and 26\,750\,lb. The roll loop takes the bank's share out and more than halves the count at the light weights, and it cannot take out the wing's own: the dip goes with the weight (under the present law the correlation of the tip's lowest height with weight is $-0.68$, with the
+bank at the first wheel $-0.36$, with the sink $-0.20$) and a full wing is the heavy one. A low wing dips twice, once with the bank and once with its own weight. These are the model's figures from an estimate: no stiffness of the real wing is public, and the cantilever that gives these deflections is sized by strength (section~\ref{sec:model}). A stiffer wing would
+dip less, and the real tips' clearance on the ground is a question for the real structure; what the study shows is that the bank is the part the laws can reach and that they now do.
+
+\subsection{Landing across the wind: the flare's drift}\label{sec:drift}
+With the bank washed out at the wheels, what is left to take the aircraft off the line in a crosswind is the flare itself. The aircraft flies the final with its nose into the wind (a crab of 4 to 22$^\circ$ here, by weight and wind). In the last 8 to 1\,ft the nose is turned onto the runway's heading, the sideslip this makes gives a side force,
+and the aircraft drifts downwind. \emph{Measured.} Twelve FlightGear flights in a steady wind (the METAR wind and nothing else: no gusts, no shear), at three weights (26\,750, 19\,100 and 12\,450\,lb: full tanks, half and 1\,000\,lb of fuel) and four crosswinds (9, 19, 28 and 37\,kt at the wheels, table~\ref{tab:drift});
+a steady wind makes each flight a measurement and not a draw, which the turbulent flights cannot be. The line holds within 1.6\,ft down to 15\,ft in all twelve; below it the aircraft drifts 0.5 to 7.8\,ft downwind. The drift is proportional to the crosswind and to the weight and not to the speed
+(the heavy aircraft is 45\,\% faster): \emph{drift $=0.0076\times$ weight in 1\,000\,lb $\times$ crosswind in kt, in feet} (0.43\,ft rms over the twelve, 0.47 leaving each out in turn; 0.10\,ft/kt light, 0.20 full). The bench's own steady-wind sweep gave 0.12\,ft/kt at 26\,750\,lb: it had 40\,\% too little drift, which is why the bench could
+not be tuned on and the flights had to be flown. \emph{The offset.} The line that the lateral loops steer to is moved upwind by the same amount, worked out in flight from the aircraft's weight and its smoothed crosswind, from 1\,000 to 700\,ft of wheel height (\texttt{ap/final-aim}). Six FlightGear flights with it on
+(37 and 19\,kt, three weights): the first wheel lands $-0.5$ to $+1.9$\,ft from the line (rms 1.0\,ft) against $-0.8$ to $-6.9$\,ft without it; the bank at the first wheel and the sink are as before ($-0.3$ to $-1.1^\circ$, 0.58 to 0.71\,m/s). The aircraft realises 16\,\% more than the aim in every flight, because the wind
+it smooths over the last 100 to 300\,ft is stronger than at the wheels. A coefficient 7\,\% lower would take the mean error from $+0.6$ to $+0.3$\,ft and not the spread (the rms 0.99 to 0.94\,ft, and 1.20 leaving each flight out), so it was left as measured; what is left is a weight pattern (the light flights land 1 to 2\,ft upwind) that six flights do not support a second term for.
+
+\begin{figure}[t]\centering
+\includegraphics[width=\columnwidth]{drift.pdf}
+\caption{Where the first wheel lands against the line (downwind positive), by crosswind and weight, in FlightGear's steady wind. Lines: the formula, which is also the offset's aim; filled markers: the landing without the offset (12 flights); hollow: with it (6 flights).}\label{fig:drift}
+\end{figure}
+\begin{table}[t]\centering\footnotesize
+\input{tab/flare_drift.tex}
+\caption{The flare's drift (downwind, from 15\,ft of wheel height to the first wheel) in twelve flights, and the touchdown error with the offset in six (upwind of the line is positive).}\label{tab:drift}
+\end{table}
+
+\emph{What it is and is not.} A steady 37\,kt across the runway is easy for this aircraft: 7.8\,ft of drift at worst, with 1$^\circ$ of bank and 0.6\,m/s of sink at the wheels. The gusty cases are the hard ones. On the 216 unseen flights the line is 5.5\,ft on average, 13\,ft at the 95th percentile and 49\,ft at worst
+(12\,450\,lb in 36\,kt with severity-6 turbulence); an offset moves the mean and cannot touch the wander, and it has been tried in FlightGear only in steady wind. One thing the flights show that the offset does not touch: after the first wheel the aircraft swings upwind, 3.4 to 15.8\,ft in the first 3 to 10\,s (the 37\,kt flights 7 to 16\,ft, the
+light one the most), with or without the offset, and ends the rollout 1 to 2\,ft right of the line. The decrab is not finished when the wheels touch (the nose is 3.6$^\circ$ right of the runway's heading at full weight and 11$^\circ$ at 12\,450\,lb in 37\,kt), so the aircraft rolls
+out along the nose and the steering takes it back: the ground track turns 0.6 to 3.6$^\circ$ towards the nose in the first 1 to 3\,s, and the line follows. After that the nose-wheel steering, a proportional law, holds the nose 1 to 2$^\circ$ into the wind
+(a steady heading error of 2 to 3$^\circ$ against the weathercock) while the wheels roll along the course. That is not the flare's drift and the offset's formula does not cover it. At the light weight it was a limit: the decrab's term was held to 10$^\circ$ of ruddervator and sat there for the last 3\,s, and an earlier start did not help (it left the nose where it was and put the line 5 to 18\,ft further out). With the limit at 20$^\circ$ in the air (laws version~4; on the ground it is 10$^\circ$ as before) the 12\,450\,lb flight in 37\,kt touches down with 4.9$^\circ$ of nose instead of 11.2$^\circ$ and 15.7$^\circ$ of sideslip instead of 10.1$^\circ$, swings 6.0\,ft instead of 15.8, and drifts no more (3.9 against 3.8\,ft), the touchdown error unchanged (+1.8\,ft). 30$^\circ$ gives the same as 20: the ruddervators' own travel, shared with the pitch, is the next limit, about 15.6$^\circ$ of sideslip, a complete decrab to about 26\,kt across at 98\,KEAS and 38\,kt at 143\,KEAS. The heavier flights are unchanged, 3.7$^\circ$ of nose at touchdown and a swing of 7 to 9\,ft: the clip does not bind there, and a higher gain trades it for 1 to 4\,ft more drift without shortening the swing. The headless regression, 20 scripts without the FlightGear phases, has the same passes and misses as before the change. An airliner, as I understand it, takes the decrab's drift out with bank within its tips' and engines' clearance and has an autoland limit below the crosswind a pilot may land in;
+this wing has less to give in the bank, and so much less with its dip (section~\ref{sec:tips}), so the correction has to come from where the aircraft aims.
 
 \subsection{Failures}\label{sec:failures}
 \begin{figure*}[t]
@@ -617,7 +738,8 @@ centre of gravity is a choice that the one published figure contradicts. The law
 aircraft flying, not the aircraft's laws: their touchdowns and rotation are numbers of the design chosen against the records, and they read true sideslip,
 which the aircraft cannot measure. Estimates throughout: the mass breakdown and inertias, the fuel layout, the control surfaces and actuators, the
 gear's springs, the idle thrust, the engine's rise from idle and its fall (the rise above 0.6 of its speed is fitted to one Citation~X recording), the bending, the
-structural limits. Wind, turbulence and off-standard days are checked in one draw of each, not statistically. Not modelled: the loss of engine efficiency at low Reynolds number, the bent wing's twist, torsion and flutter, the windmilling engine, sensor and navigator
+structural limits. Wind, turbulence and off-standard days are checked in one draw of each in the phase~11 checks, not statistically (the landings in gusts of sections~\ref{sec:gusts} to \ref{sec:drift} are flown in hundreds, in a bench's air that no real gust data
+hold to). The wing's bending sets the tips' clearance at touchdown in the model and is an estimate. Not modelled: the loss of engine efficiency at low Reynolds number, the bent wing's twist, torsion and flutter, the windmilling engine, sensor and navigator
 errors other than those set by a test, icing. The ground station has not been tried by anyone but its author: a test with a new operator is written,
 with its pass mark, and waits for the operator's manual. This work is not connected with or endorsed by NASA, Northrop Grumman or Rolls-Royce.
 
@@ -637,6 +759,10 @@ requirements, because nothing of the real laws or of the aircraft's response is 
 \item Days of $-20$ to $+30$\,K, turbulence and a 25\,kt wind are flown (one draw each): the laws hold height and bank; the airspeed cannot be held in gusts and the check that asked
 it is a recorded miss; a flare that starts at a time to touchdown keeps a severe-turbulence landing at 1.3\,m/s. The engine's spool is a rate-limited lag fitted to a recording of a
 Citation~X taking off. The ATTREX records' short-period peak, at 0.29\,Hz, leaves the model's static margin standing.
+\item In gusts the aircraft's stabilisation of the landing lowers the hard landings in a lost headwind and a downdraught (73 to 42 of 96 flights, 46 to 31 of 72) and in a shear (47 to 30 of 48); two airliners' rules of thumb for the approach speed, as I read them,
+buy margin to the angle-of-attack limit and cost sink and runway (Boeing's also the assumed structural limits), with no gain in the hard landings that can be shown (336 flights an arm, $\pm6$ points, flown twice). The low wing's tips limit the bank at touchdown: a stiffer roll loop with the bank washed out takes the rigid tip contacts
+of 216 unseen flights from 48 to none and the line at the wheels from 14.6 to 5.5\,ft; with the model's estimated bending the tips still reach the ground in about a third, more at a full weight. In a steady crosswind in FlightGear the flare drifts the aircraft $0.0076$\,ft per knot
+per 1\,000\,lb downwind, and an aim offset of that size lands the first wheel within 2\,ft of the line.
 \item A transonic CFD run of the section, not trusted by the rule fixed for it, agrees with the tunnel that the model stalls early at Mach~0.6.
 \item A ground control station in a browser commands it through FlightGear's own web server, and the aircraft's end of the link exists twice, checked
 command by command.

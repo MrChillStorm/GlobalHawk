@@ -354,9 +354,52 @@ def station():
     a.legend(loc='upper left', fontsize=6)
     save(fig, 'landing_roll')
 
+def drift():
+    """the flare's drift: where the first wheel lands against the line, by crosswind and weight, with and without the aim offset (results/flare_drift.json: mkstudy.py)"""
+    D = json.load(open(os.path.join(R, 'flare_drift.json')))
+    rows, fit = D['rows'], D['fit']
+    fig, a = plt.subplots(figsize=(3.3, 2.5))
+    cols = {12450: (ORANGE, 'o', '12\u2009450 lb'), 19100: (GREEN, 's', '19\u2009100 lb'), 26750: (BLUE, '^', '26\u2009750 lb')}
+    xs = np.linspace(0, 40, 2)
+    for w, (c, m, lab) in cols.items():
+        a.plot(xs, fit['k'] * w / 1000.0 * xs, color=c, lw=0.7, alpha=0.8)
+        for aim in (False, True):
+            r = [q for q in rows if round(q['weight']) == w and q['aim'] == aim]
+            a.plot([q['xw'] for q in r], [-q['x_td'] for q in r], m, color=c, mfc='white' if aim else c, mew=0.8, label=lab if not aim else None)
+    a.axhline(0, color='0.3', lw=0.5)
+    a.plot([], [], 'o', color=GREY, label='without the offset')
+    a.plot([], [], 'o', color=GREY, mfc='white', mew=0.8, label='with the offset')
+    a.set_xlabel('crosswind at the wheels, kt')
+    a.set_ylabel('first wheel downwind of the line, ft')
+    a.set_xlim(0, 40)
+    a.legend(loc='upper left', fontsize=6)
+    save(fig, 'drift')
+
+
+def wingtips():
+    """the wing tips in the landing's last seconds, the old landing law against the present one, on the confirmation set: rigid and with the wing's bending (results/lat_roll_loop.json)"""
+    p = os.path.join(R, 'lat_roll_loop.json')
+    if not os.path.exists(p):
+        return
+    e = json.load(open(p))['final']
+    fig, ax = plt.subplots(1, 3, figsize=(7.0, 2.0), gridspec_kw=dict(wspace=0.38))
+    for a, key, xl in ((ax[0], 'rigid', 'lowest tip height, rigid wing, ft'), (ax[1], 'flex', 'lowest tip height, bent wing, ft'), (ax[2], 'bank', 'bank at the first wheel, deg')):
+        for lk, col, lab in (('law2', RED, 'old landing law'), ('law3', BLUE, 'present law')):
+            v = np.sort(np.array(e[lk]['lists'][key]))
+            a.plot(v, 100.0 * np.arange(1, len(v) + 1) / len(v), color=col, label=lab, drawstyle='steps-post')
+        a.set_xlabel(xl, fontsize=7)
+    ax[0].set_ylabel('share of flights below, %')
+    ax[0].axvline(0, color='0.3', lw=0.6)
+    ax[1].axvline(0, color='0.3', lw=0.6)
+    ax[0].text(0.02, 0.97, 'the ground', transform=ax[0].transAxes, fontsize=6, va='top', color='0.3')
+    ax[2].axvline(5.5, color='0.3', lw=0.6, ls='--')
+    ax[2].text(5.4, 5, 'rigid tip\ncontact', fontsize=6, ha='right', color='0.3')
+    ax[1].legend(loc='upper left', fontsize=6)
+    save(fig, 'wingtips')
+
 
 if __name__ == '__main__':
     os.makedirs(F, exist_ok=True)
-    for fn in (geometry, engine, section, calibration, landing, laws, flight, record, failures, station):
+    for fn in (geometry, engine, section, calibration, landing, laws, flight, record, failures, station, drift, wingtips):
         fn()
         print(fn.__name__, flush=True)
