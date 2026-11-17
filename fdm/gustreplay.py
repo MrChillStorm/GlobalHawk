@@ -63,7 +63,20 @@ def main():
         m = (h >= lo) & (h < hi)
         if m.any():
             centres.append(0.5 * (lo + hi)); A.append(float(a[m].mean())); X.append(float(x[m].mean())); V.append(float(v[m].mean()))
-    out = dict(source=os.path.basename(path), course_deg=math.degrees(course), agl=centres, a=A, x=X, v=V)
+    # the last HT ft in time: a profile against height keeps one value for the last foot or two, where the aircraft spends its last seconds and where the wind's changes in time push it (docs/PLAN.md, "The bank at touchdown":
+    # the flare drift of FlightGear's 36 kt flight, 13 ft in 3 s, was 3 ft offline); the bench's `rt=1` takes the wind from this series, in the time since the aircraft was HT ft over the runway
+    HT = 15.0
+    ix = [k for k, r in enumerate(rows[:td + 1]) if k >= td - 400 and num(r, 'lm') == 1 and 0 < num(r, 'wh') <= HT]
+    if ix:
+        i0 = ix[0]
+        tl, ta, tx, tv = [], [], [], []
+        for r in rows[i0:min(len(rows), td + 12)]:
+            wn, we, wd = num(r, 'wnorth'), num(r, 'weast'), num(r, 'wdown')
+            tl.append(num(r, 't') - num(rows[i0], 't'))
+            ta.append(-(wn * math.cos(course) + we * math.sin(course)) / 1.68781)
+            tx.append((wn * math.sin(course) - we * math.cos(course)) / 1.68781)
+            tv.append(-wd / 1.68781)
+    out = dict(source=os.path.basename(path), course_deg=math.degrees(course), agl=centres, a=A, x=X, v=V, **(dict(ht=HT, tl=tl, ta=ta, tx=tx, tv=tv) if ix else {}))
     dest = os.path.join(HERE, 'out', 'gust', 'replay_%s.json' % name)
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     json.dump(out, open(dest, 'w'))

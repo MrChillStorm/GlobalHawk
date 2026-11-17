@@ -46,15 +46,18 @@ def landing_case(f, name, weight, elev, meas):
     judge_landing(log, name + ' landing', meas)
 
 
-def capture_case(f, weight, headwind):
+def capture_case(f, weight, headwind, lead_nm=5.5):
     """The glide path taken over from level flight (docs/PLAN.md, "The takeoff's veer and the glide path's overshoot"): the manager
-    flies a land item from 9 nmi out and 3,500 ft over the runway, on the approach speed, in the landing configuration. Returns the
+    flies a land item from 9 nmi out (and `lead_nm` more) and 3,500 ft over the runway, on the approach speed, in the landing configuration. Returns the
     highest the aircraft gets above the path, the lowest it gets below it once it has first come within 10 ft of it, and the
-    crossings of the path beyond 5 ft (a turn onto the path ends on it: none)."""
+    crossings of the path beyond 5 ft (a turn onto the path ends on it: none). The wind is written in at the first frame and the aircraft's own estimate of how
+    gusty the air is (the speed pick, ap/approach-add-auto: lag filters that start at zero) reads that as gusts for about a minute and a half and adds up to 12 kt;
+    the aircraft therefore starts `lead_nm` further out (5.5 nmi, two minutes of flight) and takes the path with the estimate settled (2026-11-17: with the pick on
+    and the old start the cases with a 15 kt tailwind were 16 and 61 ft above the path; with the lead-in 2 ft, as with the pick off)."""
     elev = 174.0
     u = unit(90.0)
     fld = MM.Field(60.3, 24.96, elev)
-    aim, fix, start = fld.ll(0, 0), fld.ll(*(-10 * NM * u)), fld.ll(*(-9 * NM * u))
+    aim, fix, start = fld.ll(0, 0), fld.ll(*(-10 * NM * u)), fld.ll(*(-(9.0 + lead_nm) * NM * u))
     keas = math.sqrt(weight / (0.645 * 540 * 0.5 * 0.0023769)) / H.KT
     t = H.trim(f, alt=elev + 3500, kcas=keas, weight=weight, gamma=0.0, gear=1.0, spoiler=2 / 3, lat=start[0], lon=start[1], psi=90.0, terrain=elev)
     H.engage(f, t)
@@ -63,7 +66,7 @@ def capture_case(f, weight, headwind):
     if headwind:
         f['atmosphere/wind-east-fps'] = -headwind * 1.6878      # blowing towards the west: a headwind on a heading of 90
     err = []
-    for _ in range(int(400 * H.HZ)):
+    for _ in range(int((400 + 30 * lead_nm) * H.HZ)):
         mgr.step()
         if not f.run():
             break

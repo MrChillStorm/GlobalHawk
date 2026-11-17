@@ -37,7 +37,8 @@ ARMS = (('neither', 'neither'), ('speed', 'the speed alone'), ('stab', 'the stab
         ('airbusfull', "Airbus's rule and the ground-speed minimum"), ('airbusfullstab', "Airbus's rule, the minimum and the system"))
 CONTRASTS = (('speed', 'neither'), ('stab', 'neither'), ('both', 'neither'), ('both', 'speed'), ('both', 'stab'), ('fixed', 'neither'), ('fixedboth', 'stab'),
              ('boeing', 'neither'), ('airbus', 'neither'), ('airbusfull', 'neither'), ('boeingstab', 'stab'), ('airbusstab', 'stab'), ('airbusfullstab', 'stab'), ('boeing', 'speed'), ('airbus', 'speed'),
-             ('airbusfull', 'airbus'), ('airbusfullstab', 'airbusstab'))
+             ('airbusfull', 'airbus'), ('airbusfullstab', 'airbusstab'),
+             ('both', 'boeing'), ('both', 'airbus'), ('both', 'boeingstab'), ('both', 'airbusstab'))      # 2026-11-17: ours (the pick and the stabilisation) against each rule, post hoc: the written protocol did not have them
 BOOT = 10000
 
 

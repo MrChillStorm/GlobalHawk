@@ -11,6 +11,7 @@ A CASE is words, joined by spaces inside one argument (quote it):
     wide=1           the final's wide cross-track integral (ap/final-wide; fdm/laws.py FINAL_*_WIDE)
     off=FT           the aircraft starts this many ft to the right of the final's line (negative: to the left)
     lat=DEG          the field's latitude (default 35; FlightGear's EFHK is at 60.3: the leg's flat-earth geometry and the velocity's course part with latitude)
+    rt=1             with replay=: the last 15 ft of the wind from the recording's series in time since the aircraft was 15 ft over the runway (a profile against height has one value for the last foot)
     rx=F  ra=F       the replay's crosswind and headwind multiplied by these (rx=-1 mirrors it: a wind from the other side; 0.5 halves it)
     replay=NAME      the wind a recorded flight met on its final (fdm/gustreplay.py, fdm/out/gust/replay_NAME.json): the headwind, the wind to the left and the updraught against the height over the runway,
                      the turbulence as it was (a frozen field); replaces hw= and xw= (not the gusts or lo=)
@@ -61,8 +62,28 @@ NM = B.NM
 COURSE = B.COURSE
 ELEV = float(os.environ.get('GB_ELEV', LL.ELEV))          # GB_ELEV=171: the field at FlightGear's EFHK height (JSBSim's own turbulence counts the height above sea level)
 LL.ELEV = ELEV
-EXTRA = (('alim', 'ap/alpha-limit-deg'), ('over', 'limits/overstress'), ('flap', 'ap/ld-captured'))
+EXTRA = (('alim', 'ap/alpha-limit-deg'), ('over', 'limits/overstress'), ('flap', 'ap/ld-captured'), ('bcmd', 'ap/bank-final-deg'))
 EXTRA2 = (('gson', 'ap/gs-on'), ('gsthr', 'ap/gs-throttle'), ('gsfl', 'ap/gs-flare-extra-deg'), ('thrust', 'engine/thrust-lbf'), ('gsalert', 'ap/gust-alert'), ('addu', 'ap/approach-add-used'), ('gsig', 'ap/gust-sigma-kt'), ('gxw', 'ap/gs-xw-kt'), ('gnow', 'ap/gs-add-now'), ('ggm', 'ap/gs-gsmini-add'), ('ghw', 'ap/gs-hw-live-kt'), ('pt', 'atmosphere/p-turb-rad_sec'), ('qt', 'atmosphere/q-turb-rad_sec'), ('rt', 'atmosphere/r-turb-rad_sec'))
+
+
+# the wing tips' contact points (GlobalHawk/GlobalHawk.xml: STRUCTURE contacts, structural inches: x aft, y right, z up). JSBSim has no property for them, so their height above the ground is
+# worked out from the centre of gravity's height, the attitude and the centre of gravity's place (checked against the main wheels: they read their own compression, -0.5 to -0.65 ft, on the ground)
+TIPS = ((331.55, -697.20, 54.82), (331.55, 697.20, 54.82))
+
+
+def tip_height(f, flex=False):
+    """the lower of the two wing tips' heights above the ground, ft (negative: the tip would be in it). flex: with the wing's bending (flex/tip-deflection-ft, up positive: the model's tips
+    droop with the wing's own weight on the ground and rise with the lift; the STRUCTURE contacts themselves are rigid, so this is where the tips would be, not where the model touches)"""
+    phi, th = f['attitude/phi-rad'], f['attitude/theta-rad']
+    xcg, zcg = f['inertia/cg-x-in'], f['inertia/cg-z-in']
+    hcg = f['position/h-agl-ft']
+    lo = 1e9
+    dz = f['flex/tip-deflection-ft'] * 12.0 if flex else 0.0
+    for xs, ys, zs in TIPS:
+        bx, by, bz = -(xs - xcg) / 12.0, ys / 12.0, -(zs + dz - zcg) / 12.0
+        down = -math.sin(th) * bx + math.sin(phi) * math.cos(th) * by + math.cos(phi) * math.cos(th) * bz
+        lo = min(lo, hcg - down)
+    return lo
 
 
 def _unit(deg):
@@ -73,14 +94,17 @@ class Weather:
     """A steady wind (brought up over `ramp` seconds) and discrete gusts, in the runway's axes, written into JSBSim's wind every frame. JSBSim's initial conditions set the wind back to
     nothing, so a weather is installed after the aircraft is engaged: it wraps the model's run(). Positive: `a` a headwind, `x` a wind from the right of the runway's course, `v` an updraft."""
 
-    def __init__(self, hw=0.0, xw=0.0, gusts=(), tu=None, seed=None, ramp=30.0, lo=None, shr=1.0, shh=500.0, tua=None, replay=None, rx=1.0, ra=1.0):
+    def __init__(self, hw=0.0, xw=0.0, gusts=(), tu=None, seed=None, ramp=30.0, lo=None, shr=1.0, shh=500.0, tua=None, replay=None, rx=1.0, ra=1.0, rt=0):
         self.hw, self.xw, self.ramp = hw, xw, ramp
         self.rp = None
+        self.rt, self.tcross = None, None
         self.rx, self.ra = rx, ra
         if replay:
             import json as _json
             d = _json.load(open(os.path.join(HERE, 'out', 'gust', 'replay_%s.json' % replay)))
             self.rp = tuple(np.array(d[k]) for k in ('agl', 'a', 'x', 'v'))
+            if rt and 'tl' in d:                            # rt=1: the last d['ht'] ft from the recording's series in time (fdm/gustreplay.py)
+                self.rt = (float(d['ht']),) + tuple(np.array(d[k]) for k in ('tl', 'ta', 'tx', 'tv'))
         self.tua = tua
         self.shr, self.shh = shr, shh
         self.lo = lo
@@ -146,7 +170,14 @@ class Weather:
         a, x, v = k * prof * self.hw + add['a'], k * prof * self.xw + add['x'], add['v']
         if self.rp is not None:
             h = min(max(agl, 1.0), float(self.rp[0][-1]))
-            a, x, v = a + k * self.ra * float(np.interp(h, self.rp[0], self.rp[1])), x + k * self.rx * float(np.interp(h, self.rp[0], self.rp[2])), v + k * float(np.interp(h, self.rp[0], self.rp[3]))
+            ra_, rx_, rv_ = (float(np.interp(h, self.rp[0], self.rp[i])) for i in (1, 2, 3))
+            if self.rt is not None:
+                if self.tcross is None and agl <= self.rt[0]:
+                    self.tcross = t
+                if self.tcross is not None:
+                    tau = t - self.tcross
+                    ra_, rx_, rv_ = (float(np.interp(tau, self.rt[1], self.rt[i])) for i in (2, 3, 4))
+            a, x, v = a + k * self.ra * ra_, x + k * self.rx * rx_, v + k * rv_
         n, e = -(a * self.u + x * self.r) * FPS
         f['atmosphere/wind-north-fps'] = n
         f['atmosphere/wind-east-fps'] = e
@@ -210,7 +241,7 @@ def parse(text):
     for word in text.split():
         if word.startswith('course='):
             COURSE = float(word.partition('=')[2])
-    c = dict(w=20800.0, hw=0.0, xw=0.0, gusts=[], tu=None, lo=None, seed=None, mgr=False, gs=GS_ALL, add=ADD_ALL, auto=AUTO_ALL, gsmini=0, shr=1.0, shh=500.0, tua=None, imb=0.0, wide=0, off=0.0, lat=35.0, replay=None, ff=0, ri=0, aim=0, rx=1.0, ra=1.0, sec=260.0, name=text.strip())
+    c = dict(w=20800.0, hw=0.0, xw=0.0, gusts=[], tu=None, lo=None, seed=None, mgr=False, gs=GS_ALL, add=ADD_ALL, auto=AUTO_ALL, gsmini=0, shr=1.0, shh=500.0, tua=None, imb=0.0, wide=0, off=0.0, lat=35.0, replay=None, rt=0, ff=0, ri=0, aim=0, rx=1.0, ra=1.0, sec=260.0, name=text.strip())
     for word in text.split():
         k, _, v = word.partition('=')
         if k == 'w':
@@ -257,6 +288,8 @@ def parse(text):
             c['replay'] = v
         elif k == 'rx':
             c['rx'] = float(v)
+        elif k == 'rt':
+            c['rt'] = int(v)
         elif k == 'ra':
             c['ra'] = float(v)
         elif k == 'ff':
@@ -285,7 +318,7 @@ def parse(text):
 
 
 def weather_of(c):
-    return Weather(c['hw'], c['xw'], c['gusts'], c['tu'], c['seed'], lo=c['lo'], shr=c['shr'], shh=c['shh'], tua=c['tua'], replay=c['replay'], rx=c['rx'], ra=c['ra'])
+    return Weather(c['hw'], c['xw'], c['gusts'], c['tu'], c['seed'], lo=c['lo'], shr=c['shr'], shh=c['shh'], tua=c['tua'], replay=c['replay'], rx=c['rx'], ra=c['ra'], rt=c['rt'])
 
 
 def run_task(c):
@@ -317,13 +350,25 @@ def run_task(c):
     f['ap/final-aim'] = c['aim']
     log = {k: [] for k, _ in H.AP_LOG + EXTRA + EXTRA2}
     log.update(ga=[], gx=[], gv=[])
-    ext = dict(ail=0.0, rud=0.0)
+    ext = dict(ail=0.0, rud=0.0, tipmin=1e9, phi_td=None, cmd_td=None, tipmin_flex=1e9, flex_min=1e9, flex_td=None, t_td=None, tipmin_flex3=1e9)
     t0 = f['simulation/sim-time-sec']
     for i in range(int(c['sec'] * H.HZ)):
         if not f.run():
             break
         ext['ail'] = max(ext['ail'], abs(f['ctl/roll-cmd-deg']) / LL.TRAVEL_DEG)
         ext['rud'] = max(ext['rud'], abs(f['ctl/yaw-deg']) / LL.TRAVEL_DEG)
+        if f['aero/wheel-height-ft'] < 15.0:
+            ext['tipmin'] = min(ext['tipmin'], tip_height(f))
+            tf = tip_height(f, True)
+            ext['tipmin_flex'] = min(ext['tipmin_flex'], tf)
+            ext['flex_min'] = min(ext['flex_min'], f['flex/tip-deflection-ft'])
+            if ext['phi_td'] is None and (f['gear/unit[1]/WOW'] or f['gear/unit[2]/WOW']):
+                ext['phi_td'] = math.degrees(f['attitude/phi-rad'])
+                ext['cmd_td'] = f['ap/bank-final-deg']
+                ext['flex_td'] = f['flex/tip-deflection-ft']
+                ext['t_td'] = f['simulation/sim-time-sec']
+            if ext['t_td'] is None or f['simulation/sim-time-sec'] <= ext['t_td'] + 3.0:         # the landing's critical window: 15 ft of wheel height to 3 s after the first wheel
+                ext['tipmin_flex3'] = min(ext['tipmin_flex3'], tf)
         if i % 6 == 0:
             for k, p in H.AP_LOG + EXTRA + EXTRA2:
                 log[k].append(f[p])
@@ -388,6 +433,16 @@ def measure(log, c):
     r['add_kt'] = round(float(c['add']), 1)
     r['gsmini_add_max'] = round(float(np.max(log['ggm'])), 1)
     r['controls'] = dict(aileron=round(log['_ext']['ail'], 2), ruddervators=round(log['_ext']['rud'], 2))
+    if log['_ext']['phi_td'] is not None:
+        r['phi_td_deg'] = round(log['_ext']['phi_td'], 2)                  # signed, right wing down positive, at the first frame a main wheel carries weight
+        r['bank_cmd_td_deg'] = round(log['_ext']['cmd_td'], 2)
+    r['tip_min_ft'] = round(log['_ext']['tipmin'], 2) if log['_ext']['tipmin'] < 1e8 else None   # the lowest a wing tip got above the ground in the last 15 ft of wheel height (about 0: the tip is on it)
+    if log['_ext']['tipmin_flex'] < 1e8:
+        r['tip_min_flex_ft'] = round(log['_ext']['tipmin_flex'], 2)       # the same with the wing's bending (2026-11-17): where the bent tip would be, not where the model's rigid contact is
+        r['tip_min_flex3_ft'] = round(log['_ext']['tipmin_flex3'], 2)     # ... from 15 ft of wheel height to 3 s after the first wheel (the flare, the touchdown, the lift's dump), not the whole rollout
+        r['flex_min_ft'] = round(log['_ext']['flex_min'], 2)               # the least tip deflection in that time (negative: drooped)
+        if log['_ext']['flex_td'] is not None:
+            r['flex_td_ft'] = round(log['_ext']['flex_td'], 2)             # the tip deflection at the first wheel
     return r
 
 

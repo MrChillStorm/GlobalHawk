@@ -167,7 +167,7 @@ FLARE_SINK = 1.6                 # ft/s wanted at the ground (0.5 m/s)
 FLARE_GAIN = 0.6                 # spoiler travel per ft/s of sink error in the flare
 FLARE_TTG = 2.6                  # s: the flare starts at this many seconds to touchdown at the sink it has beyond FLARE_SLACK, if that is higher than FLARE_HEIGHT
 FLARE_SLACK = 4.0                # ft/s of sink that is not a downdraft: the approach's own is 17.2 and gusts of light turbulence reach 21, so only more
-# ---- the gust system (docs/PLAN.md, "Gusts: find out first"): a switch, ap/gust-sys (0: the aircraft as it was, 1: on), that does nothing but in the landing (ap/land-mode 1, on the glide and in the flare, in the air)
+# ---- the gust system (docs/PLAN.md, "Gusts: find out first"): a switch, ap/gust-sys (1, the default since 2026-11-17: on; 0: the aircraft as it was), that does nothing but in the landing (ap/land-mode 1, on the glide and in the flare, in the air)
 GS_H_FT = 500.0                  # ft of wheel height: the system is on from here down
 GS_PITCH_FLOOR_DEG = -1.0        # deg: in the glide the speed law may not take the nose under this attitude (the approach's own is +0.4): a lost headwind pitched it to -7 deg and the sink from 18 to 33 ft/s
 GS_THR_PER_KT = 0.06             # throttle per kt of speed lost beyond GS_THR_DEAD_KT: the landing's throttle is idle (0.00) all the way down, nothing in it could be had against a shear
@@ -195,6 +195,7 @@ GS_FLARE_MAX_DEG = 3.5           # deg: the most the extra pitch adds to the fla
 DECRAB_H_START = 8.0             # ft of wheel height: the nose starts to come round to the runway's course (the MV-22B's engine-out landing does it from 3 s to 0.5 s before the wheels, by wheel height over the sink; the flare slows the descent as it goes, which holds that time at its own time constant from the flare's start: the decrab began 6 s out and the aircraft drifted off the line meanwhile; counted in height, it is in the last 3 s)
 DECRAB_H_END = 1.0               # ft of wheel height: the decrab has gone as far as it goes in the air
 DECRAB_K = 2.0                   # deg of rudder per deg of heading error in the air, from the decrab's weight (on the ground the ruddervators' own 0.5). Headless, 20 kt across: 8 to 1 ft, gain 1 leaves 3.8 deg of the 8.5 deg crab to the wheels (the rest taken on the runway, as the MV-22B does), 6 to 1.5 ft with gain 2 takes it nearly all off (1.2 deg left) and touches down with 7.8 deg of sideslip instead of 5.8
+DECRAB_CLIP_DEG = 20.0           # deg of ruddervator: the most the decrab's term may ask in the air (while ap/decrab-w is over 0 and the wheels are off); everywhere else the term is held to 10 as it was. 2026-11-17: FlightGear, 12,450 lb in 37 kt: the term sat at its old 10 deg for the last 3 s and the nose touched down 11 deg off the runway's course (the sideslip 10 deg); the bench with 20 deg: 6 deg left, the rollout's swing upwind 11.8 to 5.8 ft; 30 deg changed nothing more (the ruddervators' own +-20 deg, shared with the pitch, is the limit: about 15.6 deg of sideslip, a complete decrab to about 26 kt across at 98 KEAS, 38 kt at 143 KEAS); an earlier start (DECRAB_H_START 14 to 32 ft) did not help and put the line 7 to 18 ft further out
 LANDING_YAW_K = 2.0              # deg of ruddervator per deg of heading error on the mains when it is not the takeoff roll (the landing's rollout, the taxi)
 TAKEOFF_YAW_K = 3.0              # deg of ruddervator per deg of heading error on the takeoff roll (it is LANDING_YAW_K on the landing's rollout: gain 3 there doubled the yaw rate at touchdown and did not hold the line closer)
 TAKEOFF_BLEND_K = 3.0             # the same gain for the ground term's fade-out over YAW_AIR_BLEND_S after the wheels leave (until the nose wheel's steering goes off at AIRBORNE_FT)
@@ -206,6 +207,16 @@ FINAL_T_OUTER_LAND_S = 8.0       # s: the position loop's time at and under FINA
 FINAL_T_INNER_LAND_S = 2.0       # s: ... and the rate loop's
 FINAL_SCHED_LO_FT = 300.0        # ft of wheel height: the short times apply at and under this ...
 FINAL_SCHED_HI_FT = 800.0        # ft: ... and the long ones (FINAL_T_OUTER_S, FINAL_T_INNER_S) at and over this, linearly between (the wheel height reads 1,000 above 1,000 ft)
+FINAL_TD_H_LO_FT = 5.0           # ft of wheel height: the touchdown loop times below apply at and under this (the flare, 2026-11-17: the lateral law asked for 7 deg of bank at 3 to 7 ft against a wing tip on the ground at 5.5) ...
+FINAL_TD_H_HI_FT = 40.0          # ... and the landing times above at and over this, linearly between
+FINAL_T_OUTER_TD_S = 0.0         # s: the position loop's time in the flare; 0: FINAL_T_OUTER_LAND_S (no change)
+FINAL_T_INNER_TD_S = 0.0         # s: the rate loop's time in the flare; 0: FINAL_T_INNER_LAND_S
+FINAL_BANK_W_LO_FT = 1.0         # ft of wheel height: the final's bank command is washed out to nothing at and under this (wings level when the wheels touch: a wing tip is at the ground at about 5.5 deg; ON from 2026-11-17, docs/PLAN.md, "The bank at touchdown") ...
+FINAL_BANK_W_HI_FT = 10.0         # ... and is all there at and over this, linearly between; 0: no washout (the bank target's rate limit, BANK_RATE, is 5 deg/s: levelling from 7 deg takes 1.4 s, 4 to 5 ft of the flare; swept 6 to 25 ft, 10 is as good as 15)
+ROLL_LAND_K_PHI = 6.0            # the roll loop's bank gain (ap/k-phi) in the landing's last seconds, times this at and under ROLL_LAND_H_LO_FT of wheel height: the bank at the first wheel has a spread of 2.7 deg even with
+ROLL_LAND_K_P = 2.5              # its command washed out to nothing, the turbulence rolling the aircraft (2026-11-17); 1: no change. The roll rate gain (ap/k-p) likewise
+ROLL_LAND_H_LO_FT = 40.0         # ft of wheel height: the stiffer roll loop is all there at and under this ...
+ROLL_LAND_H_HI_FT = 100.0         # ... and gone at and over this, linearly between (landing task only)
 FINAL_ANGLE_MAX_DEG = 30.0       # the intercept angle at the most: the rate asked for is at most vg sin of it
 FINAL_BANK_MAX_DEG = 12.0        # the bank of the final's lateral law, at the most (swept: 8 deg makes a 30 deg intercept from 2,000 ft cross the line by 62 to 304 ft, 12 deg by 7 to 9 ft; 15 deg adds nothing on course)
 FINAL_KI = 0.0002                # deg of bank per ft of cross-track and second: the slow integral that takes out the bias between the track and the leg's course (swept: 0 leaves 5 ft, 0.0005 over a 100 ft band overshoots 33 ft)
@@ -239,9 +250,14 @@ FF_TAU_WEIGHT_LB = 26750.0       # lb: the weight FF_TAU_S was tuned at; the lag
 FF_T_S = 3.0                     # s: the time the bank takes the predicted rate out over
 # ---- the aim offset (ap/final-aim 1; the user, 2026-11-17: the 36 kt wind from the side is what puts the touchdown left of the line, so aim upwind by an amount that goes with it): the line the position loop and the
 # integral steer to is moved upwind by FINAL_AIM_FT_PER_KT feet for each knot of the crosswind component (the total wind, smoothed over FINAL_AIM_FILT_S, across the leg's course), from FINAL_AIM_FROM_FT of wheel
-# height (0) to FINAL_AIM_FULL_FT (all of it), in the landing's roll mode only (the rollout's steering still reads the real line). The coefficient is the offset the FlightGear flights show: 1.3 to 2.4 ft per knot
-# (28 kt: -68 and -73 ft at the wheels, 36 kt: -49 and -80 ft); the bench's steady wind shows 0.12 ft per knot (the decrab alone), so this is for the wind FlightGear blows and has to be judged against both
-FINAL_AIM_FT_PER_KT = 2.0        # ft of aim point per kt of crosswind component
+# height (0) to FINAL_AIM_FULL_FT (all of it), in the landing's roll mode only (the rollout's steering still reads the real line).
+# 2026-11-17, the coefficient: FlightGear, 12 flights in a steady wind (fdm/fg_matrix.py, 12,450 / 19,100 / 26,750 lb at 9, 18, 28 and 37 kt at the wheels; fdm/flare_drift.py): the line is held to within 1.6 ft down to
+# 15 ft, then the flare's decrab drifts the aircraft downwind by 0.0076 ft per knot of crosswind per 1,000 lb (0.43 ft rms over the 12, 0.47 ft leaving each one out): 0.10 ft/kt light, 0.20 ft/kt full, 7.8 ft at
+# 37 kt and 26,750 lb. So the aim is FINAL_AIM_FT_PER_KT_KLB x the weight in 1,000 lb x the crosswind component. FINAL_AIM_FT_PER_KT (not 0) is the older, weight-free form: 2.0 ft per knot came from earlier FlightGear
+# flights (28 kt: -68 and -73 ft at the wheels, 36 kt: -49 and -80 ft), most likely the geometry error the one-earth change took out (the steady-wind flights are 0 to 1.6 ft off at 40 ft); the
+# latsweep rounds a01 to a05L (0.1 to 0.5 ft/kt, the bench) use it
+FINAL_AIM_FT_PER_KT_KLB = 0.0076  # ft of aim point per kt of crosswind component per 1,000 lb of weight
+FINAL_AIM_FT_PER_KT = 0.0        # ft of aim point per kt of crosswind component, weight-free (0: the weight form above)
 FINAL_AIM_FILT_S = 10.0          # s: the crosswind is smoothed over this (the aim does not follow the gusts)
 FINAL_AIM_FROM_FT = 1000.0       # ft of wheel height: the aim begins ...
 FINAL_AIM_FULL_FT = 700.0        # ft of wheel height: ... and is all there at this height
@@ -740,7 +756,7 @@ def _g_track(org, ac, out, desc, vel=None):
 def _gust_picker():
     """The approach speed's addition, picked by the aircraft: from the wind's spread about its 10 s mean (the three axes' mean square, through GS_AUTO_EST_S) and the wind across the leg's course (the final's:
     the filtered wind the turn prediction and the crosswind caution use), by the tables GS_AUTO_GUST and GS_AUTO_CROSS; followed from wherever the aircraft is and held from GS_PICK_H_FT of wheel height down, so that
-    the speed does not move in the glide. ap/approach-add-auto 1 uses it, 0 (the default) the addition ap/approach-add-kt as it was set (0)."""
+    the speed does not move in the glide. ap/approach-add-auto 1 (the default since 2026-11-17) uses it, 0 the addition ap/approach-add-kt as it was set (0)."""
     X = lambda tag, *a: '<%s>%s</%s>' % (tag, ''.join(a), tag)
     P, V = _p, _v
     M = lambda *a: X('product', *a)
@@ -846,7 +862,7 @@ def laws_file():
         ('next-lat-deg', 0), ('next-lon-deg', 0), ('next-valid', 0), ('turn-phase', 0), ('turn-done', 0), ('yaw-air-w', 1), ('rollout-w', 0), ('turn-ack', 0), ('decrab-w', 0),
         ('tk-on', 0), ('tk-done', 0), ('tx-on', 0), ('tx-fast', 15), ('tx-slow', 8), ('tx-bend-deg', 0), ('tx-last', 0), ('tx-stop', 1), ('ld-on', 0), ('ld-captured', 0),
         ('ci-on', 0), ('ci-lat', 0), ('ci-lon', 0), ('ci-radius-ft', 1000), ('ci-side', 1), ('ci-out-max', 30), ('ci-lead', 1),
-        ('ga-on', 0), ('ga-h0-ft', 0), ('ga-smart', 0), ('ga-latch', 0), ('final-wide', 0), ('final-i-wide-deg', 0), ('final-ff', 0), ('final-ri', 0), ('final-aim', 0), ('final-aim-ft', 0), ('final-i-rate-deg', 0), ('final-ff-bank-deg', 0), ('ga-smart-active', 0), ('ga-theta-i-deg', 0), ('vt-on', 0), ('vt-sp-end', 0), ('v-sp-i', 0), ('vt-ft', 0), ('vt-path', 0), ('sp-ext', -1), ('vmode', 0), ('v-level-alt', 0), ('v-level-from', 0), ('v-level-span', LEVEL_GATE_FT), ('v-level-sp0', 0), ('gust-sys', 0), ('approach-add-kt', 0), ('approach-add-auto', 0), ('gsmini-on', 0), ('tower-hw-kt', 0), ('gs-gsmini-add', 0), ('gs-hw-live-kt', 0), ('approach-add-used', 0), ('gs-add-lat', 0), ('gs-on', 0), ('gs-throttle', 0), ('gs-detect', 0), ('gs-detect-t', -1000), ('gust-alert', 0), ('gs-flare-extra-deg', 0), ('gs-glide-extra-deg', 0), ('theta-speed-gs-deg', 0)))
+        ('ga-on', 0), ('ga-h0-ft', 0), ('ga-smart', 0), ('ga-latch', 0), ('final-wide', 0), ('final-i-wide-deg', 0), ('final-ff', 0), ('final-ri', 0), ('final-aim', 0), ('final-aim-ft', 0), ('final-i-rate-deg', 0), ('final-ff-bank-deg', 0), ('ga-smart-active', 0), ('ga-theta-i-deg', 0), ('vt-on', 0), ('vt-sp-end', 0), ('v-sp-i', 0), ('vt-ft', 0), ('vt-path', 0), ('sp-ext', -1), ('vmode', 0), ('v-level-alt', 0), ('v-level-from', 0), ('v-level-span', LEVEL_GATE_FT), ('v-level-sp0', 0), ('gust-sys', 1), ('approach-add-kt', 0), ('approach-add-auto', 1), ('gsmini-on', 0), ('tower-hw-kt', 0), ('gs-gsmini-add', 0), ('gs-hw-live-kt', 0), ('approach-add-used', 0), ('gs-add-lat', 0), ('gs-on', 0), ('gs-throttle', 0), ('gs-detect', 0), ('gs-detect-t', -1000), ('gust-alert', 0), ('gs-flare-extra-deg', 0), ('gs-glide-extra-deg', 0), ('theta-speed-gs-deg', 0)))
     props += ''.join('  <property value="0">limits/%s</property>\n' % k for k in ('overstress', 'failed', 'reset'))
     ch = []
     # ---- part C: navigators and the link, ahead of everything that uses them
@@ -871,8 +887,18 @@ def laws_file():
     # ---- schedules
     ch.append(_fn('ap/gain-q', _op('quotient', _v(50), '<max>%s%s</max>' % (_p('aero/qbar-psf'), _v(1))),
                   'gain schedule: control power goes with dynamic pressure', clip=('0.4', '2.5')))
+    if ROLL_LAND_K_PHI != 1.0 or ROLL_LAND_K_P != 1.0:
+        ch.append(_fn('ap/roll-land-w', _op('ifthen', _op('and', _op('eq', _p('ap/land-mode'), _v(1)), _op('eq', _p('ap/engaged'), _v(1)), _op('eq', _p('ap/manual'), _v(0))),
+                                           _table([(0.0, 1.0), (ROLL_LAND_H_LO_FT, 1.0), (ROLL_LAND_H_HI_FT, 0.0), (1000.0, 0.0)], 'aero/wheel-height-ft'), _v(0)),
+                      'the weight of the landing\'s stiffer roll loop: 1 at and under %g ft of wheel height, 0 at and over %g ft' % (ROLL_LAND_H_LO_FT, ROLL_LAND_H_HI_FT)))
     for n in ('theta', 'q', 'theta_i', 'phi', 'phi_i', 'p', 'r', 'beta', 'beta_i'):
-        ch.append(_gain(n.replace('_', '-'), G['K_' + n]))
+        kland = {'phi': ROLL_LAND_K_PHI, 'p': ROLL_LAND_K_P}.get(n, 1.0)
+        if kland != 1.0:
+            ch.append(_fn('ap/k-%s' % n, _op('product', _v(G['K_' + n]), _p('ap/gain-q'), _p('ap/gain-scale'),
+                                            _op('sum', _v(1.0), _op('product', _v(kland - 1.0), _p('ap/roll-land-w')))),
+                          'the gain, stiffer in the landing\'s last seconds (ROLL_LAND_K_*)'))
+        else:
+            ch.append(_gain(n.replace('_', '-'), G['K_' + n]))
     ch.append(_fn('ap/schedule-mach', _table(SCHEDULE, 'engine/pressure-altitude-ft'), 'the scheduled Mach number above FL220'))
     ch.append(_fn('ap/schedule-kcas', '''        <ifthen>
           <lt>%s%s</lt>
@@ -1572,14 +1598,25 @@ def laws_file():
       <c1>%g</c1>
     </lag_filter>''' % (1.0 / FINAL_AIM_FILT_S))
     aim_w = MAX(V(0), MIN(V(1), Q(D(V(FINAL_AIM_FROM_FT), P('aero/wheel-height-ft')), V(FINAL_AIM_FROM_FT - FINAL_AIM_FULL_FT))))
-    ch.append(_fn('ap/final-aim-ft', IF(AND(EQ(P('ap/final-aim'), V(1)), EQ(P('ap/roll-mode'), V(3))), M(V(FINAL_AIM_FT_PER_KT / 1.68781), P('ap/aim-wleft-fps'), aim_w), V(0)),
-                  'the aim point\'s offset from the line, right positive: upwind by %g ft per knot of the crosswind component, from %g to %g ft of wheel height' % (FINAL_AIM_FT_PER_KT, FINAL_AIM_FROM_FT, FINAL_AIM_FULL_FT)))
+    if FINAL_AIM_FT_PER_KT:
+        aim_ft = M(V(FINAL_AIM_FT_PER_KT / 1.68781), P('ap/aim-wleft-fps'), aim_w)
+        aim_doc = '%g ft per knot of the crosswind component' % FINAL_AIM_FT_PER_KT
+    else:
+        aim_ft = M(V(FINAL_AIM_FT_PER_KT_KLB / 1.68781 / 1000.0), P('inertia/weight-lbs'), P('ap/aim-wleft-fps'), aim_w)
+        aim_doc = '%g ft per knot of the crosswind component per 1,000 lb of weight' % FINAL_AIM_FT_PER_KT_KLB
+    ch.append(_fn('ap/final-aim-ft', IF(AND(EQ(P('ap/final-aim'), V(1)), EQ(P('ap/roll-mode'), V(3))), aim_ft, V(0)),
+                  'the aim point\'s offset from the line, right positive: upwind by %s, from %g to %g ft of wheel height' % (aim_doc, FINAL_AIM_FROM_FT, FINAL_AIM_FULL_FT)))
     ch.append(_fn('ap/final-xt-aimed-ft', D(P('ap/leg-xt-ft'), P('ap/final-aim-ft')), 'the cross-track from the aim point, right positive'))
     vmax = M(vgf, V(math.sin(math.radians(FINAL_ANGLE_MAX_DEG))))
-    t_sched = lambda base, land: (IF(EQ(P('ap/roll-mode'), V(3)), _table([(0.0, land), (FINAL_SCHED_LO_FT, land), (FINAL_SCHED_HI_FT, base), (1000.0, base)], 'aero/wheel-height-ft'), V(base))
-                                  if FINAL_SCHED else V(base))
-    ch.append(_fn('ap/final-t-outer-s', t_sched(FINAL_T_OUTER_S, FINAL_T_OUTER_LAND_S), 'the position loop\'s time: the cross-track over this is the rate the line asks for, s'))
-    ch.append(_fn('ap/final-t-inner-s', t_sched(FINAL_T_INNER_S, FINAL_T_INNER_LAND_S), 'the rate loop\'s time: the rate error over this is the lateral acceleration asked for, s'))
+    def t_sched(base, land, td):
+        if not FINAL_SCHED:
+            return V(base)
+        pts = [(0.0, land), (FINAL_SCHED_LO_FT, land), (FINAL_SCHED_HI_FT, base), (1000.0, base)]
+        if td and td != land:
+            pts = [(0.0, td), (FINAL_TD_H_LO_FT, td), (FINAL_TD_H_HI_FT, land)] + pts[1:]
+        return IF(EQ(P('ap/roll-mode'), V(3)), _table(pts, 'aero/wheel-height-ft'), V(base))
+    ch.append(_fn('ap/final-t-outer-s', t_sched(FINAL_T_OUTER_S, FINAL_T_OUTER_LAND_S, FINAL_T_OUTER_TD_S), 'the position loop\'s time: the cross-track over this is the rate the line asks for, s'))
+    ch.append(_fn('ap/final-t-inner-s', t_sched(FINAL_T_INNER_S, FINAL_T_INNER_LAND_S, FINAL_T_INNER_TD_S), 'the rate loop\'s time: the rate error over this is the lateral acceleration asked for, s'))
     ch.append(_fn('ap/final-want-rate-fps', M(V(-1), MAX(M(V(-1), vmax), MIN(vmax, Q(P('ap/final-xt-aimed-ft'), P('ap/final-t-outer-s'))))),
                   'the cross-track rate the line asks for: the cross-track over the position loop\'s time, at most vg sin(%g deg), towards the line' % FINAL_ANGLE_MAX_DEG))
     ch.append(_fn('ap/final-bank-p-deg', DEG(X('atan', Q(Q(D(P('ap/final-want-rate-fps'), P('ap/final-xt-rate-fps')), P('ap/final-t-inner-s')), V(32.174)))),
@@ -1607,7 +1644,12 @@ def laws_file():
     ch.append(_fn('ap/final-rate-err-fps', D(P('ap/final-want-rate-fps'), P('ap/final-xt-rate-fps')), 'the rate wanted less the rate there is, towards the line positive, ft/s'))
     ch.append(_trigger('final-ri', 'ap/final-ri == 1', 'ap/roll-mode == 3', 'ap/leg-xt-ft lt %g' % FINAL_RI_BAND_FT, 'ap/leg-xt-ft gt %g' % -FINAL_RI_BAND_FT, 'aero/wheel-height-ft lt %g' % FINAL_RI_BELOW_FT))
     ch.append(_pid('ap/final-i-rate-deg', 'ap/final-rate-err-fps', 0.0, FINAL_KI_RI, 'final-ri', clip=('-%g' % FINAL_RI_CLIP_DEG, '%g' % FINAL_RI_CLIP_DEG)))
-    ch.append(_fn('ap/bank-final-deg', S(P('ap/final-bank-p-deg'), P('ap/final-ff-bank-deg'), P('ap/final-i-rate-deg'), IF(EQ(P('ap/final-wide'), V(1)), S(P('ap/final-i-deg'), P('ap/final-i-wide-deg')), P('ap/final-i-deg'))),
+    bank_sum = S(P('ap/final-bank-p-deg'), P('ap/final-ff-bank-deg'), P('ap/final-i-rate-deg'), IF(EQ(P('ap/final-wide'), V(1)), S(P('ap/final-i-deg'), P('ap/final-i-wide-deg')), P('ap/final-i-deg')))
+    if FINAL_BANK_W_HI_FT > FINAL_BANK_W_LO_FT:
+        ch.append(_fn('ap/final-bank-w', _table([(0.0, 0.0), (FINAL_BANK_W_LO_FT, 0.0), (FINAL_BANK_W_HI_FT, 1.0), (1000.0, 1.0)], 'aero/wheel-height-ft'),
+                      'the weight of the final\'s bank command: 0 at and under %g ft of wheel height (wings level at the touchdown), 1 at and over %g ft' % (FINAL_BANK_W_LO_FT, FINAL_BANK_W_HI_FT)))
+        bank_sum = M(bank_sum, P('ap/final-bank-w'))
+    ch.append(_fn('ap/bank-final-deg', bank_sum,
                   'the bank on the final: the lateral law of the landing task (roll mode 3)', clip=('%g' % -FINAL_BANK_MAX_DEG, '%g' % FINAL_BANK_MAX_DEG)))
     # ---- basic law: yaw
     ch.append('''    <washout_filter name="ap/yaw-rate-washed">
@@ -1638,8 +1680,10 @@ def laws_file():
     else:
         yaw_ground = _op('product', _p('ap/ground-steer'), MAX(MIN(V(1), P('ap/on-mains')), P('ap/decrab-w')),
                          IF(GT(P('ap/on-mains'), V(0)), V(0.5), V(DECRAB_K)), _p('ap/ground-error-deg'))
-    ch.append(_fn('ap/yaw-ground-deg', yaw_ground,
-                  'the ruddervators on the heading error to the course the line gives: help the nose wheel on the ground, and take the crab off in the air from the decrab\'s weight', clip=('-10', '10')))
+    # held to 10 deg as always, except in the air while the decrab is on (decrab-w over 0, no wheel down): DECRAB_CLIP_DEG there
+    yaw_lim = IF(AND(EQ(P('ap/on-mains'), V(0)), GT(P('ap/decrab-w'), V(0))), V(DECRAB_CLIP_DEG), V(10))
+    ch.append(_fn('ap/yaw-ground-deg', MAX(_op('product', V(-1), yaw_lim), MIN(yaw_lim, yaw_ground)),
+                  'the ruddervators on the heading error to the course the line gives: help the nose wheel on the ground, and take the crab off in the air from the decrab\'s weight; held to 10 deg, %g deg in the decrab in the air' % DECRAB_CLIP_DEG))
     ch.append(_fn('ap/yaw-law-deg', '''        <sum>
           %s
           <product>%s%s%s%s</product>

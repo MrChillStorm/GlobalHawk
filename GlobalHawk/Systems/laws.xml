@@ -93,9 +93,9 @@
   <property value="0">ap/v-level-from</property>
   <property value="150">ap/v-level-span</property>
   <property value="0">ap/v-level-sp0</property>
-  <property value="0">ap/gust-sys</property>
+  <property value="1">ap/gust-sys</property>
   <property value="0">ap/approach-add-kt</property>
-  <property value="0">ap/approach-add-auto</property>
+  <property value="1">ap/approach-add-auto</property>
   <property value="0">ap/gsmini-on</property>
   <property value="0">ap/tower-hw-kt</property>
   <property value="0">ap/gs-gsmini-add</property>
@@ -406,6 +406,17 @@
       </function>
       <clipto><min>0.4</min><max>2.5</max></clipto>
     </fcs_function>
+    <fcs_function name="ap/roll-land-w">
+      <description>the weight of the landing's stiffer roll loop: 1 at and under 40 ft of wheel height, 0 at and over 100 ft</description>
+      <function>
+        <ifthen>        <and>        <eq><property>ap/land-mode</property><value>1</value></eq>        <eq><property>ap/engaged</property><value>1</value></eq>        <eq><property>ap/manual</property><value>0</value></eq></and>          <table><independentVar lookup="row">aero/wheel-height-ft</independentVar><tableData>
+              0 1
+              40 1
+              100 0
+              1000 0
+          </tableData></table><value>0</value></ifthen>
+      </function>
+    </fcs_function>
     <fcs_function name="ap/k-theta">
       <function>
         <product><value>1.4</value><property>ap/gain-q</property><property>ap/gain-scale</property></product>
@@ -422,8 +433,9 @@
       </function>
     </fcs_function>
     <fcs_function name="ap/k-phi">
+      <description>the gain, stiffer in the landing's last seconds (ROLL_LAND_K_*)</description>
       <function>
-        <product><value>0.5</value><property>ap/gain-q</property><property>ap/gain-scale</property></product>
+        <product><value>0.5</value><property>ap/gain-q</property><property>ap/gain-scale</property>        <sum><value>1</value>        <product><value>5</value><property>ap/roll-land-w</property></product></sum></product>
       </function>
     </fcs_function>
     <fcs_function name="ap/k-phi-i">
@@ -432,8 +444,9 @@
       </function>
     </fcs_function>
     <fcs_function name="ap/k-p">
+      <description>the gain, stiffer in the landing's last seconds (ROLL_LAND_K_*)</description>
       <function>
-        <product><value>0.6</value><property>ap/gain-q</property><property>ap/gain-scale</property></product>
+        <product><value>0.6</value><property>ap/gain-q</property><property>ap/gain-scale</property>        <sum><value>1</value>        <product><value>1.5</value><property>ap/roll-land-w</property></product></sum></product>
       </function>
     </fcs_function>
     <fcs_function name="ap/k-r">
@@ -2313,9 +2326,9 @@
       <c1>0.1</c1>
     </lag_filter>
     <fcs_function name="ap/final-aim-ft">
-      <description>the aim point's offset from the line, right positive: upwind by 2 ft per knot of the crosswind component, from 1000 to 700 ft of wheel height</description>
+      <description>the aim point's offset from the line, right positive: upwind by 0.0076 ft per knot of the crosswind component per 1,000 lb of weight, from 1000 to 700 ft of wheel height</description>
       <function>
-<ifthen><and><eq><property>ap/final-aim</property><value>1</value></eq><eq><property>ap/roll-mode</property><value>3</value></eq></and><product><value>1.18497</value><property>ap/aim-wleft-fps</property><max><value>0</value><min><value>1</value><quotient><difference><value>1000</value><property>aero/wheel-height-ft</property></difference><value>300</value></quotient></min></max></product><value>0</value></ifthen>
+<ifthen><and><eq><property>ap/final-aim</property><value>1</value></eq><eq><property>ap/roll-mode</property><value>3</value></eq></and><product><value>4.50288e-06</value><property>inertia/weight-lbs</property><property>ap/aim-wleft-fps</property><max><value>0</value><min><value>1</value><quotient><difference><value>1000</value><property>aero/wheel-height-ft</property></difference><value>300</value></quotient></min></max></product><value>0</value></ifthen>
       </function>
     </fcs_function>
     <fcs_function name="ap/final-xt-aimed-ft">
@@ -2453,10 +2466,21 @@
       <trigger>ap/trig-final-ri</trigger>
       <clipto><min>-3</min><max>3</max></clipto>
     </pid>
+    <fcs_function name="ap/final-bank-w">
+      <description>the weight of the final's bank command: 0 at and under 1 ft of wheel height (wings level at the touchdown), 1 at and over 10 ft</description>
+      <function>
+          <table><independentVar lookup="row">aero/wheel-height-ft</independentVar><tableData>
+              0 0
+              1 0
+              10 1
+              1000 1
+          </tableData></table>
+      </function>
+    </fcs_function>
     <fcs_function name="ap/bank-final-deg">
       <description>the bank on the final: the lateral law of the landing task (roll mode 3)</description>
       <function>
-<sum><property>ap/final-bank-p-deg</property><property>ap/final-ff-bank-deg</property><property>ap/final-i-rate-deg</property><ifthen><eq><property>ap/final-wide</property><value>1</value></eq><sum><property>ap/final-i-deg</property><property>ap/final-i-wide-deg</property></sum><property>ap/final-i-deg</property></ifthen></sum>
+<product><sum><property>ap/final-bank-p-deg</property><property>ap/final-ff-bank-deg</property><property>ap/final-i-rate-deg</property><ifthen><eq><property>ap/final-wide</property><value>1</value></eq><sum><property>ap/final-i-deg</property><property>ap/final-i-wide-deg</property></sum><property>ap/final-i-deg</property></ifthen></sum><property>ap/final-bank-w</property></product>
       </function>
       <clipto><min>-12</min><max>12</max></clipto>
     </fcs_function>
@@ -2506,11 +2530,10 @@
       <clipto><min>-12</min><max>12</max></clipto>
     </pid>
     <fcs_function name="ap/yaw-ground-deg">
-      <description>the ruddervators on the heading error to the course the line gives: help the nose wheel on the ground, and take the crab off in the air from the decrab's weight</description>
+      <description>the ruddervators on the heading error to the course the line gives: help the nose wheel on the ground, and take the crab off in the air from the decrab's weight; held to 10 deg, 20 deg in the decrab in the air</description>
       <function>
-        <product><property>ap/ground-steer</property><ifthen><gt><property>ap/on-mains</property><value>0</value></gt>        <product><max><min><value>1</value><property>ap/on-mains</property></min><property>ap/decrab-w</property></max><ifthen><eq><property>ap/takeoff-roll</property><value>1</value></eq><value>3</value><value>2</value></ifthen></product><max>        <product><property>ap/decrab-w</property><value>2</value></product>        <product>        <difference><value>1</value><property>ap/yaw-air-w</property></difference><value>3</value></product></max></ifthen><property>ap/ground-error-deg</property></product>
+<max>        <product><value>-1</value><ifthen><and><eq><property>ap/on-mains</property><value>0</value></eq><gt><property>ap/decrab-w</property><value>0</value></gt></and><value>20</value><value>10</value></ifthen></product><min><ifthen><and><eq><property>ap/on-mains</property><value>0</value></eq><gt><property>ap/decrab-w</property><value>0</value></gt></and><value>20</value><value>10</value></ifthen>        <product><property>ap/ground-steer</property><ifthen><gt><property>ap/on-mains</property><value>0</value></gt>        <product><max><min><value>1</value><property>ap/on-mains</property></min><property>ap/decrab-w</property></max><ifthen><eq><property>ap/takeoff-roll</property><value>1</value></eq><value>3</value><value>2</value></ifthen></product><max>        <product><property>ap/decrab-w</property><value>2</value></product>        <product>        <difference><value>1</value><property>ap/yaw-air-w</property></difference><value>3</value></product></max></ifthen><property>ap/ground-error-deg</property></product></min></max>
       </function>
-      <clipto><min>-10</min><max>10</max></clipto>
     </fcs_function>
     <fcs_function name="ap/yaw-law-deg">
       <description>ruddervators against each other, nose right positive: damper, sideslip to zero (interconnect with the ailerons: gain 0 for now)</description>
